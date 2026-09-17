@@ -1,0 +1,2 @@
+<script setup>defineProps({ user: { type: Object, required: true } })</script>
+<template><article class="user-card"><strong>{{ user.name }}</strong><span>{{ user.email }}</span><small>{{ user.role }}</small></article></template>

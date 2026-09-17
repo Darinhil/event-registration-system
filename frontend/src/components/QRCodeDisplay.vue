@@ -1,0 +1,2 @@
+<script setup>import QRCodeVue from 'qrcode.vue'; defineProps({ value: { type: String, required: true } })</script>
+<template><div class="qr"><QRCodeVue :value="value" :size="220" level="H" /></div></template>

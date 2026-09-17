@@ -1,0 +1,2 @@
+<template><AdminLayout><section class="panel"><p class="eyebrow">Live desk</p><h1>Check-ins</h1><p>Check-in activity will use <code>GET /api/admin/check-ins</code>.</p></section></AdminLayout></template>
+<script setup>import AdminLayout from '../../layouts/AdminLayout.vue'</script>

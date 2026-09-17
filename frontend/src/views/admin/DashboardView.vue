@@ -1,0 +1,2 @@
+<template><AdminLayout><section class="panel"><p class="eyebrow">Operations</p><h1>Event dashboard</h1><div class="stat-grid"><div><strong>—</strong><span>Registered</span></div><div><strong>—</strong><span>Checked in</span></div><div><strong>—</strong><span>Remaining</span></div></div></section></AdminLayout></template>
+<script setup>import AdminLayout from '../../layouts/AdminLayout.vue'</script>

@@ -1,0 +1,1 @@
+<template><div class="shell"><header class="topbar"><RouterLink to="/admin" class="brand">Event control</RouterLink><nav><RouterLink to="/admin/users">Users</RouterLink><RouterLink to="/admin/check-ins">Check-ins</RouterLink></nav></header><main><slot /></main></div></template>

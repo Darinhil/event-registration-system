@@ -1,0 +1,2 @@
+<script setup>defineEmits(['scan'])</script>
+<template><div class="scanner"><p>Camera scanner ready</p><input placeholder="Paste QR token for testing" @change="$emit('scan', $event.target.value)" /></div></template>

@@ -1,0 +1,2 @@
+<template><AdminLayout><section class="panel"><p class="eyebrow">Directory</p><h1>Users</h1><p>Attendee management will use <code>GET /api/admin/users</code>.</p></section></AdminLayout></template>
+<script setup>import AdminLayout from '../../layouts/AdminLayout.vue'</script>

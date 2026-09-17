@@ -1,0 +1,2 @@
+<template><AdminLayout><section class="panel"><p class="eyebrow">User detail</p><h1>Attendee profile</h1><p>Profile ID: {{ $route.params.id }}</p></section></AdminLayout></template>
+<script setup>import AdminLayout from '../../layouts/AdminLayout.vue'</script>

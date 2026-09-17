@@ -1,0 +1,2 @@
+<template><UserLayout><section class="panel"><p class="eyebrow">Attendee portal</p><h1>My information</h1><p>Connect this view to <code>GET /api/me</code> to show attendee details and registration history.</p></section></UserLayout></template>
+<script setup>import UserLayout from '../../layouts/UserLayout.vue'</script>

@@ -1,0 +1,1 @@
+export const parseQrPayload = (value) => { try { return JSON.parse(value) } catch { return { qr_token: value } } }
