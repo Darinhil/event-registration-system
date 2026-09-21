@@ -1,2 +1,2 @@
-<template><UserLayout><section class="panel narrow"><p class="eyebrow">Your place at the table</p><h1>Register for the summit</h1><RegistrationForm /></section></UserLayout></template>
+<template><UserLayout><section class="registration-page"><div class="registration-title"><p class="eyebrow">Participant registration</p><h1>Reserve your place</h1></div><RegistrationForm /></section></UserLayout></template>
 <script setup>import UserLayout from '../../layouts/UserLayout.vue'; import RegistrationForm from '../../components/RegistrationForm.vue'</script>

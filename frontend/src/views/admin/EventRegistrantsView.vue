@@ -1,0 +1,13 @@
+<script setup>
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import AdminLayout from '../../layouts/AdminLayout.vue'
+import api from '../../services/api'
+
+const route = useRoute(); const rows = ref([]); const loading = ref(true); const error = ref('')
+const load = async () => { try { const { data } = await api.get(`/admin/events/${route.params.id}/registrants`); rows.value = data.data || data } catch (requestError) { error.value = requestError.response?.data?.message || 'Unable to load registrants.' } finally { loading.value = false } }
+const exportCsv = () => { const header = ['Name', 'Email', 'Phone', 'Registration ID', 'Status']; const lines = rows.value.map((row) => [row.full_name, row.email, row.phone, row.registration_code, row.status].map((value) => `"${String(value || '').replaceAll('"', '""')}"`).join(',')); const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' }); const anchor = document.createElement('a'); anchor.href = URL.createObjectURL(blob); anchor.download = `event-${route.params.id}-registrants.csv`; anchor.click(); URL.revokeObjectURL(anchor.href) }
+onMounted(load)
+</script>
+
+<template><AdminLayout><section class="event-registrants-page"><RouterLink class="back-link" :to="`/admin/events/${route.params.id}`">← Back to event</RouterLink><header class="registrants-heading"><div><p class="admin-eyebrow">Event workspace · attendees</p><h1>Event registrants</h1><p>Review everyone who has registered for this event.</p></div><button class="secondary-button" type="button" :disabled="!rows.length" @click="exportCsv">↓ Export registrants</button></header><article class="registrants-panel"><div v-if="loading" class="dynamic-loading">Loading registrants…</div><div v-else-if="error" class="inline-error">{{ error }}</div><div v-else-if="rows.length" class="managed-events-table"><table><thead><tr><th>Registrant</th><th>Contact</th><th>Registration ID</th><th>Status</th><th>Check-in</th></tr></thead><tbody><tr v-for="row in rows" :key="row.id"><td><strong>{{ row.full_name || 'Unnamed attendee' }}</strong><small>{{ row.organization || 'No organization' }}</small></td><td>{{ row.email || '—' }}<small>{{ row.phone || '—' }}</small></td><td>{{ row.registration_code || row.id }}</td><td><span class="event-status open">{{ row.status || 'confirmed' }}</span></td><td>{{ row.checked_in_at ? 'Checked in' : 'Not checked in' }}</td></tr></tbody></table></div><div v-else class="event-empty-state"><div class="empty-icon">♧</div><h3>No registrants yet</h3><p>Registrations for this event will appear here.</p></div></article></section></AdminLayout></template>
