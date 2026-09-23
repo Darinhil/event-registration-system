@@ -12,6 +12,7 @@ const notificationOpen = ref(false)
 const darkMode = ref(false)
 const profilePhotoBroken = ref(false)
 const profilePhotoSrc = ref('')
+const searchInput = ref(null)
 
 const logout = async () => { await auth.logout(); router.push('/login') }
 const loadProfilePhoto = async () => {
@@ -33,18 +34,42 @@ const togglePanel = (panel) => {
   profileMenuOpen.value = panel === 'profile' ? !profileMenuOpen.value : false
   notificationOpen.value = panel === 'notifications' ? !notificationOpen.value : false
 }
+const closePanels = () => { profileMenuOpen.value = false; notificationOpen.value = false }
+const onGlobalKeydown = (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    searchInput.value?.focus()
+  }
+  if (event.key === 'Escape') closePanels()
+}
+const onDocumentClick = (event) => {
+  if (!event.target.closest('.admin-action-wrap, .profile-menu')) closePanels()
+}
 onMounted(async () => {
+  document.addEventListener('keydown', onGlobalKeydown)
+  document.addEventListener('click', onDocumentClick)
   try { await auth.fetchMe() } finally { await loadProfilePhoto() }
 })
 watch(() => auth.user?.profile_photo, loadProfilePhoto)
-onBeforeUnmount(() => { if (profilePhotoSrc.value.startsWith('blob:')) URL.revokeObjectURL(profilePhotoSrc.value) })
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onGlobalKeydown)
+  document.removeEventListener('click', onDocumentClick)
+  if (profilePhotoSrc.value.startsWith('blob:')) URL.revokeObjectURL(profilePhotoSrc.value)
+})
 </script>
 
 <template>
   <header class="admin-topbar" :class="{ 'is-dark': darkMode }">
     <label class="admin-search">
-      <span aria-hidden="true">⌕</span>
-      <input type="search" placeholder="Type to search..." aria-label="Search dashboard" />
+      <span class="admin-search-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
+      </span>
+      <input
+        ref="searchInput"
+        type="search"
+        placeholder="Search events, attendees…"
+        aria-label="Search dashboard"
+      />
     </label>
 
     <div class="admin-top-actions">
@@ -66,7 +91,9 @@ onBeforeUnmount(() => { if (profilePhotoSrc.value.startsWith('blob:')) URL.revok
             <img v-else :src="adminLogo" alt="Event Admin logo" />
           </span>
           <span class="admin-profile-copy"><strong>{{ auth.user?.name || 'Event Admin' }}</strong><small>Administrator</small></span>
-          <span class="admin-chevron" aria-hidden="true">⌄</span>
+          <span class="admin-chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
+          </span>
         </button>
         <div v-if="profileMenuOpen" class="profile-menu-panel"><RouterLink to="/admin/profile" @click="profileMenuOpen = false">Profile settings</RouterLink><button type="button" @click="logout">Sign out</button></div>
       </div>

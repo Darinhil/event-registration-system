@@ -10,11 +10,11 @@ class Event extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'status'];
+    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status'];
 
     protected function casts(): array
     {
-        return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'branding' => 'array', 'enabled_fields' => 'array'];
+        return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'branding' => 'array', 'enabled_fields' => 'array', 'form_config' => 'array'];
     }
 
     public function registrations(): HasMany { return $this->hasMany(Registration::class); }

@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function show(Request $request): UserResource { return new UserResource($request->user()->load('registrations.checkIn')); }
+    public function show(Request $request): UserResource { return new UserResource($request->user()->load('registrations.checkIn', 'registrations.event')); }
 
     public function updateProfile(Request $request): UserResource
     {

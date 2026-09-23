@@ -34,4 +34,27 @@ class RegistrationService
         $registration = $user->registrations()->create([...$data, 'registration_code' => strtoupper(Str::slug($event->name)).'-'.str_pad((string) ($event->registrations()->count() + 1), 3, '0', STR_PAD_LEFT), 'qr_token' => (string) Str::uuid()]);
         return $registration;
     }
+
+    public function update(Registration $registration, array $data): Registration
+    {
+        $event = $registration->event;
+        $formData = $data['form_data'] ?? [];
+        foreach ($event->formFields()->get() as $field) {
+            $value = $formData[$field->id] ?? null;
+            $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
+            if ($value !== null && $value !== '') $formData[$field->id] = $value;
+            if (!isset($data[$normalized]) && $value !== null) $data[$normalized] = $value;
+        }
+        if (!empty($data['email']) && Registration::where('event_id', $event->id)->where('email', $data['email'])->where('id', '!=', $registration->id)->exists()) {
+            throw ValidationException::withMessages(['email' => 'Already registered for this event.']);
+        }
+        unset($data['event_id'], $data['user_id'], $data['registration_code'], $data['qr_token'], $data['status']);
+        $data['form_data'] = $formData;
+        $data['event_name'] = $event->name;
+        $data['event_date'] = $event->starts_at;
+        $data['event_location'] = $event->location;
+        $data['disability_type'] = json_encode($data['disability_type'] ?? [], JSON_THROW_ON_ERROR);
+        $registration->fill($data)->save();
+        return $registration->fresh();
+    }
 }

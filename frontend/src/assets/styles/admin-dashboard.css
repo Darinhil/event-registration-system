@@ -1,0 +1,307 @@
+/* ============================================================
+   Admin dashboard — small polish pass (loaded last, additive
+   overrides only: no markup or functionality changes).
+   ============================================================ */
+
+/* ---------- Metric cards: consistent radius + gentle hover ---------- */
+.metric-card {
+  border-radius: 14px;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -14px rgba(28, 63, 100, .22);
+}
+.metric-icon {
+  box-shadow: 0 8px 16px -8px rgba(28, 63, 100, .35);
+}
+
+/* ---------- Panels: slightly rounder, hoverable "View all" links ---------- */
+.dashboard-panel,
+.attendee-panel {
+  border-radius: 14px;
+}
+.dashboard-panel > header a,
+.attendee-panel > header a {
+  border-radius: 6px;
+  padding: 2px 4px;
+  transition: color .15s ease, background-color .15s ease;
+}
+.dashboard-panel > header a:hover,
+.attendee-panel > header a:hover {
+  background: #eef5ff;
+}
+
+/* ---------- Chart dots: grow slightly on hover ---------- */
+.chart-area svg circle {
+  transition: r .15s ease;
+}
+.chart-area svg circle:hover {
+  r: 6;
+}
+
+/* ---------- Activity list: divider rhythm + avatar polish ---------- */
+.activity-list > div {
+  padding: 11px 0;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color .14s ease;
+}
+.activity-list > div:last-child {
+  border-bottom: 0;
+}
+.activity-list > div:hover {
+  background: #f8fbff;
+}
+.activity-list span {
+  box-shadow: inset 0 0 0 1px rgba(28, 63, 100, .06);
+}
+
+/* ---------- Attendee panel header: accent bar + divider ---------- */
+.attendee-panel > header {
+  padding: 18px 22px;
+  border-bottom: 1px solid #edf2f8;
+}
+.attendee-panel > header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  letter-spacing: -.01em;
+}
+.attendee-panel > header h2::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2b6de3, #5ea0ff);
+}
+
+/* ---------- Toolbar: soft gradient strip, polished controls ---------- */
+.attendee-toolbar {
+  gap: 10px;
+  padding: 16px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(180deg, #fbfdff, #f7fafd);
+}
+.attendee-toolbar button,
+.table-search {
+  border-radius: 10px;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease, color .16s ease;
+}
+.table-search {
+  min-height: 42px;
+  border-color: #e2eaf3;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(28, 63, 100, .05);
+}
+.table-search input { font-size: .78rem; }
+.table-search:focus-within {
+  border-color: #8fbaff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
+}
+.attendee-toolbar button {
+  min-height: 42px;
+  padding: 0 14px;
+  border-color: #e2eaf3;
+  background: #fff;
+  color: #44586e;
+  font-size: .7rem;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(28, 63, 100, .05);
+}
+.attendee-toolbar button:hover {
+  border-color: #b9d4f5;
+  background: #f7fbff;
+  color: #2b6de3;
+  box-shadow: 0 6px 14px -8px rgba(28, 63, 100, .35);
+}
+.attendee-toolbar button svg {
+  width: 13px;
+  height: 13px;
+  margin-left: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+  transition: transform .18s ease;
+}
+.attendee-toolbar .toolbar-filter {
+  position: relative;
+}
+.attendee-toolbar .toolbar-filter > button {
+  min-width: 132px;
+  justify-content: space-between;
+}
+.attendee-toolbar .toolbar-filter > button svg { margin-left: auto; }
+.attendee-toolbar .toolbar-filter.is-open > button { border-color: #2b6de3; color: #2b6de3; background: #f4f9ff; }
+.attendee-toolbar .toolbar-filter.is-open > button svg { transform: rotate(180deg); }
+.attendee-toolbar .toolbar-filter.is-active > button { border-color: #b9d4f5; background: #eef5ff; color: #2b6de3; }
+
+/* Dropdown menu */
+.filter-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 168px;
+  padding: 6px;
+  border: 1px solid #e4ebf3;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 44px -14px rgba(21, 55, 90, .28);
+  animation: filter-pop .16s ease;
+  transform-origin: top right;
+}
+@keyframes filter-pop {
+  from { opacity: 0; transform: translateY(-5px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.filter-menu button {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: #27415f;
+  font-size: .76rem;
+  font-weight: 500;
+  text-align: left;
+}
+.filter-menu button:hover { background: #f0f6fd; color: #2b6de3; box-shadow: none; transform: none; }
+.filter-menu button.selected {
+  background: #eef5ff;
+  color: #2b6de3;
+  font-weight: 700;
+}
+.filter-menu button.selected::after { content: '✓'; margin-left: auto; float: right; }
+
+/* Export accent */
+.attendee-toolbar .toolbar-export {
+  border-color: #d3e3f8;
+  background: #f4f9ff;
+  color: #2b6de3;
+}
+.attendee-toolbar .toolbar-export svg { margin-left: 0; }
+.attendee-toolbar .toolbar-export:hover { background: #2b6de3; border-color: #2b6de3; color: #fff; }
+.attendee-toolbar .toolbar-export:disabled { opacity: .55; cursor: wait; }
+
+/* Clear-filters ghost button */
+.attendee-toolbar .toolbar-clear {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px dashed #e3b7bb;
+  border-radius: 10px;
+  background: #fff;
+  color: #c2453f;
+  font-size: .68rem;
+  font-weight: 600;
+}
+.attendee-toolbar .toolbar-clear:hover { border-color: #c2453f; background: #fdf1f0; color: #a92f2f; }
+
+/* ---------- Table: uppercase header, hover accent bar, pill actions ---------- */
+.attendee-table-wrap {
+  padding: 4px 22px 18px;
+}
+.attendee-table-wrap th {
+  padding: 14px;
+  border-bottom: 1px solid #e8eef5;
+  background: transparent;
+  color: #7a8ca3;
+  font-size: .64rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.attendee-table-wrap td {
+  padding: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.attendee-table-wrap td strong {
+  color: #17365f;
+  font-size: .78rem;
+}
+.attendee-table-wrap td:nth-child(2) {
+  color: #7a8ca3;
+}
+.attendee-table-wrap tbody tr {
+  transition: background-color .14s ease, box-shadow .14s ease;
+}
+.attendee-table-wrap tbody tr:hover {
+  background: #f5faff;
+  box-shadow: inset 3px 0 0 #2b6de3;
+}
+.attendee-table-wrap tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Status pills: leading status dot */
+.attendee-table-wrap .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: .64rem;
+  font-weight: 600;
+}
+.attendee-table-wrap .status-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .85;
+}
+
+/* View action: outlined pill that fills on hover */
+.attendee-table-wrap td a {
+  display: inline-block;
+  padding: 6px 13px;
+  border: 1px solid #dbe7f4;
+  border-radius: 8px;
+  background: #fff;
+  color: #2b6de3;
+  font-size: .68rem;
+  font-weight: 600;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.attendee-table-wrap td a:hover {
+  border-color: #2b6de3;
+  background: #2b6de3;
+  color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(43, 109, 227, .5);
+}
+
+@media (max-width: 720px) {
+  .attendee-panel > header { padding: 15px 16px; }
+  .attendee-toolbar { padding: 13px 16px; flex-wrap: wrap; }
+  .table-search { flex-basis: 100%; }
+  .attendee-toolbar .toolbar-filter > button { min-width: 0; }
+  .attendee-table-wrap { padding: 0 16px 14px; }
+  .attendee-table-wrap th,
+  .attendee-table-wrap td { padding: 11px 10px; }
+}
+
+/* ---------- Status pills: slightly bolder shape ---------- */
+.status-pill {
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+/* ---------- Donut: soften edge ---------- */
+.donut {
+  transition: transform .2s ease;
+}
+.donut:hover {
+  transform: scale(1.015);
+}
+
+/* ---------- Small screens: keep the polish tight ---------- */
+@media (max-width: 720px) {
+  .metric-card:hover { transform: none; }
+  .metric-icon { box-shadow: none; }
+}

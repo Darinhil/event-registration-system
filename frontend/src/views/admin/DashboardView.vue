@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import { getCheckIns, getDashboard, getUsers } from '../../services/adminService'
 
@@ -8,19 +8,89 @@ const error = ref('')
 const stats = ref({ users: 0, registrations: 0, check_ins: 0 })
 const attendees = ref([])
 const checkedInUserIds = ref(new Set())
+const searchQuery = ref('')
+const statusFilter = ref('all')
+const checkInFilter = ref('all')
+const openMenu = ref('')
+const searchInput = ref(null)
+let searchTimer = null
 const checkInRate = computed(() => stats.value.registrations ? Math.round((stats.value.check_ins / stats.value.registrations) * 1000) / 10 : 0)
 const notCheckedIn = computed(() => Math.max(stats.value.registrations - stats.value.check_ins, 0))
+const statusOptions = [
+  { value: 'all', label: 'All Status' },
+  { value: 'registered', label: 'Registered' },
+  { value: 'pending', label: 'Pending' },
+]
+const checkInOptions = [
+  { value: 'all', label: 'Check-in Status' },
+  { value: 'in', label: 'Checked In' },
+  { value: 'out', label: 'Not Checked In' },
+]
+const statusLabel = computed(() => statusOptions.find((option) => option.value === statusFilter.value)?.label || 'All Status')
+const checkInLabel = computed(() => checkInOptions.find((option) => option.value === checkInFilter.value)?.label || 'Check-in Status')
+const hasActiveFilters = computed(() => searchQuery.value.trim() !== '' || statusFilter.value !== 'all' || checkInFilter.value !== 'all')
 
 const loadDashboard = async () => {
   loading.value = true; error.value = ''
   try {
-    const [dashboardResponse, usersResponse, checkInsResponse] = await Promise.all([getDashboard(), getUsers(), getCheckIns()])
+    const search = searchQuery.value.trim()
+    const params = {}
+    if (search) params.search = search
+    if (statusFilter.value !== 'all') params.status = statusFilter.value
+    if (checkInFilter.value !== 'all') params.check_in = checkInFilter.value
+    const [dashboardResponse, usersResponse, checkInsResponse] = await Promise.all([
+      getDashboard(),
+      getUsers(params),
+      getCheckIns(),
+    ])
     stats.value = dashboardResponse.data
     attendees.value = usersResponse.data.data || []
-    checkedInUserIds.value = new Set((checkInsResponse.data.data || []).map((item) => item.registration?.user?.id).filter(Boolean))
+    checkedInUserIds.value = new Set([
+      ...(checkInsResponse.data.data || []).map((item) => item.registration?.user?.id).filter(Boolean),
+      ...attendees.value.filter((attendee) => attendee.registrations?.some((registration) => registration.check_in)).map((attendee) => attendee.id),
+    ])
   } catch { error.value = 'Unable to load dashboard data.' } finally { loading.value = false }
 }
-onMounted(loadDashboard)
+
+const onSearchInput = () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadDashboard, 300)
+}
+const clearSearch = () => {
+  searchQuery.value = ''
+  clearTimeout(searchTimer)
+  loadDashboard()
+}
+const clearAllFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = 'all'
+  checkInFilter.value = 'all'
+  clearTimeout(searchTimer)
+  loadDashboard()
+}
+const toggleMenu = (menu) => { openMenu.value = openMenu.value === menu ? '' : menu }
+const pickStatus = (value) => { statusFilter.value = value; openMenu.value = ''; loadDashboard() }
+const pickCheckIn = (value) => { checkInFilter.value = value; openMenu.value = ''; loadDashboard() }
+const onDocumentClick = (event) => { if (!event.target.closest('.toolbar-filter')) openMenu.value = '' }
+const exportCsv = () => {
+  const rows = attendees.value.map((attendee) => ({
+    name: attendee.name,
+    email: attendee.email,
+    phone: attendee.phone || '',
+    registration: attendee.registrations?.length ? 'Registered' : 'None',
+    check_in: checkedInUserIds.value.has(attendee.id) ? 'Checked In' : 'Not Checked In',
+  }))
+  const header = 'Name,Email,Phone,Registration,Check-in'
+  const csv = [header, ...rows.map((row) => [row.name, row.email, row.phone, row.registration, row.check_in].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))].join('\n')
+  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'attendees.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+onMounted(() => { loadDashboard(); document.addEventListener('click', onDocumentClick); searchInput.value?.focus() })
+onBeforeUnmount(() => { clearTimeout(searchTimer); document.removeEventListener('click', onDocumentClick) })
 </script>
 
 <template>
@@ -42,7 +112,7 @@ onMounted(loadDashboard)
         <article class="dashboard-panel activity-panel"><header><h2>Recent Activity</h2><RouterLink to="/admin/users">View all</RouterLink></header><div v-if="loading" class="activity-empty">Loading…</div><div v-else-if="attendees.length" class="activity-list"><div v-for="attendee in attendees.slice(0, 5)" :key="attendee.id"><span :class="checkedInUserIds.has(attendee.id) ? 'activity-check' : 'activity-user'">{{ checkedInUserIds.has(attendee.id) ? '✓' : '♙' }}</span><p><strong>{{ attendee.name }}</strong><small>{{ checkedInUserIds.has(attendee.id) ? 'Checked in' : 'Registered' }} recently</small></p></div></div><div v-else class="activity-empty">No recent activity.</div></article>
       </div>
 
-      <article class="attendee-panel"><header><h2>Registered Attendees</h2><RouterLink to="/admin/users">View all →</RouterLink></header><div class="attendee-toolbar"><label class="table-search">⌕<input placeholder="Search by name, phone, or organization..." /></label><button type="button">All Status⌄</button><button type="button">Check-in Status⌄</button><button type="button">Export ↓</button></div><div class="attendee-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Registration</th><th>Check-in</th><th>Actions</th></tr></thead><tbody><tr v-if="loading"><td colspan="5">Loading attendees…</td></tr><tr v-else-if="!attendees.length"><td colspan="5">No attendees registered yet.</td></tr><tr v-for="attendee in attendees.slice(0, 6)" v-else :key="attendee.id"><td><strong>{{ attendee.name }}</strong></td><td>{{ attendee.email }}</td><td><span class="status-pill registered">Registered</span></td><td><span class="status-pill" :class="checkedInUserIds.has(attendee.id) ? 'checked' : 'pending'">{{ checkedInUserIds.has(attendee.id) ? 'Checked In' : 'Not Checked In' }}</span></td><td><RouterLink :to="`/admin/users/${attendee.id}`">View</RouterLink></td></tr></tbody></table></div></article>
+      <article class="attendee-panel"><header><h2>Registered Attendees</h2><RouterLink to="/admin/users">View all →</RouterLink></header><div class="attendee-toolbar"><label class="table-search">⌕<input ref="searchInput" v-model="searchQuery" type="search" placeholder="Search by name, email, phone, or organization..." aria-label="Search attendees" @input="onSearchInput" @keydown.esc.prevent="clearSearch" /></label><div class="toolbar-filter" :class="{ 'is-open': openMenu === 'status', 'is-active': statusFilter !== 'all' }"><button type="button" :aria-expanded="openMenu === 'status'" aria-haspopup="true" @click="toggleMenu('status')">{{ statusLabel }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button><div v-if="openMenu === 'status'" class="filter-menu"><button v-for="option in statusOptions" :key="option.value" type="button" :class="{ selected: statusFilter === option.value }" @click="pickStatus(option.value)">{{ option.label }}</button></div></div><div class="toolbar-filter" :class="{ 'is-open': openMenu === 'checkin', 'is-active': checkInFilter !== 'all' }"><button type="button" :aria-expanded="openMenu === 'checkin'" aria-haspopup="true" @click="toggleMenu('checkin')">{{ checkInLabel }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button><div v-if="openMenu === 'checkin'" class="filter-menu"><button v-for="option in checkInOptions" :key="option.value" type="button" :class="{ selected: checkInFilter === option.value }" @click="pickCheckIn(option.value)">{{ option.label }}</button></div></div><button type="button" class="toolbar-export" :disabled="loading || !attendees.length" @click="exportCsv">Export<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg></button><button v-if="hasActiveFilters" type="button" class="toolbar-clear" @click="clearAllFilters">Clear ✕</button></div><div class="attendee-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Registration</th><th>Check-in</th><th>Actions</th></tr></thead><tbody><tr v-if="loading"><td colspan="5">Loading attendees…</td></tr><tr v-else-if="!attendees.length"><td colspan="5">{{ searchQuery.trim() ? `No attendees found for “${searchQuery.trim()}”.` : 'No attendees registered yet.' }}</td></tr><tr v-for="attendee in attendees.slice(0, 6)" v-else :key="attendee.id"><td><strong>{{ attendee.name }}</strong></td><td>{{ attendee.email }}</td><td><span class="status-pill registered">Registered</span></td><td><span class="status-pill" :class="checkedInUserIds.has(attendee.id) ? 'checked' : 'pending'">{{ checkedInUserIds.has(attendee.id) ? 'Checked In' : 'Not Checked In' }}</span></td><td><RouterLink :to="`/admin/users/${attendee.id}`">View</RouterLink></td></tr></tbody></table></div></article>
     </section>
   </AdminLayout>
 </template>
