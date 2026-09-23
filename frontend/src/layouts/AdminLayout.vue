@@ -12,11 +12,11 @@ const logout = async () => { await auth.logout(); router.push('/login') }
 <template>
   <div class="admin-app-shell">
     <aside class="admin-sidebar">
-      <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="" /><span>Event</span></RouterLink>
+      <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="" /><span>LLC-Event</span></RouterLink>
       <nav class="admin-nav" aria-label="Admin navigation">
         <RouterLink to="/admin" exact-active-class="is-active"><span>▦</span> Dashboard</RouterLink>
         <RouterLink to="/admin/events" active-class="is-active"><span>▣</span> Events</RouterLink>
-        <RouterLink to="/admin/users" active-class="is-active"><span>♙</span> Attendees</RouterLink>
+        <RouterLink to="/admin/users" active-class="is-active"><span>♙</span> Attendances</RouterLink>
         <RouterLink to="/admin/check-ins" active-class="is-active"><span>⌗</span> Check-in</RouterLink>
         <RouterLink to="/admin/events" class="reports-link"><span>▥</span> Reports</RouterLink>
         <RouterLink to="/admin/profile" class="settings-link" active-class="is-active"><span>⚙</span> Settings</RouterLink>

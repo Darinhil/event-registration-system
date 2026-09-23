@@ -76,12 +76,20 @@ onMounted(loadEvents)
         <div v-if="loading" class="dynamic-loading">Loading events…</div>
         <div v-else-if="filteredEvents.length && view === 'cards'" class="event-card-grid">
           <article v-for="event in filteredEvents" :key="event.id" class="managed-event-card">
-            <img v-if="event.branding?.image || event.image" class="event-card-banner" :src="event.branding?.image || event.image" alt="" />
-            <div class="event-card-top"><span class="event-category">{{ event.category || 'Event' }}</span><span class="event-status" :class="event.status">{{ event.status === 'open' ? 'Published' : event.status }}</span></div>
-            <h3>{{ event.name }}</h3><p class="event-card-description">{{ event.description || 'No description added yet.' }}</p>
-            <div class="event-card-meta"><span>◷ {{ dateLabel(event) }}<template v-if="event.start_time"> · {{ event.start_time }}</template></span><span>⌖ {{ event.location || 'Location pending' }}</span></div>
-            <div class="event-card-registration"><div><strong>{{ event.registered || 0 }}</strong><small>registered</small></div><div class="capacity-track"><span :style="{ width: `${Math.min(100, ((event.registered || 0) / (event.maximum_participants || 100)) * 100)}%` }"></span></div><small>{{ event.maximum_participants || '—' }} capacity</small></div>
-            <footer class="event-card-actions"><RouterLink :to="`/admin/events/${event.id}`">View</RouterLink><RouterLink :to="`/admin/events/${event.id}/edit`">Edit</RouterLink><RouterLink :to="`/admin/events/${event.id}/registrants`">Registrants</RouterLink><RouterLink :to="`/admin/events/${event.id}#qr`">QR code</RouterLink><button type="button" class="delete-event-action" :disabled="deletingId === event.id" @click="deleteEvent(event)">{{ deletingId === event.id ? 'Deleting…' : 'Delete' }}</button></footer>
+            <div class="event-card-visual">
+              <img v-if="event.branding?.image || event.image" class="event-card-banner" :src="event.branding?.image || event.image" alt="" />
+              <div v-else class="event-card-banner event-card-banner--empty">{{ event.name.slice(0, 2).toUpperCase() }}</div>
+              <div class="event-card-visual-shade"></div>
+              <span class="event-card-overlay-category">{{ event.category || 'Event' }}</span>
+              <span class="event-card-overlay-status">● {{ event.status === 'open' ? 'Published' : event.status }}</span>
+            </div>
+            <div class="event-card-body">
+              <h3>{{ event.name }}</h3>
+              <p class="event-card-description">{{ event.description || 'No description added yet.' }}</p>
+              <div class="event-card-meta"><div><small>Date &amp; schedule</small><span>◷ {{ dateLabel(event) }}<template v-if="event.start_time"> · {{ event.start_time }}</template></span></div><div><small>Location</small><span>⌖ {{ event.location || 'Location pending' }}</span></div></div>
+              <div class="event-card-registration"><div><strong>{{ event.registered || 0 }}</strong><small>registered</small></div><div class="capacity-track"><span :style="{ width: `${Math.min(100, ((event.registered || 0) / (event.maximum_participants || 100)) * 100)}%` }"></span></div><small>{{ event.maximum_participants || '—' }} capacity</small></div>
+            </div>
+            <footer class="event-card-actions"><RouterLink class="event-action-primary" :to="`/admin/events/${event.id}`">◉ View Event</RouterLink><RouterLink :to="`/admin/events/${event.id}/edit`">✎ Edit</RouterLink><RouterLink :to="`/admin/events/${event.id}/registrants`">♙ Registrants <b>{{ event.registered || 0 }}</b></RouterLink><RouterLink :to="`/admin/events/${event.id}#qr`">▦ QR Pass</RouterLink><button type="button" class="delete-event-action" :disabled="deletingId === event.id" @click="deleteEvent(event)">{{ deletingId === event.id ? 'Deleting…' : 'Delete' }}</button></footer>
           </article>
         </div>
         <div v-else-if="!loading && filteredEvents.length" class="managed-events-table"><table><thead><tr><th>Event</th><th>Date &amp; location</th><th>Registrations</th><th>Status</th><th></th></tr></thead><tbody><tr v-for="event in filteredEvents" :key="event.id"><td><div class="table-event-name"><img v-if="event.branding?.image || event.image" class="event-table-thumb" :src="event.branding?.image || event.image" alt="" /><div><strong>{{ event.name }}</strong><small>{{ event.category || 'Event' }}</small></div></div></td><td>{{ dateLabel(event) }}<small>{{ event.location || 'Location pending' }}</small></td><td><strong>{{ event.registered || 0 }}</strong> / {{ event.maximum_participants || '∞' }}</td><td><span class="event-status" :class="event.status">{{ event.status === 'open' ? 'Published' : event.status }}</span></td><td class="table-event-actions"><RouterLink :to="`/admin/events/${event.id}`">Open →</RouterLink><button type="button" class="delete-event-action" :disabled="deletingId === event.id" @click="deleteEvent(event)">{{ deletingId === event.id ? 'Deleting…' : 'Delete' }}</button></td></tr></tbody></table></div>

@@ -17,6 +17,7 @@ class AdminController extends Controller
         $checkIn = (string) $request->query('check_in');
 
         return User::query()
+            ->where('role', '!=', 'admin')
             ->withCount('registrations')
             ->with('registrations.checkIn')
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
