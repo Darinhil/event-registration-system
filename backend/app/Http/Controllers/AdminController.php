@@ -17,6 +17,7 @@ class AdminController extends Controller
         $status = (string) $request->query('status');
         $checkIn = (string) $request->query('check_in');
         $eventId = (int) $request->query('event_id');
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 10000);
 
         $formFields = $eventId > 0
             ? FormField::where('event_id', $eventId)->orderBy('sort_order')->get()
@@ -35,7 +36,7 @@ class AdminController extends Controller
             ->when($checkIn === 'in', fn ($query) => $query->whereHas('registrations.checkIn'))
             ->when($checkIn === 'out', fn ($query) => $query->whereHas('registrations', fn ($q) => $q->whereDoesntHave('checkIn')))
             ->latest()
-            ->paginate();
+            ->paginate($perPage);
         $page->getCollection()->each(fn (User $user) => $user->registrations->each(fn (Registration $registration) => $registration->append_form_values($formFields)));
 
         return $page->appends(array_filter([
@@ -45,5 +46,9 @@ class AdminController extends Controller
             'event_id' => $eventId > 0 ? $eventId : null,
         ]));
     }
-    public function checkIns() { return CheckIn::with('registration.user', 'staff')->latest('checked_in_at')->paginate(); }
+    public function checkIns(\Illuminate\Http\Request $request)
+    {
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 10000);
+        return CheckIn::with('registration.user', 'staff')->latest('checked_in_at')->paginate($perPage);
+    }
 }

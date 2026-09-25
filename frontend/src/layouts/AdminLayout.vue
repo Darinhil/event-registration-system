@@ -18,7 +18,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
         <RouterLink to="/admin/events" active-class="is-active"><span>▣</span> Events</RouterLink>
         <RouterLink to="/admin/users" active-class="is-active"><span>♙</span> Attendances</RouterLink>
         <RouterLink to="/admin/check-ins" active-class="is-active"><span>⌗</span> Check-in</RouterLink>
-        <RouterLink to="/admin/events" class="reports-link"><span>▥</span> Reports</RouterLink>
+        <RouterLink to="/admin/reports" class="reports-link" active-class="is-active"><span>▥</span> Reports</RouterLink>
         <RouterLink to="/admin/profile" class="settings-link" active-class="is-active"><span>⚙</span> Settings</RouterLink>
       </nav>
       <div class="admin-event-card"><div class="admin-event-thumb">CT</div><div><strong>Community Tech Summit</strong><small>Sep 18, 2026 · Bangkok</small></div><b>Event active</b></div>

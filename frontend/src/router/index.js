@@ -17,6 +17,7 @@ import EventsView from '../views/admin/EventsView.vue'
 import EventDetailsView from '../views/admin/EventDetailsView.vue'
 import EventRegistrantsView from '../views/admin/EventRegistrantsView.vue'
 import AdminProfileView from '../views/admin/AdminProfileView.vue'
+import ReportsView from '../views/admin/ReportsView.vue'
 
 const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView },
@@ -25,6 +26,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/check-in', component: CheckInView, meta: { auth: true } }, { path: '/admin', component: DashboardView, meta: { auth: true, admin: true } }, { path: '/admin/events', component: EventsView, meta: { auth: true, admin: true } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, admin: true } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, admin: true } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, admin: true } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, admin: true } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, admin: true } },
   { path: '/admin/users', component: UsersView, meta: { auth: true, admin: true } }, { path: '/admin/users/:id', component: UserDetailView, meta: { auth: true, admin: true } },
   { path: '/admin/check-ins', component: CheckInsView, meta: { auth: true, admin: true } },
+  { path: '/admin/reports', component: ReportsView, meta: { auth: true, admin: true } },
   { path: '/admin/profile', component: AdminProfileView, meta: { auth: true, admin: true } },
 ] })
 
