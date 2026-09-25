@@ -28,29 +28,64 @@ const loadEvents = async () => {
   } catch (requestError) {
     const local = JSON.parse(localStorage.getItem('event_list') || '[]')
     events.value = local
-    error.value = requestError.response?.data?.message || (local.length ? '' : 'Unable to load events from the API.')
+    error.value =
+      requestError.response?.data?.message ||
+      (local.length ? '' : 'Unable to load events from the API.')
   } finally {
     loading.value = false
   }
 }
 
 const deleteEvent = async (event) => {
-  if (!event.id || !window.confirm(`Delete “${event.name}”? This cannot be undone.`)) return
+  if (
+    !event.id ||
+    !window.confirm(`Delete “${event.name}”? This cannot be undone.`)
+  ) {
+    return
+  }
+
   deletingId.value = event.id
   error.value = ''
+
   try {
     await api.delete(`/admin/events/${event.id}`)
     events.value = events.value.filter((item) => item.id !== event.id)
   } catch (requestError) {
-    error.value = requestError.response?.data?.message || 'Unable to delete this event.'
+    error.value =
+      requestError.response?.data?.message ||
+      'Unable to delete this event.'
   } finally {
     deletingId.value = null
   }
 }
 
-const filteredEvents = computed(() => events.value.filter((event) => `${event.name} ${event.location} ${event.category}`.toLowerCase().includes(search.value.toLowerCase()) && (status.value === 'all' || event.status === status.value)))
-const count = (state) => events.value.filter((event) => state === 'all' ? true : event.status === state).length
-const dateLabel = (event) => event.start_date ? new Date(`${event.start_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be confirmed'
+const filteredEvents = computed(() =>
+  events.value.filter(
+    (event) =>
+      `${event.name} ${event.location} ${event.category}`
+        .toLowerCase()
+        .includes(search.value.toLowerCase()) &&
+      (status.value === 'all' || event.status === status.value)
+  )
+)
+
+const count = (state) =>
+  events.value.filter((event) =>
+    state === 'all' ? true : event.status === state
+  ).length
+
+const dateLabel = (event) =>
+  event.start_date
+    ? new Date(`${event.start_date}T00:00:00`).toLocaleDateString(
+        undefined,
+        {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }
+      )
+    : 'Date to be confirmed'
+
 onMounted(loadEvents)
 </script>
 
@@ -58,34 +93,416 @@ onMounted(loadEvents)
   <AdminLayout>
     <section class="event-dashboard-page">
       <header class="dashboard-page-heading">
-        <div><h1>Events</h1><p>Create, manage, and track all your events.</p></div>
-        <RouterLink class="primary-button dashboard-create" to="/admin/events/new">+ Create event</RouterLink>
+        <div>
+          <h1>Events</h1>
+          <p>Create, manage, and track all your events.</p>
+        </div>
+
+        <RouterLink
+          class="primary-button dashboard-create"
+          to="/admin/events/new"
+        >
+          + Create event
+        </RouterLink>
       </header>
-      <p v-if="error" class="inline-error" role="alert">{{ error }}</p>
+
+      <p v-if="error" class="inline-error" role="alert">
+        {{ error }}
+      </p>
+
       <div class="event-overview-stats">
-        <div><span class="stat-mark blue"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><div><small>Total events</small><strong>{{ count('all') }}</strong></div></div>
-        <div><span class="stat-mark green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></span><div><small>Published</small><strong>{{ count('open') }}</strong></div></div>
-        <div><span class="stat-mark amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span><div><small>Drafts</small><strong>{{ count('draft') }}</strong></div></div>
-        <div><span class="stat-mark purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><div><small>Registrations</small><strong>{{ events.reduce((sum, event) => sum + (event.registered || 0), 0) }}</strong></div></div>
+        <div>
+          <span class="stat-mark blue">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+          </span>
+
+          <div>
+            <small>Total events</small>
+            <strong>{{ count('all') }}</strong>
+          </div>
+        </div>
+
+        <div>
+          <span class="stat-mark green">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M22 11.08V12a10 10 0 1 1-5.93-9.14"
+              />
+              <path d="m9 11 3 3L22 4" />
+            </svg>
+          </span>
+
+          <div>
+            <small>Published</small>
+            <strong>{{ count('open') }}</strong>
+          </div>
+        </div>
+
+        <div>
+          <span class="stat-mark amber">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              />
+              <path d="M14 2v6h6" />
+            </svg>
+          </span>
+
+          <div>
+            <small>Drafts</small>
+            <strong>{{ count('draft') }}</strong>
+          </div>
+        </div>
+
+        <div>
+          <span class="stat-mark purple">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+              />
+              <circle cx="9" cy="7" r="4" />
+              <path
+                d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+              />
+            </svg>
+          </span>
+
+          <div>
+            <small>Registrations</small>
+            <strong>
+              {{
+                events.reduce(
+                  (sum, event) => sum + (event.registered || 0),
+                  0
+                )
+              }}
+            </strong>
+          </div>
+        </div>
       </div>
+
       <article class="event-list-panel">
         <div class="event-list-toolbar">
-        <div><h2>All events</h2><p v-if="!loading">{{ filteredEvents.length }} event{{ filteredEvents.length === 1 ? '' : 's' }} in your workspace</p></div>
-        <div class="toolbar-controls"><label class="events-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input v-model="search" placeholder="Search events..." /></label><select v-model="status"><option value="all">All statuses</option><option value="open">Published</option><option value="draft">Draft</option><option value="closed">Closed</option></select><div class="view-toggle"><button type="button" :class="{ active: view === 'cards' }" aria-label="Card view" @click="view = 'cards'"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button type="button" :class="{ active: view === 'table' }" aria-label="Table view" @click="view = 'table'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button></div></div>
+          <div>
+            <h2>All events</h2>
+
+            <p v-if="!loading">
+              {{ filteredEvents.length }}
+              event{{ filteredEvents.length === 1 ? '' : 's' }}
+              in your workspace
+            </p>
+          </div>
+
+          <div class="toolbar-controls">
+            <label class="events-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+
+              <input
+                v-model="search"
+                placeholder="Search events..."
+              />
+            </label>
+
+            <select v-model="status">
+              <option value="all">All statuses</option>
+              <option value="open">Published</option>
+              <option value="draft">Draft</option>
+              <option value="closed">Closed</option>
+            </select>
+
+            <div class="view-toggle">
+              <button
+                type="button"
+                :class="{ active: view === 'cards' }"
+                aria-label="Card view"
+                @click="view = 'cards'"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                :class="{ active: view === 'table' }"
+                aria-label="Table view"
+                @click="view = 'table'"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
-        <div v-if="loading" class="dynamic-loading">Loading events…</div>
-        <div v-else-if="filteredEvents.length && view === 'cards'" class="event-card-grid">
-          <article v-for="event in filteredEvents" :key="event.id" class="managed-event-card">
-            <img v-if="event.branding?.image || event.image" class="event-card-banner" :src="event.branding?.image || event.image" alt="" />
-            <div class="event-card-top"><span class="event-category">{{ event.category || 'Event' }}</span><span class="event-status" :class="event.status">{{ event.status === 'open' ? 'Published' : event.status }}</span></div>
-            <h3>{{ event.name }}</h3><p class="event-card-description">{{ event.description || 'No description added yet.' }}</p>
-            <div class="event-card-meta"><span>◷ {{ dateLabel(event) }}<template v-if="event.start_time"> · {{ event.start_time }}</template></span><span>⌖ {{ event.location || 'Location pending' }}</span></div>
-            <div class="event-card-registration"><div><strong>{{ event.registered || 0 }}</strong><small>registered</small></div><div class="capacity-track"><span :style="{ width: `${Math.min(100, ((event.registered || 0) / (event.maximum_participants || 100)) * 100)}%` }"></span></div><small>{{ event.maximum_participants || '—' }} capacity</small></div>
-            <footer class="event-card-actions"><RouterLink :to="`/admin/events/${event.id}`"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>View</RouterLink><RouterLink :to="`/admin/events/${event.id}/edit`"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Edit</RouterLink><RouterLink :to="`/admin/events/${event.id}/registrants`"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Registrants</RouterLink><RouterLink :to="`/admin/events/${event.id}#qr`"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21v.01M21 21v.01"/></svg>QR code</RouterLink><button type="button" class="delete-event-action" :disabled="deletingId === event.id" @click="deleteEvent(event)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg>{{ deletingId === event.id ? 'Deleting…' : 'Delete' }}</button></footer>
+
+        <div v-if="loading" class="dynamic-loading">
+          Loading events…
+        </div>
+
+        <div
+          v-else-if="filteredEvents.length && view === 'cards'"
+          class="event-card-grid"
+        >
+          <article
+            v-for="event in filteredEvents"
+            :key="event.id"
+            class="managed-event-card"
+          >
+            <div class="event-card-visual">
+              <img
+                v-if="event.branding?.image || event.image"
+                class="event-card-banner"
+                :src="event.branding?.image || event.image"
+                alt=""
+              />
+
+              <div
+                v-else
+                class="event-card-banner event-card-banner--empty"
+              >
+                {{ event.name.slice(0, 2).toUpperCase() }}
+              </div>
+
+              <div class="event-card-visual-shade"></div>
+
+              <span class="event-card-overlay-category">
+                {{ event.category || 'Event' }}
+              </span>
+
+              <span class="event-card-overlay-status">
+                ●
+                {{ event.status === 'open' ? 'Published' : event.status }}
+              </span>
+            </div>
+
+            <div class="event-card-body">
+              <h3>{{ event.name }}</h3>
+
+              <p class="event-card-description">
+                {{ event.description || 'No description added yet.' }}
+              </p>
+
+              <div class="event-card-meta">
+                <div>
+                  <small>Date &amp; schedule</small>
+
+                  <span>
+                    ◷ {{ dateLabel(event) }}
+
+                    <template v-if="event.start_time">
+                      · {{ event.start_time }}
+                    </template>
+                  </span>
+                </div>
+
+                <div>
+                  <small>Location</small>
+
+                  <span>
+                    ⌖ {{ event.location || 'Location pending' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="event-card-registration">
+                <div>
+                  <strong>{{ event.registered || 0 }}</strong>
+                  <small>registered</small>
+                </div>
+
+                <div class="capacity-track">
+                  <span
+                    :style="{
+                      width: `${Math.min(
+                        100,
+                        ((event.registered || 0) /
+                          (event.maximum_participants || 100)) *
+                          100
+                      )}%`,
+                    }"
+                  ></span>
+                </div>
+
+                <small>
+                  {{ event.maximum_participants || '—' }} capacity
+                </small>
+              </div>
+            </div>
+
+            <footer class="event-card-actions">
+              <RouterLink
+                class="event-action-primary"
+                :to="`/admin/events/${event.id}`"
+              >
+                ◉ View Event
+              </RouterLink>
+
+              <RouterLink
+                :to="`/admin/events/${event.id}/edit`"
+              >
+                ✎ Edit
+              </RouterLink>
+
+              <RouterLink
+                :to="`/admin/events/${event.id}/registrants`"
+              >
+                ♙ Registrants
+                <b>{{ event.registered || 0 }}</b>
+              </RouterLink>
+
+              <RouterLink
+                :to="`/admin/events/${event.id}#qr`"
+              >
+                ▦ QR Pass
+              </RouterLink>
+
+              <button
+                type="button"
+                class="delete-event-action"
+                :disabled="deletingId === event.id"
+                @click="deleteEvent(event)"
+              >
+                {{
+                  deletingId === event.id
+                    ? 'Deleting…'
+                    : 'Delete'
+                }}
+              </button>
+            </footer>
           </article>
         </div>
-        <div v-else-if="!loading && filteredEvents.length" class="managed-events-table"><table><thead><tr><th>Event</th><th>Date &amp; location</th><th>Registrations</th><th>Status</th><th></th></tr></thead><tbody><tr v-for="event in filteredEvents" :key="event.id"><td><div class="table-event-name"><img v-if="event.branding?.image || event.image" class="event-table-thumb" :src="event.branding?.image || event.image" alt="" /><div><strong>{{ event.name }}</strong><small>{{ event.category || 'Event' }}</small></div></div></td><td>{{ dateLabel(event) }}<small>{{ event.location || 'Location pending' }}</small></td><td><strong>{{ event.registered || 0 }}</strong> / {{ event.maximum_participants || '∞' }}</td><td><span class="event-status" :class="event.status">{{ event.status === 'open' ? 'Published' : event.status }}</span></td><td class="table-event-actions"><RouterLink :to="`/admin/events/${event.id}`">Open →</RouterLink><button type="button" class="delete-event-action" :disabled="deletingId === event.id" @click="deleteEvent(event)">{{ deletingId === event.id ? 'Deleting…' : 'Delete' }}</button></td></tr></tbody></table></div>
-        <div v-else-if="!loading" class="event-empty-state"><div class="empty-icon">✦</div><h3>{{ search || status !== 'all' ? 'No matching events' : 'Your event workspace is ready' }}</h3><p>{{ search || status !== 'all' ? 'Try adjusting your search or status filter.' : 'Create your first event to start collecting registrations and sharing a QR code.' }}</p><RouterLink class="primary-button" to="/admin/events/new">Create your first event</RouterLink></div>
+
+        <div
+          v-else-if="!loading && filteredEvents.length"
+          class="managed-events-table"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Date &amp; location</th>
+                <th>Registrations</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr
+                v-for="event in filteredEvents"
+                :key="event.id"
+              >
+                <td>
+                  <div class="table-event-name">
+                    <img
+                      v-if="event.branding?.image || event.image"
+                      class="event-table-thumb"
+                      :src="event.branding?.image || event.image"
+                      alt=""
+                    />
+
+                    <div>
+                      <strong>{{ event.name }}</strong>
+                      <small>
+                        {{ event.category || 'Event' }}
+                      </small>
+                    </div>
+                  </div>
+                </td>
+
+                <td>
+                  {{ dateLabel(event) }}
+
+                  <small>
+                    {{ event.location || 'Location pending' }}
+                  </small>
+                </td>
+
+                <td>
+                  <strong>{{ event.registered || 0 }}</strong>
+                  /
+                  {{ event.maximum_participants || '∞' }}
+                </td>
+
+                <td>
+                  <span
+                    class="event-status"
+                    :class="event.status"
+                  >
+                    {{
+                      event.status === 'open'
+                        ? 'Published'
+                        : event.status
+                    }}
+                  </span>
+                </td>
+
+                <td class="table-event-actions">
+                  <RouterLink
+                    :to="`/admin/events/${event.id}`"
+                  >
+                    Open →
+                  </RouterLink>
+
+                  <button
+                    type="button"
+                    class="delete-event-action"
+                    :disabled="deletingId === event.id"
+                    @click="deleteEvent(event)"
+                  >
+                    {{
+                      deletingId === event.id
+                        ? 'Deleting…'
+                        : 'Delete'
+                    }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          v-else-if="!loading"
+          class="event-empty-state"
+        >
+          <div class="empty-icon">✦</div>
+
+          <h3>
+            {{
+              search || status !== 'all'
+                ? 'No matching events'
+                : 'Your event workspace is ready'
+            }}
+          </h3>
+
+          <p>
+            {{
+              search || status !== 'all'
+                ? 'Try adjusting your search or status filter.'
+                : 'Create your first event to start collecting registrations and sharing a QR code.'
+            }}
+          </p>
+
+          <RouterLink
+            class="primary-button"
+            to="/admin/events/new"
+          >
+            Create your first event
+          </RouterLink>
+        </div>
       </article>
     </section>
   </AdminLayout>
