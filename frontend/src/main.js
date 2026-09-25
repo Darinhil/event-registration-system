@@ -10,5 +10,6 @@ import './assets/styles/event-workspace.css'
 import './assets/styles/form-builder.css'
 import './assets/styles/form-renderer.css'
 import './assets/styles/registration-edit.css'
+import './assets/styles/event-setup-overrides.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')
