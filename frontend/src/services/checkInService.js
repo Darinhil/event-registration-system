@@ -1,2 +1,3 @@
 import api from './api'
-export const checkIn = (qr_token) => api.post('/check-ins', { qr_token })
+export const lookupCheckIn = (credential) => api.get('/check-ins/lookup', { params: { credential } })
+export const checkIn = (credential) => api.post('/check-ins', { credential })

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { checkIn } from '../services/checkInService'
-export const useCheckInStore = defineStore('checkIn', { state: () => ({ result: null, loading: false, error: null }), actions: {
-  async submit(token) { this.loading = true; this.error = null; try { this.result = (await checkIn(token)).data; return this.result } catch (error) { this.error = error.response?.data?.message || 'Check-in failed.'; throw error } finally { this.loading = false } },
+import { checkIn, lookupCheckIn } from '../services/checkInService'
+export const useCheckInStore = defineStore('checkIn', { state: () => ({ result: null, attendee: null, loading: false, lookupLoading: false, error: null }), actions: {
+  async lookup(credential) { this.lookupLoading = true; this.error = null; try { this.attendee = (await lookupCheckIn(credential)).data.data; return this.attendee } catch (error) { this.attendee = null; this.error = error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Attendee lookup failed.'; throw error } finally { this.lookupLoading = false } },
+  async submit(credential) { this.loading = true; this.error = null; try { this.result = (await checkIn(credential)).data; return this.result } catch (error) { this.error = error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Check-in failed.'; throw error } finally { this.loading = false } },
 } })
