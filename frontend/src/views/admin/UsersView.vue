@@ -39,6 +39,26 @@ const disabilityOptions = [
   { value: 'X', label: 'Difficult communication' },
 ]
 
+const normalizeKey = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+// Form fields defined for the selected event, so submitted answers can be resolved.
+const formFields = ref([])
+const formFieldOptions = computed(() => formFields.value.map((field) => ({ id: field.id, label: field.label, normalized: normalizeKey(field.label), type: String(field.type || 'text').toLowerCase() })))
+// Fields that at least one attendee actually answered (have content).
+const usedFieldIds = computed(() => {
+  const used = new Set()
+  attendees.value.forEach((user) => (user.registrations || []).forEach((registration) => {
+    const formData = registration.form_data || {}
+    Object.entries(formData).forEach(([key, value]) => { if (value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && !value.length)) used.add(String(key)) })
+  }))
+  return used
+})
+// Dynamic columns: submitted form fields that are not already shown as fixed columns.
+const dynamicColumns = computed(() => {
+  const fixed = new Set(['fullname', 'name', 'email', 'phone', 'gender', 'age', 'agegroup', 'ethnicity', 'race', 'disability', 'disabilitytype', 'organization', 'address', 'position', 'profilephoto', 'emergencycontactname', 'emergencycontactphone', 'signature', 'photoconsent', 'event', 'eventname', 'registrationcode'])
+  return formFieldOptions.value.filter((field) => (usedFieldIds.value.has(String(field.id)) || usedFieldIds.value.has(field.normalized)) && !fixed.has(field.normalized))
+})
+
 const normalizeEvent = (event) => ({
   ...event,
   status: event.status === 'published' ? 'open' : event.status,
@@ -64,32 +84,56 @@ const checkedInCount = computed(() => attendees.value.filter((user) => user.regi
 const eventAttendeeCount = computed(() => selectedEvent.value?.registered || attendees.value.length)
 const pendingCount = computed(() => Math.max(eventAttendeeCount.value - checkedInCount.value, 0))
 const activeFilterCount = computed(() => [ageFilter.value, genderFilter.value, ethnicityFilter.value, disabilityFilter.value, status.value].filter((value) => value !== 'all').length)
-const formValue = (registration, keys) => {
+// Resolve a form field's submitted answer by field id or label (works for both
+// id-keyed form_data from the dynamic builder and legacy label-keyed data),
+// falling back to the backend-resolved form_values when available.
+const formFieldAnswer = (registration, field) => {
+  if (!registration || !field) return ''
   const formData = registration.form_data || {}
-  const entry = Object.entries(formData).find(([key]) => keys.includes(key.toLowerCase().replace(/[\s_-]/g, '')))
-  return entry?.[1] ?? ''
+  if (formData[field.id] !== undefined && formData[field.id] !== null && formData[field.id] !== '') return formData[field.id]
+  const key = Object.keys(formData).find((key) => normalizeKey(key) === field.normalized)
+  if (key !== undefined && formData[key] !== '' && formData[key] !== null && formData[key] !== undefined) return formData[key]
+  const values = registration.form_values || {}
+  return values[field.label] ?? ''
+}
+const formatAnswer = (value) => {
+  if (value === null || value === undefined) return '-'
+  if (Array.isArray(value)) return value.length ? value.join(', ') : '-'
+  const text = String(value).trim()
+  return text === '' ? '-' : text
+}
+const formValueFor = (registration, field) => formatAnswer(formFieldAnswer(registration, field))
+const pickAnswer = (registration, candidates, fallback) => {
+  for (const candidate of candidates) {
+    const field = formFieldOptions.value.find((option) => option.normalized === normalizeKey(candidate))
+    const answer = formFieldAnswer(registration, field)
+    if (answer !== '' && answer !== null && answer !== undefined) return answer
+  }
+  return fallback ?? ''
 }
 const ageBucket = (registration) => {
   const age = Number(registration.age)
-  const group = String(registration.age_group || formValue(registration, ['agegroup', 'age'])).toLowerCase()
+  const group = String(registration.age_group || pickAnswer(registration, ['age group', 'age'], '')).toLowerCase()
   if (group.includes('under') || group.includes('18')) return group.includes('under') ? 'under-18' : '18-29'
   if (group.includes('30')) return '30-60'
   if (group.includes('above') || group.includes('60')) return 'above-60'
   if (Number.isFinite(age)) return age < 18 ? 'under-18' : age < 30 ? '18-29' : age <= 60 ? '30-60' : 'above-60'
   return ''
 }
-const normalizedGender = (registration) => String(registration.gender || formValue(registration, ['gender'])).toLowerCase()
-const normalizedEthnicity = (registration) => String(registration.ethnicity || formValue(registration, ['ethnicity', 'race'])).toLowerCase()
-const displayAge = (registration) => registration.age ?? (ageOptions.find((option) => option.value === ageBucket(registration))?.label || '-')
-const displayEthnicity = (registration) => registration.ethnicity || formValue(registration, ['ethnicity', 'race']) || '-'
+const normalizedGender = (registration) => String(registration.gender || pickAnswer(registration, ['gender'], '')).toLowerCase()
+const normalizedEthnicity = (registration) => String(registration.ethnicity || pickAnswer(registration, ['ethnicity', 'race'], '')).toLowerCase()
+const displayAge = (registration) => registration.age ?? (ageOptions.find((option) => option.value === ageBucket(registration))?.label || formatAnswer(pickAnswer(registration, ['age'], '')) || '-')
+const displayEthnicity = (registration) => registration.ethnicity || formatAnswer(pickAnswer(registration, ['ethnicity', 'race'], '')) || '-'
 const displayDisability = (registration) => disabilityValues(registration).join(', ') || '-'
 const displayCheckedTime = (user) => {
-  const checkedInAt = user.registrations?.find(isCheckedIn)?.checked_in_at
+  const registration = user.registrations?.find(isCheckedIn)
+  const checkedInAt = registration?.checked_in_at || registration?.check_in?.checked_in_at
   return checkedInAt ? new Date(checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
 }
 const disabilityValues = (registration) => {
-  const value = registration.disability_type || formValue(registration, ['disability', 'disabilitytype'])
-  return Array.isArray(value) ? value.map(String) : String(value).split(/[,|]/).map((item) => item.trim()).filter(Boolean)
+  const value = registration.disability_type || pickAnswer(registration, ['disability', 'disability type'], '')
+  if (Array.isArray(value)) return value.map(String)
+  return String(value).split(/[,|]/).map((item) => item.trim()).filter(Boolean)
 }
 const filteredAttendees = computed(() => attendees.value.filter((user) => {
   const query = search.value.trim().toLowerCase()
@@ -116,22 +160,45 @@ const loadWorkspace = async () => {
   } catch {
     events.value = localEvents
   }
+  selectedEventId.value = events.value[0]?.id || null
+  await loadAttendees()
+  loading.value = false
+}
+
+// Load attendees for the selected event together with that event's form fields,
+// so the submitted form answers can be resolved into the attendance table.
+const loadAttendees = async () => {
+  error.value = ''
+  formFields.value = []
+  const eventId = selectedEventId.value
   try {
-    const usersResponse = await getUsers()
-    attendees.value = usersResponse.data.data || []
+    if (eventId) {
+      const [usersResponse, formResponse] = await Promise.all([
+        getUsers({ event_id: eventId, per_page: 200 }),
+        api.get(`/events/${eventId}/form`).catch(() => null),
+      ])
+      formFields.value = formResponse?.data?.data || []
+      attendees.value = usersResponse.data.data || []
+    } else {
+      const usersResponse = await getUsers({ per_page: 200 })
+      attendees.value = usersResponse.data.data || []
+    }
   } catch {
     attendees.value = []
     error.value = events.value.length ? 'Attendee data is unavailable. Showing event details.' : 'Unable to load attendance data.'
   }
-  selectedEventId.value = events.value[0]?.id || null
-  loading.value = false
+}
+
+const selectEvent = async (event) => {
+  if (event.id === selectedEventId.value) return
+  selectedEventId.value = event.id
+  await loadAttendees()
 }
 
 const dateLabel = (event) => event?.start_date ? new Date(`${event.start_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date pending'
 const timeLabel = (event) => event?.start_time ? `${event.start_time} - ${event.end_time || '04:00'} PM` : 'Time pending'
 const eventImage = (event) => event?.branding?.image || event?.image || ''
 const initials = (name) => (name || 'U').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
-const selectEvent = (event) => { selectedEventId.value = event.id }
 const selectEventScope = (scope) => { eventScope.value = scope }
 const openCheckIn = () => router.push('/admin/check-ins')
 const clearFilters = () => {
@@ -143,26 +210,30 @@ const clearFilters = () => {
   disabilityFilter.value = 'all'
 }
 const exportFilteredExcel = () => {
-  const headers = ['#', 'Full Name', 'Gender', 'Age', 'Ethnicity', 'Disability', 'Checked-time', 'Status']
+  const baseHeaders = ['#', 'Full Name', 'Gender', 'Age', 'Ethnicity', 'Disability', 'Checked-time', 'Status']
+  const dynamicHeaders = dynamicColumns.value.map((field) => field.label)
+  const headers = [...baseHeaders, ...dynamicHeaders]
   const rows = filteredAttendees.value.map((user, index) => {
     const registration = registrationFor(user)
     return [
       index + 1,
       user.name,
-      registration.gender || '-',
+      registration.gender || normalizedGender(registration) || '-',
       displayAge(registration),
       displayEthnicity(registration),
       displayDisability(registration),
       displayCheckedTime(user),
       user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending',
+      ...dynamicColumns.value.map((field) => formValueFor(registration, field)),
     ]
   })
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
   worksheet['!cols'] = [
     { wch: 6 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
     { wch: 22 }, { wch: 28 }, { wch: 18 }, { wch: 16 },
+    ...dynamicColumns.value.map(() => ({ wch: 20 })),
   ]
-  worksheet['!autofilter'] = { ref: `A1:H${rows.length + 1}` }
+  worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${rows.length + 1}` }
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 }
   headers.forEach((_, columnIndex) => {
     const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: columnIndex })]
@@ -204,7 +275,7 @@ onMounted(loadWorkspace)
             </section>
             <section class="attendance-table-card">
               <div class="attendance-table-toolbar"><label class="attendance-table-search"><span aria-hidden="true">⌕</span><input v-model="search" type="search" placeholder="Search by name, ID, email, or phone..." /></label><select v-model="ageFilter" :class="{ 'is-active': ageFilter !== 'all' }" aria-label="Filter by age"><option value="all">Age</option><option v-for="option in ageOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="genderFilter" :class="{ 'is-active': genderFilter !== 'all' }" aria-label="Filter by gender"><option value="all">Gender</option><option v-for="option in genderOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="ethnicityFilter" :class="{ 'is-active': ethnicityFilter !== 'all' }" aria-label="Filter by ethnicity"><option value="all">Ethnicity</option><option v-for="option in ethnicityOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="disabilityFilter" :class="{ 'is-active': disabilityFilter !== 'all' }" aria-label="Filter by disability"><option value="all">Disability</option><option v-for="option in disabilityOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="status" :class="{ 'is-active': status !== 'all' }" aria-label="Filter attendee status"><option value="all">All Status</option><option value="registered">Registered</option><option value="pending">Pending</option></select><button v-if="activeFilterCount || search" type="button" class="attendance-clear-filters" @click="clearFilters">Clear</button></div>
-              <div class="attendance-table-scroll"><table class="attendance-table"><thead><tr><th>#</th><th>Photo</th><th>Full Name</th><th>Gender</th><th>Age</th><th>Ethnicity</th><th>Disability</th><th>Checked-time</th><th>Status</th><th>Action</th></tr></thead><tbody><tr v-for="(user, index) in filteredAttendees" :key="user.id"><td>{{ index + 1 }}</td><td><span class="attendance-avatar">{{ initials(user.name) }}</span></td><td><strong>{{ user.name }}</strong></td><td>{{ registrationFor(user)?.gender || '-' }}</td><td>{{ displayAge(registrationFor(user)) }}</td><td>{{ displayEthnicity(registrationFor(user)) }}</td><td>{{ displayDisability(registrationFor(user)) }}</td><td>{{ displayCheckedTime(user) }}</td><td><span class="attendance-status-pill" :class="user.registrations?.some(isCheckedIn) ? 'checked' : 'pending'">{{ user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending' }}</span></td><td><RouterLink :to="`/admin/users/${user.id}`" class="attendance-view-button">View</RouterLink></td></tr><tr v-if="!filteredAttendees.length"><td colspan="10"><div class="attendance-table-empty"><span>♧</span><strong>{{ search || activeFilterCount ? 'No matching attendances' : 'No attendances yet' }}</strong><small>{{ search || activeFilterCount ? 'Try clearing a filter or changing your search.' : 'Attendance records will appear here when people sign up.' }}</small></div></td></tr></tbody></table></div>
+              <div class="attendance-table-scroll"><table class="attendance-table"><thead><tr><th>#</th><th>Photo</th><th>Full Name</th><th>Gender</th><th>Age</th><th>Ethnicity</th><th>Disability</th><th>Checked-time</th><th>Status</th><th>Action</th><th v-for="field in dynamicColumns" :key="`h-${field.id}`">{{ field.label }}</th></tr></thead><tbody><tr v-for="(user, index) in filteredAttendees" :key="user.id"><td>{{ index + 1 }}</td><td><span class="attendance-avatar">{{ initials(user.name) }}</span></td><td><strong>{{ user.name }}</strong></td><td>{{ formatAnswer(registrationFor(user)?.gender || pickAnswer(registrationFor(user), ['gender'], '')) }}</td><td>{{ displayAge(registrationFor(user)) }}</td><td>{{ displayEthnicity(registrationFor(user)) }}</td><td>{{ displayDisability(registrationFor(user)) }}</td><td>{{ displayCheckedTime(user) }}</td><td><span class="attendance-status-pill" :class="user.registrations?.some(isCheckedIn) ? 'checked' : 'pending'">{{ user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending' }}</span></td><td><RouterLink :to="`/admin/users/${user.id}`" class="attendance-view-button">View</RouterLink></td><td v-for="field in dynamicColumns" :key="`c-${field.id}`">{{ formValueFor(registrationFor(user), field) }}</td></tr><tr v-if="!filteredAttendees.length"><td :colspan="10 + dynamicColumns.length"><div class="attendance-table-empty"><span>♧</span><strong>{{ search || activeFilterCount ? 'No matching attendances' : 'No attendances yet' }}</strong><small>{{ search || activeFilterCount ? 'Try clearing a filter or changing your search.' : 'Attendance records will appear here when people sign up.' }}</small></div></td></tr></tbody></table></div>
               <footer class="attendance-pagination"><span>Showing 1-{{ filteredAttendees.length }} of {{ eventAttendeeCount }} attendances</span><div><button type="button">‹</button><button type="button" class="current">1</button><button type="button">2</button><button type="button">3</button><button type="button">›</button></div></footer>
             </section>
           </template>
