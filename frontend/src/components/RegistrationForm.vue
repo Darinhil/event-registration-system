@@ -1,29 +1,185 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+/**
+ * Public registration form — renders exactly what the admin built in the
+ * Form Builder (fields, types, labels, options, required flags, descriptions,
+ * order, steps, and form settings) via the shared FormRenderer.
+ */
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import FormRenderer from './FormRenderer.vue'
+import { useAuthStore } from '../stores/auth'
 import { useRegistrationStore } from '../stores/registration'
 import api from '../services/api'
+import { buildSubmission, displayValue, normalizeStoredValue, validateFields } from '../utils/formValidation'
 
-const route = useRoute(); const router = useRouter(); const store = useRegistrationStore()
-const event = ref(null); const fields = ref([]); const values = reactive({}); const loading = ref(true); const error = ref(''); const step = ref(1)
-const normalizeType = (field) => { const type = String(field.type || 'text').toLowerCase().replaceAll(' ', '').replace('select/dropdown', 'select'); return type === 'phonenumber' ? 'phone' : type }
-const load = async () => { const id = route.params.eventId; try { const eventResponse = await api.get(`/events/${id}`); const formResponse = await api.get(`/events/${id}/form`); event.value = eventResponse.data.data; fields.value = formResponse.data.data } catch (requestError) { const local = JSON.parse(localStorage.getItem('event_list') || '[]').find((item) => String(item.id) === String(id)); if (local) { event.value = local; fields.value = (local.fields || []).map((field, index) => ({ ...field, id: field.id || index + 1, type: normalizeType(field), sort_order: index })) } else if (requestError.response?.status) error.value = `This event could not be loaded (API ${requestError.response.status}).`; else error.value = `Cannot connect to the registration service at ${api.defaults.baseURL}.` } finally { loading.value = false } }
-const isRequired = (field) => Boolean(field.required)
-const fieldValue = (field) => values[field.id] ?? ''
-const updateValue = (field, value) => { values[field.id] = value }
-const validate = () => { const missing = fields.value.find((field) => isRequired(field) && !fieldValue(field)); if (missing) { error.value = `${missing.label} is required.`; return false } error.value = ''; return true }
-const continueForm = () => { if (validate()) step.value = 2 }
-const submit = async () => { if (!validate()) return; const formData = {}; fields.value.forEach((field) => { formData[field.id] = fieldValue(field) }); try { await store.register({ event_id: Number(route.params.eventId), form_data: formData, ...Object.fromEntries(fields.value.map((field) => [String(field.label).toLowerCase().replace(/[^a-z0-9]+/g, '_'), fieldValue(field)])) }); router.push('/registration/success') } catch { error.value = store.error || 'Registration could not be submitted.' } }
-const eventDate = computed(() => event.value?.starts_at ? new Date(event.value.starts_at).toLocaleDateString(undefined, { dateStyle: 'full' }) : event.value?.start_date || 'Date to be confirmed')
-load()
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+const store = useRegistrationStore()
+
+const event = ref(null)
+const formConfig = ref(null)
+const loading = ref(true)
+const loadError = ref('')
+const step = ref(0) // active builder step in the renderer
+const review = ref(false)
+const errors = ref({})
+const fieldValues = ref({})
+
+const eventId = () => route.params.eventId || route.query.event_id
+const fields = computed(() => formConfig.value?.fields || [])
+const steps = computed(() => formConfig.value?.steps || [])
+const settings = computed(() => formConfig.value?.settings || {})
+
+const load = async () => {
+  try {
+    const { data } = await api.get(`/events/${eventId()}/form`)
+    formConfig.value = data.data
+    const eventResponse = await api.get(`/events/${eventId()}`)
+    event.value = eventResponse.data.data
+  } catch (requestError) {
+    loadError.value = requestError.response?.status === 404
+      ? 'This event does not exist or the registration link is out of date.'
+      : 'Cannot reach the registration service. Please try again shortly.'
+  } finally {
+    loading.value = false
+  }
+}
+
+/** Prefill text/email/phone fields from the signed-in attendee's account. */
+const prefill = () => {
+  const user = auth.user || {}
+  const values = {}
+  for (const field of fields.value) {
+    let value = normalizeStoredValue(field, '')
+    if (field.type === 'email' && !value) value = user.email || ''
+    if (field.type === 'text' && !value && /full.?name/i.test(field.label)) value = user.name || ''
+    if (field.type === 'phone' && !value) value = user.phone || ''
+    values[field.id] = value
+  }
+  return values
+}
+
+const start = () => { fieldValues.value = prefill() }
+
+/** Renderer validated the current step before emitting; just track the index. */
+const onStepChange = (index) => { step.value = index; errors.value = {} }
+
+/** Renderer finished (all steps validated) → show the review screen. */
+const startReview = (values) => {
+  fieldValues.value = values
+  errors.value = {}
+  review.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const editAnswers = () => {
+  review.value = false
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const submit = async () => {
+  store.error = null
+  errors.value = {}
+  try {
+    const formData = buildSubmission(fields.value, fieldValues.value)
+    await store.register({ event_id: Number(eventId()), form_data: formData })
+    router.push('/registration/success')
+  } catch (requestError) {
+    const payloadErrors = requestError.response?.data?.errors || {}
+    const mapped = {}
+    for (const [key, messages] of Object.entries(payloadErrors)) {
+      const match = key.match(/^form_data\.(\w+)$/)
+      const message = Array.isArray(messages) ? messages[0] : String(messages)
+      if (match) mapped[match[1]] = message
+      else store.error = store.error || message
+    }
+    if (!Object.keys(mapped).length && !store.error) {
+      store.error = requestError.response?.data?.message || 'Registration could not be submitted.'
+    }
+    errors.value = mapped
+    review.value = false // jump back to the form so errors are visible inline
+  }
+}
+
+const eventDate = computed(() => event.value?.starts_at
+  ? new Date(event.value.starts_at).toLocaleDateString(undefined, { dateStyle: 'full' })
+  : event.value?.start_date || 'Date to be confirmed')
+
+load().then(start)
 </script>
 
 <template>
   <section class="dynamic-registration-page">
-      <div v-if="loading" class="dynamic-loading">Loading event registration form…</div>
-      <div v-else-if="event" class="dynamic-registration-shell">
-        <header class="dynamic-event-hero"><img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" alt="Event banner" /><div class="dynamic-event-hero-copy"><span class="event-category">{{ event.category || 'Event registration' }}</span><h1>{{ event.name }}</h1><p>{{ event.description || 'Complete the form below to reserve your place.' }}</p><div class="dynamic-event-meta"><span>📅 {{ eventDate }}</span><span>🕐 {{ event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : event.start_time || 'Time pending' }}</span><span>📍 {{ event.location || 'Location pending' }}</span></div></div></header>
-        <div class="dynamic-registration-body"><div class="dynamic-progress"><span :class="{ active: step === 1, complete: step > 1 }">1</span><i></i><span :class="{ active: step === 2 }">2</span><small>{{ step === 1 ? 'Your information' : 'Review details' }}</small></div><form v-if="step === 1" class="dynamic-form" @submit.prevent="continueForm"><div class="dynamic-form-heading"><div><p class="admin-eyebrow">Registration form</p><h2>Register for {{ event.name }}</h2><p>Fields marked with * are required.</p></div><span>{{ fields.length }} fields</span></div><div class="dynamic-fields"><label v-for="field in fields" :key="field.id" class="dynamic-field"><span>{{ field.label }} <em v-if="isRequired(field)">*</em></span><select v-if="normalizeType(field) === 'select'" :value="fieldValue(field)" @change="updateValue(field, $event.target.value)"><option value="">Select {{ field.label.toLowerCase() }}</option><option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</option></select><div v-else-if="normalizeType(field) === 'radio'" class="dynamic-radio-group"><label v-for="option in field.options || []" :key="option"><input type="radio" :name="`field-${field.id}`" :value="option" :checked="fieldValue(field) === option" @change="updateValue(field, option)" /> {{ option }}</label></div><textarea v-else-if="normalizeType(field) === 'textarea'" :value="fieldValue(field)" :required="isRequired(field)" :placeholder="`Enter ${field.label.toLowerCase()}`" rows="3" @input="updateValue(field, $event.target.value)"></textarea><input v-else :type="['email','date','number','tel'].includes(normalizeType(field)) ? normalizeType(field) : 'text'" :value="fieldValue(field)" :required="isRequired(field)" :placeholder="`Enter ${field.label.toLowerCase()}`" @input="updateValue(field, $event.target.value)" /></label></div><p v-if="error" class="dynamic-form-error" role="alert">{{ error }}</p><button class="primary-button" type="submit">Continue to review →</button></form><section v-else class="dynamic-review"><p class="admin-eyebrow">Review registration</p><h2>Check your information</h2><div class="dynamic-review-list"><div v-for="field in fields" :key="field.id"><span>{{ field.label }}</span><strong>{{ fieldValue(field) || '—' }}</strong></div></div><p v-if="error" class="dynamic-form-error">{{ error }}</p><div class="dynamic-review-actions"><button type="button" class="secondary-button" @click="step = 1">Back to form</button><button type="button" class="primary-button" :disabled="store.loading" @click="submit">{{ store.loading ? 'Submitting…' : 'Confirm registration' }}</button></div></section></div></div>
-      <div v-else class="dynamic-empty"><h2>{{ error || 'Event not found' }}</h2><RouterLink to="/">Return home</RouterLink></div>
+    <div v-if="loading" class="dynamic-loading">Loading event registration form…</div>
+
+    <div v-else-if="event && formConfig" class="dynamic-registration-shell">
+      <header class="dynamic-event-hero">
+        <img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" alt="Event banner" />
+        <div class="dynamic-event-hero-copy">
+          <span class="event-category">{{ event.category || 'Event registration' }}</span>
+          <h1>{{ event.name }}</h1>
+          <p>{{ event.description || 'Complete the form below to reserve your place.' }}</p>
+          <div class="dynamic-event-meta">
+            <span>📅 {{ eventDate }}</span>
+            <span>🕐 {{ event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : event.start_time || 'Time pending' }}</span>
+            <span>📍 {{ event.location || 'Location pending' }}</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="dynamic-registration-body">
+        <div v-if="!formConfig.registration_open" class="dynamic-form-closed">
+          <strong>Registration is closed</strong>
+          <p>This event is no longer accepting registrations.</p>
+        </div>
+
+        <template v-else>
+          <!-- Review screen -->
+          <section v-if="review" class="dynamic-review dynamic-form-card">
+            <p class="admin-eyebrow">Review registration</p>
+            <h2>Check your information</h2>
+            <p class="dynamic-review-hint">Confirm everything is correct before submitting.</p>
+            <div class="dynamic-review-list">
+              <div v-for="field in fields.filter((f) => f.type !== 'heading')" :key="field.id">
+                <span>{{ field.label }}<em v-if="field.required" class="dynamic-required">*</em></span>
+                <strong>{{ displayValue(field, fieldValues[field.id]) }}</strong>
+              </div>
+            </div>
+            <p v-if="store.error" class="dynamic-form-error" role="alert">{{ store.error }}</p>
+            <div class="dynamic-review-actions">
+              <button type="button" class="secondary-button" @click="editAnswers">← Back to form</button>
+              <button type="button" class="primary-button" :disabled="store.loading" @click="submit">
+                {{ store.loading ? 'Submitting…' : 'Confirm registration' }}
+              </button>
+            </div>
+          </section>
+
+          <!-- Live form, exactly as configured in the builder -->
+          <div v-else class="dynamic-form-wrapper">
+            <p v-if="store.error" class="dynamic-form-error" role="alert">{{ store.error }}</p>
+            <FormRenderer
+              :fields="fields"
+              :steps="steps"
+              :active-step="step"
+              :form-title="formConfig.form_title"
+              :form-description="formConfig.form_description"
+              :event-name="event.name"
+              :settings="settings"
+              :initial-values="fieldValues"
+              :server-errors="errors"
+              submit-label="Continue to review →"
+              @step-change="onStepChange"
+              @submit="startReview"
+            />
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div v-else class="dynamic-empty">
+      <h2>{{ loadError || 'Event not found' }}</h2>
+      <RouterLink to="/">Return home</RouterLink>
+    </div>
   </section>
 </template>

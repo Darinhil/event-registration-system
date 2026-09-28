@@ -1,15 +1,16 @@
 <script setup>
 /**
- * FormRenderer — renders a registration form exactly as attendees see it.
+ * FormRenderer — renders a registration form exactly as the admin built it.
  * Shared by the builder's preview mode and the public registration flow.
- * Emits `submit` with a { fieldId: value } map; never validates by itself.
+ * Emits `submit` with a { fieldId: value } map (files as real File objects).
  *
  * Supports two modes:
  *  - `fields` only  → single-page form (backwards compatible)
  *  - `fields` + `steps` → multi-step form; renderStep controls which step shows
  */
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { TYPE_META, COUNTRIES } from '../utils/formFieldTypes'
+import { validateFields } from '../utils/formValidation'
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -20,6 +21,10 @@ const props = defineProps({
   eventBanner: { type: String, default: '' },
   eventName: { type: String, default: '' },
   settings: { type: Object, default: () => ({}) },
+  initialValues: { type: Object, default: () => ({}) },
+  serverErrors: { type: Object, default: () => ({}) },
+  submitLabel: { type: String, default: 'Submit registration' },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['submit', 'step-change'])
@@ -30,7 +35,6 @@ const currentStep = computed(() => Math.min(Math.max(props.activeStep, 0), props
 const stepFields = computed(() =>
   hasSteps.value ? props.fields.filter((field) => Number(field.settings?.step ?? 0) === currentStep.value) : props.fields
 )
-const stepProgress = computed(() => (hasSteps.value ? `${currentStep.value + 1} of ${props.steps.length}` : ''))
 const nextStep = () => emit('step-change', Math.min(currentStep.value + 1, props.steps.length - 1))
 const prevStep = () => emit('step-change', Math.max(currentStep.value - 1, 0))
 const lastStep = computed(() => !hasSteps.value || currentStep.value === props.steps.length - 1)
@@ -47,21 +51,53 @@ const seedValue = (field) => {
   return s.default_value ?? ''
 }
 const initValues = () => {
-  for (const field of props.fields) if (values[field.id] === undefined) values[field.id] = seedValue(field)
+  for (const field of props.fields) {
+    if (values[field.id] !== undefined) continue
+    const initial = props.initialValues?.[field.id]
+    values[field.id] = initial !== undefined && initial !== null ? initial : seedValue(field)
+  }
 }
 const values = reactive({})
-watch(() => props.fields, initValues, { immediate: true })
+watch(() => [props.fields, props.initialValues], initValues, { immediate: true })
 
-const setValue = (field, value) => { values[field.id] = value }
+const setValue = (field, value) => {
+  values[field.id] = value
+  if (stepErrors.value[field.id]) delete stepErrors.value[field.id]
+}
 const toggleArrayValue = (field, option) => {
   const current = Array.isArray(values[field.id]) ? [...values[field.id]] : []
   const index = current.indexOf(option)
   if (index >= 0) current.splice(index, 1)
   else current.push(option)
   values[field.id] = current
+  if (stepErrors.value[field.id]) delete stepErrors.value[field.id]
 }
-const onFileChange = (field, event) => { values[field.id] = event.target.files?.[0]?.name || '' }
+const onFileChange = (field, event) => {
+  values[field.id] = event.target.files?.[0] || null
+  if (stepErrors.value[field.id]) delete stepErrors.value[field.id]
+}
+
+/* ---------------- Validation display ---------------- */
+const stepErrors = ref({})
+const agreement = ref(false)
+const agreementError = ref('')
+const errorFor = (field) => props.serverErrors?.[`form_data.${field.id}`] || stepErrors.value[field.id] || ''
+
+/** Guards a step: validate its fields, then advance/submit when clean. */
+const proceed = () => {
+  agreementError.value = props.settings.require_agreement && !agreement.value
+    ? 'Please agree to the terms and conditions to continue.'
+    : ''
+  stepErrors.value = validateFields(stepFields.value, values)
+  if (agreementError.value || Object.keys(stepErrors.value).length) {
+    document.querySelector('.fr-form .fr-fields')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  stepErrors.value = {}
+  lastStep.value ? submit() : nextStep()
+}
 const submit = () => emit('submit', { ...values })
+
 const inputType = (type) => ({ email: 'email', phone: 'tel', number: 'number', date: 'date', time: 'time', url: 'url' }[type] || 'text')
 const placeholderFor = (field) => field.placeholder || `Enter ${field.label.toLowerCase()}`
 const autoCompleteHint = (field) => ({
@@ -69,10 +105,15 @@ const autoCompleteHint = (field) => ({
   name: 'name', text: 'off',
 }[field.type] || 'off')
 const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type === 'select'
+const fileLabel = (value) => (value instanceof File ? value.name : String(value || '').split(/[\\/]/).pop())
+const checkedState = (field) => {
+  const value = values[field.id]
+  return value === true || value === 'true' || (Array.isArray(value) && value[0] === true)
+}
 </script>
 
 <template>
-  <form class="fr-form" @submit.prevent="submit">
+  <form class="fr-form" novalidate @submit.prevent="proceed">
     <header v-if="eventBanner || eventName" class="fr-event">
       <img v-if="eventBanner" class="fr-event-banner" :src="eventBanner" alt="" />
       <div class="fr-event-copy">
@@ -114,7 +155,7 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
         v-for="field in stepFields"
         :key="field.id"
         class="fr-field"
-        :class="[`fr-field--${field.type}`, `fr-w${field.settings?.width || '100'}`]"
+        :class="[`fr-field--${field.type}`, `fr-w${field.settings?.width || '100'}`, { 'fr-field--invalid': errorFor(field) }]"
       >
         <template v-if="field.type === 'heading'">
           <h3 class="fr-heading">{{ field.label }}</h3>
@@ -133,6 +174,7 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
             <select
               :name="field.settings?.field_name || undefined"
               :value="values[field.id] ?? ''"
+              :aria-invalid="Boolean(errorFor(field)) || undefined"
               @change="setValue(field, $event.target.value)"
             >
               <option value="" disabled>{{ field.placeholder || `Select ${field.label.toLowerCase()}` }}</option>
@@ -156,7 +198,7 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
             </div>
           </template>
 
-          <select v-else-if="field.type === 'country'" :name="field.settings?.field_name || undefined" :value="values[field.id] ?? ''" @change="setValue(field, $event.target.value)">
+          <select v-else-if="field.type === 'country'" :name="field.settings?.field_name || undefined" :value="values[field.id] ?? ''" :aria-invalid="Boolean(errorFor(field)) || undefined" @change="setValue(field, $event.target.value)">
             <option value="" disabled>Select country</option>
             <option v-for="country in COUNTRIES" :key="country" :value="country">{{ country }}</option>
           </select>
@@ -177,7 +219,12 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
             </template>
             <template v-else>
               <label class="fr-choice fr-choice--single">
-                <input type="checkbox" :name="field.settings?.field_name || undefined" :checked="Boolean(values[field.id]?.length)" @change="setValue(field, $event.target.checked ? [true] : [])" />
+                <input
+                  type="checkbox"
+                  :name="field.settings?.field_name || undefined"
+                  :checked="checkedState(field)"
+                  @change="setValue(field, $event.target.checked)"
+                />
                 <span>{{ field.settings?.checkbox_text || field.label }}</span>
               </label>
             </template>
@@ -191,7 +238,13 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
           </div>
 
           <div v-else-if="field.type === 'file'" class="fr-file">
-            <input type="file" :accept="(field.settings?.allowed_types || []).map((ext) => `.${ext}`).join(',')" @change="onFileChange(field, $event)" />
+            <input
+              type="file"
+              :accept="(field.settings?.allowed_types || []).map((ext) => `.${ext}`).join(',')"
+              :aria-invalid="Boolean(errorFor(field)) || undefined"
+              @change="onFileChange(field, $event)"
+            />
+            <p v-if="values[field.id]" class="fr-file-name">{{ fileLabel(values[field.id]) }}</p>
             <p class="fr-file-help">
               {{ (field.settings?.allowed_types || ['pdf', 'jpg', 'png']).join(', ').toUpperCase() }}
               · up to {{ field.settings?.max_size_mb || 5 }} MB
@@ -205,6 +258,7 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
             :value="values[field.id] ?? ''"
             :placeholder="placeholderFor(field)"
             :maxlength="field.settings?.max_length || undefined"
+            :aria-invalid="Boolean(errorFor(field)) || undefined"
             @input="setValue(field, $event.target.value)"
           ></textarea>
 
@@ -215,6 +269,7 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
             :value="values[field.id] ?? ''"
             :placeholder="placeholderFor(field)"
             :list="`fr-datalist-${field.id}`"
+            :aria-invalid="Boolean(errorFor(field)) || undefined"
             @input="setValue(field, $event.target.value)"
           />
           <datalist v-if="field.type === 'autocomplete'" :id="`fr-datalist-${field.id}`">
@@ -231,23 +286,28 @@ const multiSelect = (field) => Boolean(field.settings?.multiple) && field.type =
             :min="field.type === 'number' && field.settings?.min_value != null ? field.settings.min_value : undefined"
             :max="field.type === 'number' && field.settings?.max_value != null ? field.settings.max_value : undefined"
             :maxlength="field.settings?.max_length || undefined"
+            :aria-invalid="Boolean(errorFor(field)) || undefined"
             @input="setValue(field, $event.target.value)"
           />
         </label>
+        <p v-if="errorFor(field)" class="fr-field-error" role="alert">{{ errorFor(field) }}</p>
       </div>
     </div>
 
-    <label v-if="settings.require_agreement" class="fr-agreement">
-      <input type="checkbox" required />
-      <span>I agree to the terms and conditions{{ settings.terms_url ? '' : ' of this event' }}.</span>
-    </label>
+    <div v-if="settings.require_agreement" class="fr-agreement-block">
+      <label class="fr-agreement">
+        <input v-model="agreement" type="checkbox" />
+        <span>I agree to the terms and conditions{{ settings.terms_url ? '' : ' of this event' }}.</span>
+      </label>
+      <p v-if="agreementError" class="fr-field-error" role="alert">{{ agreementError }}</p>
+    </div>
 
     <div v-if="hasSteps" class="fr-nav">
-      <button v-if="currentStep > 0" class="fr-back" type="button" @click="prevStep">← Back</button>
-      <button v-if="!lastStep" class="fr-submit" type="button" @click="nextStep">Continue →</button>
-      <button v-else class="fr-submit" type="submit">Submit registration</button>
+      <button v-if="currentStep > 0" class="fr-back" type="button" :disabled="disabled" @click="prevStep">← Back</button>
+      <button v-if="!lastStep" class="fr-submit" type="button" :disabled="disabled" @click="proceed">Continue →</button>
+      <button v-else class="fr-submit" type="submit" :disabled="disabled">{{ submitLabel }}</button>
     </div>
-    <button v-else class="fr-submit" type="submit">Submit registration</button>
+    <button v-else class="fr-submit" type="submit" :disabled="disabled">{{ submitLabel }}</button>
 
     <p v-if="settings.show_privacy_policy" class="fr-privacy">
       Your information will only be used to manage your attendance at this event.

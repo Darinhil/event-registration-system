@@ -87,7 +87,8 @@ const loadEvent = async () => {
     if (Array.isArray(item.enabled_fields) && item.enabled_fields.length) fields.value = item.enabled_fields.map((field, index) => ({ id: field.id || index + 1, label: field.label, type: field.type, required: Boolean(field.required), options: field.options || [] }))
     else {
       const { data: formData } = await api.get(`/events/${editingId}/form`)
-      if (Array.isArray(formData.data) && formData.data.length) fields.value = formData.data.map((field) => ({ id: field.id, label: field.label, type: String(field.type).toLowerCase() === 'phonenumber' ? 'Phone' : String(field.type).toLowerCase() === 'select/dropdown' ? 'Select' : field.type.charAt(0).toUpperCase() + field.type.slice(1), required: Boolean(field.required), options: field.options || [] }))
+      const formFields = formData.data?.fields || formData.data || []
+      if (Array.isArray(formFields) && formFields.length) fields.value = formFields.map((field) => ({ id: field.id, label: field.label, type: String(field.type).toLowerCase() === 'phonenumber' ? 'Phone' : String(field.type).toLowerCase() === 'select/dropdown' ? 'Select' : field.type.charAt(0).toUpperCase() + field.type.slice(1), required: Boolean(field.required), options: field.options || [] }))
     }
   } catch { error.value = 'Could not load this event for editing.' }
 }

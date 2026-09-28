@@ -46,12 +46,40 @@ class FormBuilderController extends Controller
         ]);
     }
 
+    /**
+     * The attendee-facing shape of the form: everything the public registration
+     * page needs to render the form exactly as configured in the builder.
+     */
+    public function publicPayload(Event $event): array
+    {
+        $config = $event->form_config ?: [];
+        $defaults = $this->defaultConfig();
+
+        $steps = $config['steps'] ?? [];
+        if (! is_array($steps) || $steps === [] || array_values($steps) !== $steps) {
+            $steps = [['id' => 's0', 'name' => 'Step 1']];
+        }
+
+        return [
+            'form_title' => $config['form_title'] ?? $defaults['form_title'],
+            'form_description' => $config['form_description'] ?? $defaults['form_description'],
+            'steps' => array_values($steps),
+            'settings' => array_merge($defaults['settings'], (array) ($config['settings'] ?? [])),
+            'fields' => $event->formFields()->get(['id', 'label', 'description', 'placeholder', 'type', 'required', 'options', 'settings', 'sort_order'])
+                ->map(fn ($field) => $this->presentField($field))
+                ->values(),
+        ];
+    }
+
     public function update(Request $request, Event $event): JsonResponse
     {
         $data = $request->validate([
             'form_title' => ['nullable', 'string', 'max:150'],
             'form_description' => ['nullable', 'string', 'max:1000'],
             'config' => ['nullable', 'array'],
+            'config.steps' => ['nullable', 'array'],
+            'config.steps.*.id' => ['required', 'string', 'max:50'],
+            'config.steps.*.name' => ['required', 'string', 'max:80'],
             'fields' => ['present', 'array'],
             'fields.*.label' => ['required', 'string', 'max:150'],
             'fields.*.description' => ['nullable', 'string', 'max:300'],
@@ -70,6 +98,7 @@ class FormBuilderController extends Controller
             $config['form_title'] = $data['form_title'] ?? $config['form_title'] ?? 'Event Registration Form';
             $config['form_description'] = $data['form_description'] ?? $config['form_description'] ?? '';
             $config['settings'] = array_merge($config['settings'] ?? [], $data['config']['settings'] ?? []);
+            if (array_key_exists('steps', $data['config'] ?? [])) $config['steps'] = $data['config']['steps'];
             $config['updated_at'] = now()->toIso8601String();
             $event->update(['form_config' => $config]);
 
