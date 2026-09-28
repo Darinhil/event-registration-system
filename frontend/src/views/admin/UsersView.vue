@@ -102,6 +102,15 @@ const formatAnswer = (value) => {
   const text = String(value).trim()
   return text === '' ? '-' : text
 }
+/* Strip wrapping quotes so stored answers like "H: Difficulty Hearing" read cleanly. */
+const stripQuotes = (text) => String(text ?? '').trim().replace(/["'“”«»]+$/, '').replace(/^["'“”«»]+/, '').trim()
+/* Coded answers collapse to their letter code: "R: Difficulty Remembering" -> "R", "Y - 18-29" -> "Y".
+   Plain values ("LLC", "Yes", "PNC") pass through untouched. */
+const shortAnswer = (text) => {
+  const value = stripQuotes(text)
+  const match = value.match(/^([A-Za-z])\s*[:：\-–]\s*\S/)
+  return match ? match[1].toUpperCase() : value
+}
 const formValueFor = (registration, field) => formatAnswer(formFieldAnswer(registration, field))
 const pickAnswer = (registration, candidates, fallback) => {
   for (const candidate of candidates) {
@@ -122,9 +131,23 @@ const ageBucket = (registration) => {
 }
 const normalizedGender = (registration) => String(registration.gender || pickAnswer(registration, ['gender'], '')).toLowerCase()
 const normalizedEthnicity = (registration) => String(registration.ethnicity || pickAnswer(registration, ['ethnicity', 'race'], '')).toLowerCase()
-const displayAge = (registration) => registration.age ?? (ageOptions.find((option) => option.value === ageBucket(registration))?.label || formatAnswer(pickAnswer(registration, ['age'], '')) || '-')
+const GENDER_SHORT = { m: 'M', male: 'M', f: 'F', female: 'F', 'non-binary': 'NB', 'prefer not to say': 'P' }
+const displayGender = (registration) => {
+  const raw = formatAnswer(registration?.gender || pickAnswer(registration, ['gender'], ''))
+  if (raw === '-') return '-'
+  const coded = shortAnswer(raw)
+  if (coded !== raw) return coded
+  return GENDER_SHORT[raw.toLowerCase()] || raw
+}
+const displayAge = (registration) => {
+  if (registration.age !== undefined && registration.age !== null && registration.age !== '') return registration.age
+  const label = ageOptions.find((option) => option.value === ageBucket(registration))?.label || formatAnswer(pickAnswer(registration, ['age'], ''))
+  return shortAnswer(label) || '-'
+}
 const displayEthnicity = (registration) => registration.ethnicity || formatAnswer(pickAnswer(registration, ['ethnicity', 'race'], '')) || '-'
-const displayDisability = (registration) => disabilityValues(registration).join(', ') || '-'
+/* Disability answers render as one letter-code chip per difficulty (tooltip keeps full text). */
+const disabilityChips = (registration) => disabilityValues(registration).map((value) => stripQuotes(value)).filter(Boolean)
+const displayDisability = (registration) => disabilityChips(registration).join(', ') || '-'
 const displayCheckedTime = (user) => {
   const registration = user.registrations?.find(isCheckedIn)
   const checkedInAt = registration?.checked_in_at || registration?.check_in?.checked_in_at
@@ -218,7 +241,7 @@ const exportFilteredExcel = () => {
     return [
       index + 1,
       user.name,
-      registration.gender || normalizedGender(registration) || '-',
+      displayGender(registration) || '-',
       displayAge(registration),
       displayEthnicity(registration),
       displayDisability(registration),
@@ -275,7 +298,7 @@ onMounted(loadWorkspace)
             </section>
             <section class="attendance-table-card">
               <div class="attendance-table-toolbar"><label class="attendance-table-search"><span aria-hidden="true">⌕</span><input v-model="search" type="search" placeholder="Search by name, ID, email, or phone..." /></label><select v-model="ageFilter" :class="{ 'is-active': ageFilter !== 'all' }" aria-label="Filter by age"><option value="all">Age</option><option v-for="option in ageOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="genderFilter" :class="{ 'is-active': genderFilter !== 'all' }" aria-label="Filter by gender"><option value="all">Gender</option><option v-for="option in genderOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="ethnicityFilter" :class="{ 'is-active': ethnicityFilter !== 'all' }" aria-label="Filter by ethnicity"><option value="all">Ethnicity</option><option v-for="option in ethnicityOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="disabilityFilter" :class="{ 'is-active': disabilityFilter !== 'all' }" aria-label="Filter by disability"><option value="all">Disability</option><option v-for="option in disabilityOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="status" :class="{ 'is-active': status !== 'all' }" aria-label="Filter attendee status"><option value="all">All Status</option><option value="registered">Registered</option><option value="pending">Pending</option></select><button v-if="activeFilterCount || search" type="button" class="attendance-clear-filters" @click="clearFilters">Clear</button></div>
-              <div class="attendance-table-scroll"><table class="attendance-table"><thead><tr><th>#</th><th>Photo</th><th>Full Name</th><th>Gender</th><th>Age</th><th>Ethnicity</th><th>Disability</th><th>Checked-time</th><th>Status</th><th>Action</th><th v-for="field in dynamicColumns" :key="`h-${field.id}`">{{ field.label }}</th></tr></thead><tbody><tr v-for="(user, index) in filteredAttendees" :key="user.id"><td>{{ index + 1 }}</td><td><span class="attendance-avatar">{{ initials(user.name) }}</span></td><td><strong>{{ user.name }}</strong></td><td>{{ formatAnswer(registrationFor(user)?.gender || pickAnswer(registrationFor(user), ['gender'], '')) }}</td><td>{{ displayAge(registrationFor(user)) }}</td><td>{{ displayEthnicity(registrationFor(user)) }}</td><td>{{ displayDisability(registrationFor(user)) }}</td><td>{{ displayCheckedTime(user) }}</td><td><span class="attendance-status-pill" :class="user.registrations?.some(isCheckedIn) ? 'checked' : 'pending'">{{ user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending' }}</span></td><td><RouterLink :to="`/admin/users/${user.id}`" class="attendance-view-button">View</RouterLink></td><td v-for="field in dynamicColumns" :key="`c-${field.id}`">{{ formValueFor(registrationFor(user), field) }}</td></tr><tr v-if="!filteredAttendees.length"><td :colspan="10 + dynamicColumns.length"><div class="attendance-table-empty"><span>♧</span><strong>{{ search || activeFilterCount ? 'No matching attendances' : 'No attendances yet' }}</strong><small>{{ search || activeFilterCount ? 'Try clearing a filter or changing your search.' : 'Attendance records will appear here when people sign up.' }}</small></div></td></tr></tbody></table></div>
+              <div class="attendance-table-scroll"><table class="attendance-table"><thead><tr><th>#</th><th>Photo</th><th>Full Name</th><th>Gender</th><th>Age</th><th>Ethnicity</th><th>Disability</th><th>Checked-time</th><th>Status</th><th>Action</th></tr></thead><tbody><tr v-for="(user, index) in filteredAttendees" :key="user.id"><td>{{ index + 1 }}</td><td><span class="attendance-avatar">{{ initials(user.name) }}</span></td><td><strong>{{ user.name }}</strong></td><td>{{ displayGender(registrationFor(user)) }}</td><td>{{ displayAge(registrationFor(user)) }}</td><td>{{ displayEthnicity(registrationFor(user)) }}</td><td class="attendance-cell--wrap"><span v-for="chip in disabilityChips(registrationFor(user))" :key="chip" class="attendance-chip" :title="chip">{{ shortAnswer(chip) }}</span><span v-if="!disabilityChips(registrationFor(user)).length">-</span></td><td>{{ displayCheckedTime(user) }}</td><td><span class="attendance-status-pill" :class="user.registrations?.some(isCheckedIn) ? 'checked' : 'pending'">{{ user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending' }}</span></td><td><RouterLink :to="`/admin/users/${user.id}`" class="attendance-view-button">View</RouterLink></td></tr><tr v-if="!filteredAttendees.length"><td colspan="10"><div class="attendance-table-empty"><span>♧</span><strong>{{ search || activeFilterCount ? 'No matching attendances' : 'No attendances yet' }}</strong><small>{{ search || activeFilterCount ? 'Try clearing a filter or changing your search.' : 'Attendance records will appear here when people sign up.' }}</small></div></td></tr></tbody></table></div>
               <footer class="attendance-pagination"><span>Showing 1-{{ filteredAttendees.length }} of {{ eventAttendeeCount }} attendances</span><div><button type="button">‹</button><button type="button" class="current">1</button><button type="button">2</button><button type="button">3</button><button type="button">›</button></div></footer>
             </section>
           </template>
