@@ -1,27 +1,43 @@
 import { defineStore } from 'pinia'
 import { createRegistration } from '../services/registrationService'
 
-const hasFile = (form) => Object.values(form).some((value) => value instanceof File)
+const isFile = (value) => typeof File !== 'undefined' && value instanceof File
 
-/**
- * Serialise the registration payload. File answers require multipart encoding,
- * so we switch to FormData whenever one is present. Array answers are appended
- * with the `key[]` convention so Laravel receives them as arrays.
- */
-const toPayload = (form) => {
-  if (!hasFile(form)) return form
-  return Object.entries(form).reduce((body, [key, value]) => {
-    if (value === undefined) return body
-    if (Array.isArray(value)) {
-      if (value.length === 0) body.append(`${key}[]`, '')
-      else value.forEach((item) => body.append(`${key}[]`, item))
-    } else {
-      body.append(key, value instanceof File ? value : (value ?? ''))
-    }
-    return body
-  }, new FormData())
-}
-
-export const useRegistrationStore = defineStore('registration', { state: () => ({ current: null, loading: false, error: null }), actions: {
-  async register(form) { this.loading = true; this.error = null; try { const { data } = await createRegistration(toPayload(form)); this.current = data.data; return this.current } catch (error) { this.error = error.response?.data?.message || 'Registration failed.'; throw error } finally { this.loading = false } },
-} })
+export const useRegistrationStore = defineStore('registration', {
+  state: () => ({ current: null, loading: false, error: null }),
+  actions: {
+    async register(form) {
+      this.loading = true
+      this.error = null
+      try {
+        const hasUpload = isFile(form.profile_photo) || Object.values(form.form_data || {}).some(isFile)
+        const payload = hasUpload
+          ? Object.entries(form).reduce((body, [key, value]) => {
+            if (key === 'form_data' && value && typeof value === 'object') {
+              Object.entries(value).forEach(([fieldId, answer]) => {
+                if (Array.isArray(answer)) {
+                  answer.forEach((item) => body.append(`form_data[${fieldId}][]`, item ?? ''))
+                } else {
+                  body.append(`form_data[${fieldId}]`, answer === true ? '1' : answer === false ? '0' : answer ?? '')
+                }
+              })
+            } else if (Array.isArray(value)) {
+              value.forEach((item) => body.append(`${key}[]`, item ?? ''))
+            } else {
+              body.append(key, value ?? '')
+            }
+            return body
+          }, new FormData())
+          : form
+        const { data } = await createRegistration(payload)
+        this.current = data.data
+        return this.current
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Registration failed.'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+  },
+})

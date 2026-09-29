@@ -1,0 +1,539 @@
+/* ============================================================
+   My Information — attendee portal
+   Modern, professional redesign: profile hero, stat chips,
+   gradient registration cards, polished states.
+   ============================================================ */
+
+.mi-page {
+  --mi-ink: #14243c;
+  --mi-sub: #5d7392;
+  --mi-faint: #8ba1bb;
+  --mi-line: #e4ecf5;
+  --mi-blue: #2563eb;
+  --mi-blue-deep: #174ea6;
+  --mi-green: #0e9f6e;
+
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 18px 4px 90px;
+  color: var(--mi-ink);
+}
+
+/* ---------------- Page heading ---------------- */
+.mi-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 14px 0 22px;
+}
+
+.mi-heading-copy .mi-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 6px 13px;
+  border: 1px solid #cfdff5;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #eef5ff, #f8fbff);
+  color: var(--mi-blue-deep);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.mi-heading-copy h1 {
+  margin: 0 0 7px;
+  font-size: clamp(2.1rem, 4vw, 3.1rem);
+  font-weight: 700;
+  letter-spacing: -.05em;
+  line-height: 1.02;
+}
+
+.mi-heading-copy > p {
+  margin: 0;
+  color: var(--mi-sub);
+  font-size: .95rem;
+  line-height: 1.55;
+}
+
+/* ---------------- Profile identity card ---------------- */
+/* Left panel carries the gradient; right panel stays white,
+   so nothing depends on overlay band heights. */
+.mi-profile-card {
+  display: grid;
+  grid-template-columns: 1.25fr .75fr;
+  gap: 0;
+  margin-bottom: 26px;
+  border: 1px solid var(--mi-line);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 44px -18px rgba(23, 54, 95, .25);
+  overflow: hidden;
+}
+
+.mi-identity {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 19px;
+  padding: 30px 26px;
+  background: linear-gradient(120deg, #10294a 0%, #17406e 55%, #2563eb 130%);
+  overflow: hidden;
+}
+
+.mi-identity::after {
+  content: '';
+  position: absolute;
+  top: -55px;
+  right: -55px;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(125, 189, 255, .28), transparent 68%);
+  pointer-events: none;
+}
+
+.mi-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  border: 3px solid rgba(255, 255, 255, .95);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #35b48d, #0f9d76);
+  box-shadow: 0 10px 24px -8px rgba(9, 45, 35, .55);
+  color: #fff;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+.mi-identity-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.mi-identity-copy h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+}
+
+.mi-identity-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(255, 255, 255, .82);
+  font-size: .84rem;
+  overflow-wrap: anywhere;
+}
+
+.mi-identity-email svg { flex: 0 0 auto; opacity: .75; }
+
+.mi-identity-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.mi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.mi-chip--green {
+  border-color: rgba(61, 224, 176, .45);
+  background: rgba(22, 163, 118, .32);
+}
+
+/* ---------------- Quick stats side ---------------- */
+.mi-quickstats {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  padding: 22px 24px;
+  background: #fff;
+}
+
+.mi-stat {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 17px;
+  border: 1px solid var(--mi-line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfdff, #f5f9fd);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.mi-stat:hover {
+  transform: translateY(-2px);
+  border-color: #c4daf6;
+  box-shadow: 0 10px 22px -12px rgba(23, 54, 95, .35);
+}
+
+.mi-stat-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  font-size: 1.05rem;
+}
+
+.mi-stat--blue .mi-stat-icon { background: #e8f1ff; color: #2563eb; }
+.mi-stat--green .mi-stat-icon { background: #dff6ec; color: #0b8a5f; }
+
+.mi-stat-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mi-stat-copy small {
+  color: var(--mi-faint);
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.mi-stat-copy strong {
+  color: var(--mi-ink);
+  font-size: 1.22rem;
+  line-height: 1.1;
+}
+
+.mi-stat-copy span {
+  color: var(--mi-sub);
+  font-size: .68rem;
+}
+
+/* ---------------- Section header ---------------- */
+.mi-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 16px;
+}
+
+.mi-section-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.mi-section-heading h3::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #2563eb, #60a5fa);
+}
+
+.mi-section-count {
+  padding: 5px 12px;
+  border: 1px solid var(--mi-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mi-sub);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+/* ---------------- Registration cards ---------------- */
+/* 4 columns: icon | info | status | actions */
+.mi-registrations {
+  display: grid;
+  gap: 13px;
+}
+
+.mi-reg-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 17px 19px;
+  border: 1px solid var(--mi-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 18px -10px rgba(23, 54, 95, .18);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.mi-reg-card:hover {
+  transform: translateY(-2px);
+  border-color: #bed6f4;
+  box-shadow: 0 16px 32px -14px rgba(23, 54, 95, .3);
+}
+
+.mi-reg-card::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 4px;
+  border-radius: 0 99px 99px 0;
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+}
+
+.mi-reg-card.is-confirmed::before { background: linear-gradient(180deg, #34d399, #0e9f6e); }
+.mi-reg-card.is-cancelled::before { background: linear-gradient(180deg, #fca5a5, #dc2626); }
+.mi-reg-card.is-pending::before { background: linear-gradient(180deg, #fcd34d, #d97706); }
+
+.mi-reg-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eaf2ff;
+  color: #2563eb;
+  font-size: 1.15rem;
+}
+
+.is-confirmed .mi-reg-icon { background: #dff6ec; color: #0b8a5f; }
+.is-cancelled .mi-reg-icon { background: #feecee; color: #c33333; }
+.is-pending .mi-reg-icon { background: #fdf3d7; color: #b97f10; }
+
+.mi-reg-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mi-reg-main strong {
+  color: var(--mi-ink);
+  font-size: .98rem;
+  letter-spacing: -.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mi-reg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  color: var(--mi-sub);
+  font-size: .76rem;
+}
+
+.mi-reg-deadline {
+  display: block;
+  color: var(--mi-faint);
+  font-size: .66rem;
+}
+
+/* Status pill (scoped upgrade of the shared badge) */
+.mi-reg-card .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #52678a;
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mi-reg-card .status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mi-reg-card .status--confirmed { background: #dcf7ea; color: #0a8a58; }
+.mi-reg-card .status--cancelled { background: #feecee; color: #b02924; }
+.mi-reg-card .status--pending { background: #fdf1d8; color: #a06a10; }
+.mi-reg-card .status--registered { background: #e8f1ff; color: #2563eb; }
+.mi-reg-card .status--checked { background: #dcf7ea; color: #0a8a58; }
+
+.mi-reg-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.mi-view-pass {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid #cfdff5;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff, #f7faff);
+  color: var(--mi-blue-deep);
+  font-size: .74rem;
+  font-weight: 700;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.mi-view-pass:hover {
+  border-color: #9dc0f2;
+  background: #eef5ff;
+}
+
+.mi-view-pass svg, .mi-edit-btn svg, .mi-edit-closed svg { flex: 0 0 auto; }
+.mi-view-pass svg { opacity: .8; }
+
+.mi-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 9px 15px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .65);
+  color: #fff;
+  font-size: .74rem;
+  font-weight: 700;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+
+.mi-edit-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 12px 22px -8px rgba(37, 99, 235, .7);
+}
+
+.mi-edit-closed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  border: 1px dashed #d4dfe9;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #93a4b8;
+  font-size: .68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------------- Empty state ---------------- */
+.mi-empty {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 60px 30px;
+  border: 1px dashed #c9d7e6;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(96, 165, 250, .08), transparent 50%),
+    #fbfdff;
+  color: var(--mi-sub);
+  text-align: center;
+}
+
+.mi-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #e8f1ff;
+  color: #2563eb;
+  font-size: 1.7rem;
+}
+
+.mi-empty strong {
+  color: var(--mi-ink);
+  font-size: 1.05rem;
+  letter-spacing: -.02em;
+}
+
+.mi-empty p { margin: 0; font-size: .84rem; }
+
+.mi-empty a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 11px 20px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .65);
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 700;
+  transition: transform .15s ease, filter .15s ease;
+}
+
+.mi-empty a:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 860px) {
+  .mi-profile-card { grid-template-columns: 1fr; }
+  .mi-quickstats {
+    grid-template-rows: none;
+    grid-template-columns: 1fr 1fr;
+    padding: 0 20px 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .mi-page { padding: 8px 2px 60px; }
+  .mi-heading { align-items: flex-start; flex-direction: column; margin-top: 6px; }
+  .mi-identity { padding: 26px 18px; gap: 14px; }
+  .mi-avatar { width: 66px; height: 66px; font-size: 1.5rem; }
+  .mi-identity-copy h2 { font-size: 1.2rem; }
+  .mi-identity-email { font-size: .76rem; }
+  .mi-quickstats { grid-template-columns: 1fr; padding: 0 16px 16px; }
+  .mi-reg-card {
+    grid-template-columns: 38px minmax(0, 1fr);
+    padding: 14px 14px 14px 16px;
+  }
+  .mi-reg-icon { width: 38px; height: 38px; font-size: 1rem; }
+  .mi-reg-card .status {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .mi-reg-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

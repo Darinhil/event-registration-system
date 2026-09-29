@@ -26,11 +26,9 @@ class RegistrationService
         $coreMap = ['full name' => 'full_name', 'email' => 'email', 'email address' => 'email', 'phone' => 'phone', 'phone number' => 'phone', 'organization' => 'organization', 'organisation' => 'organization', 'position' => 'position', 'address' => 'address'];
         foreach ($fields as $field) {
             $value = $formData[$field->id] ?? null;
-            if (is_array($value) || $value === null || $value === '') continue;
             $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
+            if ($value !== null && $value !== '') $formData[$field->id] = $value;
             if (!isset($data[$normalized]) && $value !== null) $data[$normalized] = $value;
-            $labelKey = strtolower(trim($field->label));
-            if (isset($coreMap[$labelKey]) && empty($data[$coreMap[$labelKey]])) $data[$coreMap[$labelKey]] = $value;
         }
         $data['form_data'] = $formData;
 

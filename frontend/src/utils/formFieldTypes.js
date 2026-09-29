@@ -143,8 +143,57 @@ export const createSteps = (count = 1) =>
   Array.from({ length: count }, (_, index) => ({ id: `s${Date.now()}${index}${Math.random().toString(36).slice(2, 4)}`, name: `Step ${index + 1}` }))
 
 /** Fallback starter form for events with no saved fields yet. */
-export const starterFields = (step = 0) => [
-  { ...createField('text', step), label: 'Full Name', placeholder: 'Enter your full name', required: true },
-  { ...createField('email', step), label: 'Email Address', placeholder: 'Enter your email', required: true },
-  { ...createField('phone', step), label: 'Phone Number', placeholder: 'Enter your phone number', required: true },
-]
+export const starterFields = (step = 0) => {
+  const field = (type, label, required = false, options = [], settings = {}) => {
+    const created = createField(type, step)
+    return {
+      ...created,
+      label,
+      required,
+      options,
+      placeholder: type === 'email' ? 'Enter your email' : type === 'phone' ? 'Enter your phone number' : type === 'text' ? `Enter ${label.toLowerCase()}` : '',
+      settings: { ...created.settings, ...settings },
+    }
+  }
+
+  return [
+    field('text', 'Name', true),
+    field('email', 'Email', true),
+    field('radio', 'Gender', true, ['M: Male', 'F: Female', 'P: Prefer not to say', 'N: Non-binary']),
+    field('radio', 'Age', true, ['K: Under 18', 'Y: 18–29', 'A: 30–60', 'E: Above 60']),
+    field('checkbox', 'Disability', false, [
+      'C: Difficulty seeing',
+      'H: Difficulty hearing',
+      'M: Difficulty moving',
+      'R: Difficulty remembering',
+      'S: Difficulty with self-care',
+      'X: Difficulty communicating',
+    ], { multiple: true }),
+    field('text', 'Ethnicity'),
+    field('text', 'Institution', true),
+    field('text', 'Business Entity'),
+    field('text', 'Position'),
+    field('radio', 'Photo request and use', false, ['Yes', 'No']),
+    field('phone', 'TEL', true),
+  ]
+}
+
+/** Add the new standard Gender option without changing organizer-defined choices. */
+export const addNonBinaryGenderOption = (fields) => fields.map((field) => {
+  const standardOptions = ['M: Male', 'F: Female', 'P: Prefer not to say']
+  if (field.label?.trim().toLowerCase() !== 'gender' || JSON.stringify(field.options || []) !== JSON.stringify(standardOptions)) return field
+  return { ...field, options: [...standardOptions, 'N: Non-binary'] }
+})
+
+/** Identify untouched built-in forms from earlier app versions for safe upgrades. */
+export const isLegacyStarterForm = (fields) => {
+  const previousTemplates = [
+    ['Full Name', 'Email Address', 'Phone Number'],
+    ['Full Name', 'Email', 'Phone Number', 'Department', 'Age Group', 'Organization / School'],
+    ['Full Name', 'Email', 'Phone Number', 'Department', 'Age Group', 'Organization / School', 'Business Entity', 'Position', 'Photo request and Using', 'TEL', 'Signature'],
+    ['Name', 'Email', 'Gender', 'Age', 'Disability', 'Ethnicity', 'Institution', 'Business Entity', 'Position', 'Photo request and use', 'TEL', 'Signature'],
+  ]
+  return previousTemplates.some((labels) =>
+    fields.length === labels.length && fields.every((field, index) => field.label === labels[index])
+  )
+}
