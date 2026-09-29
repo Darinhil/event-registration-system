@@ -3,6 +3,24 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import { getEventReportAttendees, getReports } from '../../services/adminService'
 import { formatDate } from '../../utils/formatDate'
+import * as XLSX from 'xlsx'
+
+/** Write rows as a styled .xlsx: bold white-on-blue header, sized columns, autofilter, frozen header row. */
+const saveXlsx = (headers, rows, fileName, sheetName, columnWidths) => {
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  worksheet['!cols'] = columnWidths || headers.map(() => ({ wch: 18 }))
+  worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${rows.length + 1}` }
+  worksheet['!freeze'] = { xSplit: 0, ySplit: 1 }
+  headers.forEach((_, columnIndex) => {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: columnIndex })]
+    if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1677D2' } }, alignment: { horizontal: 'center' } }
+  })
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  XLSX.writeFile(workbook, `${fileName}.xlsx`, { cellStyles: true })
+}
+
+const excelDate = (value) => (value ? formatDate(value) : '')
 
 const loading = ref(true)
 const error = ref('')
@@ -68,8 +86,9 @@ const loadReports = async () => {
 }
 
 const exportCsv = () => {
-  const header = ['Event', 'Date', 'Location', 'Status', 'Capacity', 'Registrations', 'Checked In', 'No Show', 'Attendance Rate %']
-  const rows = filteredReports.value.map((row) => [
+  const headers = ['No.', 'Event', 'Date', 'Location', 'Status', 'Capacity', 'Registrations', 'Checked In', 'No Show', 'Attendance Rate %']
+  const rows = filteredReports.value.map((row, index) => [
+    index + 1,
     row.name,
     row.starts_at ? formatDate(row.starts_at) : '',
     row.location || '',
@@ -80,15 +99,9 @@ const exportCsv = () => {
     row.no_show,
     row.attendance_rate,
   ])
-  const csv = [header, ...rows]
-    .map((line) => line.map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`).join(','))
-    .join('\n')
-  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `event-reports-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  saveXlsx(headers, rows, `event-reports-${new Date().toISOString().slice(0, 10)}`, 'Event Reports', [
+    { wch: 5 }, { wch: 34 }, { wch: 22 }, { wch: 24 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 17 },
+  ])
 }
 
 /* ---------- Per-event attendee report ---------- */
@@ -154,27 +167,22 @@ const segmentMeta = computed(() => ({
 })[attendeeFilter.value])
 
 const exportAttendeesCsv = () => {
-  const header = ['Name', 'Email', 'Phone', 'Registration Code', 'Registration Status', 'Checked In', 'Checked In At', 'Checked In By']
-  const rows = attendeeRows.value.map((row) => [
+  const headers = ['No.', 'Name', 'Email', 'Phone', 'Registration Code', 'Registration Status', 'Checked In', 'Checked In At', 'Checked In By']
+  const rows = attendeeRows.value.map((row, index) => [
+    index + 1,
     row.name,
-    row.email,
-    row.phone,
-    row.registration_code,
-    row.status,
+    row.email || '',
+    row.phone || '',
+    row.registration_code || '',
+    row.status || '',
     row.checked_in_at ? 'Yes' : 'No',
-    row.checked_in_at ? formatDate(row.checked_in_at) : '',
-    row.checked_in_by || (row.checked_in_at ? 'Self check-in' : ''),
+    excelDate(row.checked_in_at),
+    row.checked_in_at ? (row.checked_in_by || 'Self check-in') : '',
   ])
-  const csv = [header, ...rows]
-    .map((line) => line.map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`).join(','))
-    .join('\n')
-  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }))
-  const link = document.createElement('a')
-  link.href = url
   const slug = String(selectedEvent.value?.name || `event-${selectedEvent.value?.id}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  link.download = `${slug}-attendees-${segmentMeta.value.file}-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  saveXlsx(headers, rows, `${slug}-attendees-${segmentMeta.value.file}-${new Date().toISOString().slice(0, 10)}`, 'Attendees', [
+    { wch: 5 }, { wch: 26 }, { wch: 28 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 11 }, { wch: 22 }, { wch: 16 },
+  ])
 }
 
 onMounted(loadReports)
@@ -189,7 +197,7 @@ onMounted(loadReports)
           <h1>Reports</h1>
           <p>Compare registrations, check-ins, and no-shows across every event — then drill into attendees.</p>
         </div>
-        <button type="button" class="secondary-button" :disabled="loading || !filteredReports.length" @click="exportCsv">↓ Export CSV</button>
+        <button type="button" class="secondary-button" :disabled="loading || !filteredReports.length" @click="exportCsv">↓ Export Excel</button>
       </header>
 
       <p v-if="error" class="inline-error" role="alert">{{ error }} <button type="button" @click="loadReports">Retry</button></p>
@@ -291,7 +299,7 @@ onMounted(loadReports)
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
               <input v-model="attendeeSearch" type="search" placeholder="Search attendees…" aria-label="Search attendees in this event" title="Search by name, email, phone, or registration code" />
             </label>
-            <button type="button" class="secondary-button" :disabled="detailLoading || !attendeeRows.length" :title="`Download ${segmentMeta.label} as CSV`" @click="exportAttendeesCsv">↓ {{ segmentMeta.short }} CSV</button>
+            <button type="button" class="secondary-button" :disabled="detailLoading || !attendeeRows.length" :title="`Download ${segmentMeta.label} as Excel`" @click="exportAttendeesCsv">↓ {{ segmentMeta.short }} Excel</button>
             <button type="button" class="attendee-close" aria-label="Close attendee report" @click="closeAttendees">✕</button>
           </div>
         </header>
