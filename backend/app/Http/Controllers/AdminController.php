@@ -12,6 +12,99 @@ use Illuminate\Http\JsonResponse;
 class AdminController extends Controller
 {
     public function dashboard(): JsonResponse { return response()->json(['users' => User::count(), 'registrations' => Registration::count(), 'check_ins' => CheckIn::count()]); }
+
+    /**
+     * Per-event report: registrations, check-ins, no-shows and attendance rate.
+     * Feeds the admin Reports page and its CSV export.
+     */
+    public function reports(): JsonResponse
+    {
+        $events = Event::query()
+            ->withCount(['registrations', 'registrations as checked_in_count' => fn ($query) => $query->whereHas('checkIn')])
+            ->latest('starts_at')
+            ->get();
+
+        return response()->json(['data' => $events->map(fn (Event $event) => [
+            'id' => $event->id,
+            'name' => $event->name,
+            'location' => $event->location,
+            'starts_at' => $event->starts_at?->toIso8601String(),
+            'status' => $event->status,
+            'capacity' => $event->capacity,
+            'registrations' => $event->registrations_count,
+            'checked_in' => $event->checked_in_count,
+            'no_show' => max($event->registrations_count - $event->checked_in_count, 0),
+            'attendance_rate' => $event->registrations_count > 0
+                ? round($event->checked_in_count / $event->registrations_count * 1000) / 10
+                : 0.0,
+            'capacity_used' => $event->capacity > 0
+                ? round($event->registrations_count / $event->capacity * 1000) / 10
+                : 0.0,
+        ])]);
+    }
+    /**
+     * Attendee-level report for one event: every registration with its check-in
+     * state, filterable by check-in status and search term. Unpaginated so the
+     * Reports page can offer complete CSV downloads per segment.
+     */
+    public function eventReportAttendees(\Illuminate\Http\Request $request, Event $event): JsonResponse
+    {
+        $search = trim((string) $request->query('search'));
+        $checkIn = (string) $request->query('check_in');
+
+        $formFields = FormField::where('event_id', $event->id)->orderBy('sort_order')->get();
+
+        $attendees = $event->registrations()
+            ->with(['user:id,name,email,phone', 'checkIn.staff:id,name'])
+            ->when($checkIn === 'in', fn ($query) => $query->whereHas('checkIn'))
+            ->when($checkIn === 'out', fn ($query) => $query->whereDoesntHave('checkIn'))
+            ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
+                ->where('full_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('registration_code', 'like', "%{$search}%")
+                ->orWhereHas('user', fn ($u) => $u
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%"))))
+            ->latest()
+            ->get()
+            ->map(function (Registration $registration) use ($formFields) {
+                $registration->append_form_values($formFields);
+
+                return [
+                    'id' => $registration->id,
+                    'registration_code' => $registration->registration_code,
+                    'name' => $registration->full_name ?: $registration->user?->name,
+                    'email' => $registration->email ?: $registration->user?->email,
+                    'phone' => $registration->phone ?: $registration->user?->phone,
+                    'status' => $registration->status,
+                    'checked_in_at' => $registration->checkIn?->checked_in_at?->toIso8601String(),
+                    'checked_in_by' => $registration->checkIn?->staff?->name,
+                    'profile' => array_filter([
+                        'gender' => $registration->gender,
+                        'age' => $registration->age,
+                        'organization' => $registration->organization,
+                        'position' => $registration->position,
+                        'address' => $registration->address,
+                        'emergency_contact' => $registration->emergency_contact_phone
+                            ? trim(($registration->emergency_contact_name ? $registration->emergency_contact_name . ' · ' : '') . $registration->emergency_contact_phone)
+                            : null,
+                    ], fn ($value) => $value !== null && $value !== ''),
+                    'form_answers' => (object) ($registration->form_values ?? []),
+                ];
+            });
+
+        return response()->json(['data' => [
+            'event' => ['id' => $event->id, 'name' => $event->name],
+            'summary' => [
+                'total' => $attendees->count(),
+                'checked_in' => $attendees->whereNotNull('checked_in_at')->count(),
+                'not_checked_in' => $attendees->whereNull('checked_in_at')->count(),
+            ],
+            'attendees' => $attendees->values(),
+        ]]);
+    }
+
     public function users(\Illuminate\Http\Request $request)
     {
         $search = trim((string) $request->query('search'));

@@ -44,6 +44,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('/events/{event}/cancel', [EventController::class, 'cancel']);
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/reports', [AdminController::class, 'reports']);
+        Route::get('/events/{event}/report-attendees', [AdminController::class, 'eventReportAttendees']);
         Route::get('/users', [AdminController::class, 'users']);
         Route::get('/check-ins', [AdminController::class, 'checkIns']);
         Route::get('/events/{event}/check-ins', [AdminController::class, 'eventCheckIns']);
