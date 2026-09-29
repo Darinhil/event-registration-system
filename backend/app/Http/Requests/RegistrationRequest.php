@@ -26,14 +26,30 @@ class RegistrationRequest extends FormRequest
 
         foreach ($event?->formFields ?? [] as $field) {
             $key = "form_data.{$field->id}";
-            $rules[$key] = [$field->required ? 'required' : 'nullable'];
+            $required = $field->required ? 'required' : 'nullable';
+
+            // Multi-select checkboxes arrive as arrays of option values.
+            if ($field->type === 'checkbox' && (bool) ($field->settings['multiple'] ?? false)) {
+                $rules[$key] = [$required, 'array'];
+                if (is_array($field->options) && $field->options !== []) {
+                    $rules["{$key}.*"] = [\Illuminate\Validation\Rule::in($field->options)];
+                }
+                continue;
+            }
+            // Single checkboxes arrive as booleans ("1"/"0" in multipart).
+            if ($field->type === 'checkbox') {
+                $rules[$key] = [$required, 'boolean'];
+                continue;
+            }
+
+            $rules[$key] = [$required];
             if ($field->type === 'email') $rules[$key][] = 'email:rfc';
             if ($field->type === 'number') $rules[$key][] = 'numeric';
             if ($field->type === 'date') $rules[$key][] = 'date';
             if ($field->type === 'time') $rules[$key][] = 'date_format:H:i';
             if ($field->type === 'url') $rules[$key][] = 'url';
             if (in_array($field->type, ['text', 'textarea', 'select', 'radio', 'phone', 'yesno', 'country'], true)) $rules[$key][] = 'string';
-            if (in_array($field->type, ['select', 'radio', 'checkbox', 'yesno'], true) && is_array($field->options) && $field->options !== []) {
+            if (in_array($field->type, ['select', 'radio', 'yesno'], true) && is_array($field->options) && $field->options !== []) {
                 $rules[$key][] = \Illuminate\Validation\Rule::in($field->options);
             }
         }

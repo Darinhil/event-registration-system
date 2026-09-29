@@ -1,5 +1,13 @@
 import { defineStore } from 'pinia'
-import { checkIn } from '../services/checkInService'
-export const useCheckInStore = defineStore('checkIn', { state: () => ({ result: null, loading: false, error: null }), actions: {
-  async submit(token) { this.loading = true; this.error = null; try { this.result = (await checkIn(token)).data; return this.result } catch (error) { this.error = error.response?.data?.message || 'Check-in failed.'; throw error } finally { this.loading = false } },
+import { checkIn, lookupCheckIn, previewCheckIn, searchCheckIns } from '../services/checkInService'
+export const useCheckInStore = defineStore('checkIn', { state: () => ({ registration: null, result: null, loading: false, checkingIn: false, error: null, suggestions: [] }), actions: {
+  /** Attendee scanned an event QR: load their answers for confirmation. Accepts a token string or a payload ({event_id|entrance_token}). */
+  async preview(tokenOrPayload) { this.loading = true; this.error = null; this.result = null; const payload = typeof tokenOrPayload === 'string' ? { qr_token: tokenOrPayload } : tokenOrPayload; try { this.registration = (await previewCheckIn(payload)).data.data; return this.registration } catch (error) { this.registration = null; this.error = error.response?.data?.message || 'Unable to read this QR code.'; return null } finally { this.loading = false } },
+  /** Admin scanned an attendee QR: load their answers for verification. */
+  async lookup(token) { this.loading = true; this.error = null; this.result = null; this.suggestions = []; try { this.registration = (await lookupCheckIn(token)).data.data; return this.registration } catch (error) { this.registration = null; this.error = error.response?.data?.message || 'Unable to read this QR code.'; return null } finally { this.loading = false } },
+  /** Admin desk search by registration code / name / email. */
+  async search(eventId, query) { this.loading = true; this.error = null; this.result = null; this.suggestions = []; try { const { data } = await searchCheckIns(eventId, query); this.registration = data.data.registration; this.suggestions = data.data.suggestions || []; if (!this.registration && !this.suggestions.length) this.error = 'No match found.'; return this.registration } catch (error) { this.registration = null; this.suggestions = []; this.error = error.response?.data?.errors?.query?.[0] || error.response?.data?.message || 'Search failed.'; return null } finally { this.loading = false } },
+  /** Confirm attendance with the registration token. */
+  async submit(token) { this.checkingIn = true; this.error = null; try { this.result = (await checkIn(token)).data; if (this.registration) this.registration.checked_in_at = this.result.check_in?.checked_in_at || new Date().toISOString(); return this.result } catch (error) { this.error = error.response?.data?.message || 'Check-in failed.'; throw error } finally { this.checkingIn = false } },
+  reset() { this.registration = null; this.result = null; this.error = null; this.loading = false; this.checkingIn = false; this.suggestions = [] },
 } })

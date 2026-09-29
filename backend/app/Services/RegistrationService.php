@@ -21,14 +21,55 @@ class RegistrationService
         $formData = $this->sanitizeFormData($data['form_data'] ?? []);
         $fields = $event->formFields()->get();
 
-        // Mirror the first text-like answers onto the legacy core columns so
-        // admin tables/exports keep working without hardcoded fields.
-        $coreMap = ['full name' => 'full_name', 'email' => 'email', 'email address' => 'email', 'phone' => 'phone', 'phone number' => 'phone', 'organization' => 'organization', 'organisation' => 'organization', 'position' => 'position', 'address' => 'address'];
+        // Mirror labeled answers onto the profile columns so admin tables,
+        // exports, and check-in screens work without hardcoded field ids.
+        $fillable = (new Registration)->getFillable();
+        $coreMap = [
+            'full name' => 'full_name', 'name' => 'full_name',
+            'email' => 'email', 'email address' => 'email',
+            'phone' => 'phone', 'phone number' => 'phone', 'tel' => 'phone', 'telephone' => 'phone',
+            'organization' => 'organization', 'organisation' => 'organization', 'institution' => 'organization',
+            'position' => 'position', 'address' => 'address',
+        ];
         foreach ($fields as $field) {
             $value = $formData[$field->id] ?? null;
+            if ($value === null || $value === '' || $value === []) continue;
             $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
-            if ($value !== null && $value !== '') $formData[$field->id] = $value;
-            if (!isset($data[$normalized]) && $value !== null) $data[$normalized] = $value;
+            $column = $coreMap[$normalized] ?? (in_array($normalized, $fillable, true) ? $normalized : null);
+
+            // "M: Male" / "F: Female" / "N: Non-binary" style choices map to the gender enum.
+            if ($column === 'gender') {
+                $first = is_array($value) ? ($value[0] ?? '') : $value;
+                $prefix = strtolower(trim(explode(':', (string) $first)[0]));
+                $data['gender'] = match (true) {
+                    in_array($prefix, ['m', 'male'], true) => 'male',
+                    in_array($prefix, ['f', 'female'], true) => 'female',
+                    default => 'other',
+                };
+                continue;
+            }
+            // Numeric Age answers fill age; group choices ("Y: 18–29") fill age_group.
+            if ($column === 'age' || $normalized === 'age_group') {
+                if (is_scalar($value) && is_numeric($value)) {
+                    $data['age'] = (int) $value;
+                } else {
+                    $data['age_group'] = is_array($value) ? implode(', ', array_map('strval', $value)) : (string) $value;
+                }
+                continue;
+            }
+            // Disability checkboxes store their option codes ("C: Difficulty seeing" -> "C").
+            if ($column === 'disability_type' || str_contains($normalized, 'disability')) {
+                $codes = [];
+                foreach ((array) $value as $item) {
+                    $code = strtoupper(trim(explode(':', (string) $item)[0]));
+                    if (preg_match('/^[A-Z]{1,2}$/', $code)) $codes[] = $code;
+                }
+                if ($codes !== []) $data['disability_type'] = $codes;
+                continue;
+            }
+            if ($column !== null && !isset($data[$column]) && is_scalar($value)) {
+                $data[$column] = $value;
+            }
         }
         $data['form_data'] = $formData;
 
@@ -63,7 +104,7 @@ class RegistrationService
         $data['event_name'] = $event->name; $data['event_date'] = $event->starts_at; $data['event_location'] = $event->location;
         $data['disability_type'] = json_encode($data['disability_type'] ?? [], JSON_THROW_ON_ERROR);
 
-        return $user->registrations()->create([...$data, 'registration_code' => strtoupper(Str::slug($event->name)).'-'.str_pad((string) ($registeredCount + 1), 3, '0', STR_PAD_LEFT), 'qr_token' => (string) Str::uuid(), 'status' => 'confirmed']);
+        return $user->registrations()->create([...$data, 'registration_code' => $this->nextRegistrationCode($event), 'qr_token' => (string) Str::uuid(), 'status' => 'confirmed']);
     }
 
     public function update(Registration $registration, array $data): Registration
@@ -93,6 +134,18 @@ class RegistrationService
         $registration->fill($data)->save();
 
         return $registration->fresh();
+    }
+
+    /** Next unused per-event registration code (count()+1 collides after deletions/backfills). */
+    private function nextRegistrationCode(Event $event): string
+    {
+        $base = strtoupper(Str::slug($event->name));
+        $n = 1;
+        while (Registration::where('event_id', $event->id)->where('registration_code', $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT))->exists()) {
+            $n++;
+        }
+
+        return $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT);
     }
 
     /** Reject values that are not scalars/arrays (never trust client JSON blobs). */
