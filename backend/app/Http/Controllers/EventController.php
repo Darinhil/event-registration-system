@@ -19,27 +19,27 @@ class EventController extends Controller
     public function destroy(Event $event) { $event->delete(); return response()->json(['message' => 'Event deleted.']); }
     public function store(Request $request): Event
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:150'], 'description' => ['nullable', 'string'], 'starts_at' => ['required', 'date', 'after:now'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'location' => ['required', 'string', 'max:200'], 'capacity' => ['required', 'integer', 'min:1'], 'branding' => ['nullable', 'array'], 'branding.image' => ['nullable', 'string', 'max:2000000'], 'enabled_fields' => ['nullable', 'array'], 'form_config' => ['nullable', 'array'], 'form_fields' => ['nullable', 'array'],'form_fields.*.label' => ['required', 'string', 'max:150'], 'form_fields.*.type' => ['required', 'string', 'max:40'], 'form_fields.*.required' => ['boolean'], 'form_fields.*.description' => ['nullable', 'string', 'max:300'], 'form_fields.*.placeholder' => ['nullable', 'string', 'max:150'], 'form_fields.*.options' => ['nullable', 'array']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:150'], 'description' => ['nullable', 'string'], 'starts_at' => ['required', 'date', 'after:now'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'location' => ['required', 'string', 'max:200'], 'capacity' => ['required', 'integer', 'min:1'], 'branding' => ['nullable', 'array'], 'branding.image' => ['nullable', 'string', 'max:2000000'], 'enabled_fields' => ['nullable', 'array'], 'form_config' => ['nullable', 'array'], 'form_fields' => ['nullable', 'array'], 'form_fields.*.label' => ['required', 'string', 'max:150'], 'form_fields.*.type' => ['required', 'string', 'max:40'], 'form_fields.*.required' => ['boolean'], 'form_fields.*.description' => ['nullable', 'string', 'max:300'], 'form_fields.*.placeholder' => ['nullable', 'string', 'max:150'], 'form_fields.*.options' => ['nullable', 'array'], 'form_fields.*.settings' => ['nullable', 'array']]);
         $fields = $request->input('form_fields', []);
         $data['status'] = 'published';
         unset($data['form_fields']);
         $event = DB::transaction(function () use ($data, $fields): Event {
             $event = Event::create($data);
-            foreach ($fields as $index => $field) $event->formFields()->create(['label' => $field['label'], 'description' => $field['description'] ?? null, 'placeholder' => $field['placeholder'] ?? null, 'type' => $field['type'] ?? 'text', 'required' => (bool) ($field['required'] ?? false), 'options' => $field['options'] ?? null, 'sort_order' => $index]);
+            foreach ($fields as $index => $field) $event->formFields()->create(['label' => $field['label'], 'description' => $field['description'] ?? null, 'placeholder' => $field['placeholder'] ?? null, 'type' => $field['type'] ?? 'text', 'required' => (bool) ($field['required'] ?? false), 'options' => $field['options'] ?? null, 'settings' => $field['settings'] ?? null, 'sort_order' => $index]);
             return $event;
         });
         return $event;
     }
     public function update(Request $request, Event $event): Event
     {
-        $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:150'], 'description' => ['nullable', 'string'], 'starts_at' => ['sometimes', 'required', 'date'], 'ends_at' => ['sometimes', 'required', 'date', 'after:starts_at'], 'location' => ['sometimes', 'required', 'string', 'max:200'], 'capacity' => ['sometimes', 'required', 'integer', 'min:1'], 'branding' => ['nullable', 'array'], 'branding.image' => ['nullable', 'string', 'max:2000000'], 'enabled_fields' => ['nullable', 'array'], 'form_config' => ['nullable', 'array'], 'form_fields' => ['nullable', 'array'], 'form_fields.*.label' => ['required', 'string', 'max:150'], 'form_fields.*.type' => ['required', 'string', 'max:40'], 'form_fields.*.required' => ['boolean'], 'form_fields.*.description' => ['nullable', 'string', 'max:300'], 'form_fields.*.placeholder' => ['nullable', 'string', 'max:150'], 'form_fields.*.options' => ['nullable', 'array']]);
+        $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:150'], 'description' => ['nullable', 'string'], 'starts_at' => ['sometimes', 'required', 'date'], 'ends_at' => ['sometimes', 'required', 'date', 'after:starts_at'], 'location' => ['sometimes', 'required', 'string', 'max:200'], 'capacity' => ['sometimes', 'required', 'integer', 'min:1'], 'branding' => ['nullable', 'array'], 'branding.image' => ['nullable', 'string', 'max:2000000'], 'enabled_fields' => ['nullable', 'array'], 'form_config' => ['nullable', 'array'], 'form_fields' => ['nullable', 'array'], 'form_fields.*.label' => ['required', 'string', 'max:150'], 'form_fields.*.type' => ['required', 'string', 'max:40'], 'form_fields.*.required' => ['boolean'], 'form_fields.*.description' => ['nullable', 'string', 'max:300'], 'form_fields.*.placeholder' => ['nullable', 'string', 'max:150'], 'form_fields.*.options' => ['nullable', 'array'], 'form_fields.*.settings' => ['nullable', 'array']]);
         $fields = $request->input('form_fields');
         unset($data['form_fields']);
         return DB::transaction(function () use ($event, $data, $fields): Event {
             $event->update($data);
             if (is_array($fields)) {
                 $event->formFields()->delete();
-                foreach ($fields as $index => $field) $event->formFields()->create(['label' => $field['label'], 'description' => $field['description'] ?? null, 'placeholder' => $field['placeholder'] ?? null, 'type' => $field['type'] ?? 'text', 'required' => (bool) ($field['required'] ?? false), 'options' => $field['options'] ?? null, 'sort_order' => $index]);
+                foreach ($fields as $index => $field) $event->formFields()->create(['label' => $field['label'], 'description' => $field['description'] ?? null, 'placeholder' => $field['placeholder'] ?? null, 'type' => $field['type'] ?? 'text', 'required' => (bool) ($field['required'] ?? false), 'options' => $field['options'] ?? null, 'settings' => $field['settings'] ?? null, 'sort_order' => $index]);
             }
             return $event->fresh();
         });

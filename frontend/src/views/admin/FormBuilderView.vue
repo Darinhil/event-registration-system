@@ -6,7 +6,7 @@ import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import FormRenderer from '../../components/FormRenderer.vue'
 import {
   FIELD_CATEGORIES, TYPE_META, FIELD_ICONS, FIELD_WIDTHS, OPTION_TYPES,
-  createField, createSteps, starterFields, slugify, baseFieldSettings,
+  addNonBinaryGenderOption, createField, createSteps, isLegacyStarterForm, starterFields, slugify, baseFieldSettings,
 } from '../../utils/formFieldTypes'
 
 const route = useRoute()
@@ -123,6 +123,7 @@ const mapServerField = (field) => {
 const load = async () => {
   loading.value = true
   loadError.value = ''
+  let upgradedLegacyStarter = false
   try {
     const { data } = await api.get(`/admin/events/${eventId}/form-builder`)
     const payload = data.data
@@ -134,6 +135,11 @@ const load = async () => {
     Object.assign(settings, payload.config?.settings || {})
     fields.value = (payload.fields || []).map(mapServerField)
     if (!fields.value.length) fields.value = starterFields(0)
+    else if (!registrationsCount.value && isLegacyStarterForm(fields.value)) {
+      fields.value = starterFields(0)
+      upgradedLegacyStarter = true
+    }
+    fields.value = addNonBinaryGenderOption(fields.value)
     const serverSteps = payload.config?.steps
     if (Array.isArray(serverSteps) && serverSteps.length) steps.value = serverSteps
     else {
@@ -158,6 +164,7 @@ const load = async () => {
     loading.value = false
     pushHistory()
     dirty.value = false
+    if (upgradedLegacyStarter) touch()
   }
 }
 

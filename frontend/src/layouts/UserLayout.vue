@@ -1,7 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import logo from '../assets/logo.png'
+import logo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -16,8 +16,7 @@ const logout = async () => {
   <div class="shell">
     <header class="topbar">
       <RouterLink to="/" class="brand">
-        <img :src="logo" alt="" />
-        <span class="brand-text">Event</span>
+        <img :src="logo" alt="Live & Learn Cambodia" />
       </RouterLink>
 
       <nav>

@@ -1118,6 +1118,66 @@
   font-size: .8rem;
 }
 
+.field-modal--builder .field-preview-label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #1e3a5f;
+  font-size: .8rem;
+}
+
+.field-modal--builder .field-preview-label em {
+  color: #dc3f55;
+  font-style: normal;
+}
+
+.field-modal--builder .field-preview-control {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #cfe0f1;
+  border-radius: 8px;
+  background: #fbfdff;
+  color: #334e68;
+  font: inherit;
+  font-size: .8rem;
+  opacity: 1;
+}
+
+.field-modal--builder textarea.field-preview-control {
+  min-height: 78px;
+  resize: none;
+}
+
+.field-modal--builder .field-preview-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.field-modal--builder .field-preview-choices label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid #d5e1eb;
+  border-radius: 7px;
+  background: #fff;
+  color: #365574;
+  font-size: .75rem;
+}
+
+.field-modal--builder .field-preview-choices input {
+  width: 14px;
+  height: 14px;
+  min-height: 0;
+  margin: 0;
+  accent-color: #277cf2;
+}
+
 @media (max-width: 700px) {
   .modal-backdrop--enhanced .field-modal--builder {
     width: calc(100% - 24px);

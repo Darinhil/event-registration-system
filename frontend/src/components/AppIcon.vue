@@ -40,5 +40,20 @@ defineProps({
     <template v-else-if="name === 'arrow-right'">
       <path d="M5 12h14M13 6l6 6-6 6" />
     </template>
+    <template v-else-if="name === 'ticket'">
+      <path d="M3 9V7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V9a3 3 0 0 0 0 6v1.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V15a3 3 0 0 0 0-6Z" /><path d="M14 6v2.2M14 11v2M14 15.8V18" />
+    </template>
+    <template v-else-if="name === 'check-circle'">
+      <circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.9" />
+    </template>
+    <template v-else-if="name === 'lock'">
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7M12 14.5v2" />
+    </template>
+    <template v-else-if="name === 'mail'">
+      <rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" />
+    </template>
+    <template v-else-if="name === 'inbox'">
+      <path d="M4 13.5 6.2 5.6A1.6 1.6 0 0 1 7.7 4.5h8.6a1.6 1.6 0 0 1 1.5 1.1L20 13.5V18a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 18Z" /><path d="M4 13.5h4.6a3.4 3.4 0 0 0 6.8 0H20" />
+    </template>
   </svg>
 </template>

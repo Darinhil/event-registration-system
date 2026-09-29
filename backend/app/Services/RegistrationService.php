@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Registration;
 use App\Models\User;
 use App\Models\Event;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
@@ -17,9 +18,41 @@ class RegistrationService
         $fields = $event->formFields()->get();
         foreach ($fields as $field) {
             $value = $formData[$field->id] ?? null;
+            if ($field->type === 'file' && $value instanceof UploadedFile) {
+                $formData[$field->id] = $value->store('registration-files', 'public');
+                $value = $formData[$field->id];
+            }
             $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
+            if ($normalized === 'name') $normalized = 'full_name';
+            if ($normalized === 'tel') $normalized = 'phone';
+            if ($normalized === 'institution') $normalized = 'organization';
+            if ($normalized === 'gender') {
+                $genderCode = strtoupper(trim(explode(':', (string) $value, 2)[0]));
+                $data['gender'] = match ($genderCode) {
+                    'M', 'MALE' => 'male',
+                    'F', 'FEMALE' => 'female',
+                    'P', 'N', 'OTHER' => 'other',
+                    default => $data['gender'] ?? null,
+                };
+                $normalized = '';
+            }
+            if ($normalized === 'disability' && is_array($value)) {
+                $data['disability_type'] = array_map(
+                    fn ($answer) => strtoupper(trim(explode(':', (string) $answer, 2)[0])),
+                    $value,
+                );
+                $normalized = '';
+            }
+            if ($normalized === 'photo_request_and_use') {
+                $data['photo_consent'] = strtolower((string) $value) === 'yes';
+                $normalized = '';
+            }
+            if ($normalized === 'age' && ! is_numeric($value)) {
+                $data['age_group'] = $value;
+                $normalized = '';
+            }
             if ($value !== null && $value !== '') $formData[$field->id] = $value;
-            if (!isset($data[$normalized]) && $value !== null) $data[$normalized] = $value;
+            if ($normalized !== '' && !isset($data[$normalized]) && $value !== null) $data[$normalized] = $value;
         }
         $data['form_data'] = $formData;
         $enabled = $event->enabled_fields ?: [];
