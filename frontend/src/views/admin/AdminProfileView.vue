@@ -172,9 +172,9 @@ const changePassword = async () => {
               <div>
                 <strong>Profile photo</strong>
                 <p>JPG, PNG, or WEBP up to 5 MB.</p>
-                <label class="button button-ghost profile-photo-button">
+                <label class="button button-ghost profile-photo-button" :class="{ 'is-disabled': !editing }" :aria-disabled="!editing">
                   {{ editing ? 'Choose photo' : 'Change photo' }}
-                  <input type="file" accept="image/jpeg,image/png,image/webp" @click="editing = true" @change="choosePhoto" />
+                  <input type="file" accept="image/jpeg,image/png,image/webp" :disabled="!editing" @change="choosePhoto" />
                 </label>
               </div>
             </div>

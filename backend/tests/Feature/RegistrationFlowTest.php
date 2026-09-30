@@ -66,7 +66,7 @@ class RegistrationFlowTest extends TestCase
         $this->assertArrayHasKey($field->id, $storedFormData);
         $path = $storedFormData[$field->id];
         $this->assertIsString($path);
-        Storage::disk('public')->assertExists($path);
+        $this->assertTrue(Storage::disk('public')->exists($path));
     }
 
     public function test_dynamic_url_fields_accept_valid_urls_and_reject_invalid_values(): void

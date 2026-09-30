@@ -9,7 +9,6 @@ const router = useRouter()
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
-const darkMode = ref(false)
 const profilePhotoBroken = ref(false)
 const profilePhotoSrc = ref('')
 const searchInput = ref(null)
@@ -59,7 +58,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <header class="admin-topbar" :class="{ 'is-dark': darkMode }">
+  <header class="admin-topbar">
     <label class="admin-search">
       <span class="admin-search-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
@@ -73,10 +72,6 @@ onBeforeUnmount(() => {
     </label>
 
     <div class="admin-top-actions">
-      <button type="button" class="admin-icon-action theme-toggle" :aria-pressed="darkMode" aria-label="Toggle theme" @click="darkMode = !darkMode">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" /></svg>
-      </button>
-
       <div class="admin-action-wrap">
         <button type="button" class="admin-notification" aria-label="Notifications" :aria-expanded="notificationOpen" @click="togglePanel('notifications')">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8.5 12h5" /></svg><b>3</b>

@@ -598,6 +598,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .profile-photo-editor p { margin: 5px 0 10px; color: #8494a8; font-size: .8rem; }
 .profile-photo-button { position: relative; overflow: hidden; }
 .profile-photo-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.profile-photo-button.is-disabled { cursor: not-allowed; opacity: .58; }
+.profile-photo-button input:disabled { cursor: not-allowed; }
 .profile-form-grid, .profile-password-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .profile-form-grid label, .profile-password-form label { display: grid; gap: 7px; color: #435f7d; font-size: .86rem; font-weight: 700; }
 .profile-form-grid label > span { color: #e14949; }

@@ -110,7 +110,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); document.removeEventListener(
 <template>
   <AdminLayout>
     <section class="event-dashboard">
-      <header class="event-dashboard-heading"><div><h1>Event Dashboard</h1><p>Track registrations and check-ins in real time.</p></div></header>
+      <header class="event-dashboard-heading"><div><h1>Event Dashboard</h1></div></header>
       <p v-if="error" class="dashboard-error" role="alert">{{ error }} <button type="button" @click="loadDashboard">Retry</button></p>
 
       <div class="metric-grid">
