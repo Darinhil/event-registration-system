@@ -4,7 +4,7 @@
  * Form Builder (fields, types, labels, options, required flags, descriptions,
  * order, steps, and form settings) via the shared FormRenderer.
  */
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FormRenderer from './FormRenderer.vue'
 import { useAuthStore } from '../stores/auth'
@@ -15,7 +15,7 @@ import { buildSubmission, displayValue, normalizeStoredValue, validateFields } f
 const route = useRoute(); const router = useRouter(); const store = useRegistrationStore()
 const event = ref(null); const fields = ref([]); const values = reactive({}); const loading = ref(true); const error = ref(''); const step = ref(1)
 const normalizeType = (field) => { const type = String(field.type || 'text').toLowerCase().replaceAll(' ', '').replace('select/dropdown', 'select'); return type === 'phonenumber' ? 'phone' : type }
-const load = async () => { const id = route.params.eventId; try { const eventResponse = await api.get(`/events/${id}`); const formResponse = await api.get(`/events/${id}/form`); event.value = eventResponse.data.data; fields.value = formResponse.data.data } catch (requestError) { const local = JSON.parse(localStorage.getItem('event_list') || '[]').find((item) => String(item.id) === String(id)); if (local) { event.value = local; fields.value = (local.fields || []).map((field, index) => ({ ...field, id: field.id || index + 1, type: normalizeType(field), sort_order: index })) } else if (requestError.response?.status) error.value = `This event could not be loaded (API ${requestError.response.status}).`; else error.value = `Cannot connect to the registration service at ${api.defaults.baseURL}.` } finally { loading.value = false } }
+const load = async () => { const id = route.params.eventId; try { const eventResponse = await api.get(`/events/${id}`); const formResponse = await api.get(`/events/${id}/form`); event.value = eventResponse.data.data; const formData = formResponse.data.data; fields.value = Array.isArray(formData) ? formData : (formData?.fields || []) } catch (requestError) { const local = JSON.parse(localStorage.getItem('event_list') || '[]').find((item) => String(item.id) === String(id)); if (local) { event.value = local; fields.value = (local.fields || []).map((field, index) => ({ ...field, id: field.id || index + 1, type: normalizeType(field), sort_order: index })) } else if (requestError.response?.status) error.value = `This event could not be loaded (API ${requestError.response.status}).`; else error.value = `Cannot connect to the registration service at ${api.defaults.baseURL}.` } finally { loading.value = false } }
 const isRequired = (field) => Boolean(field.required)
 const fieldValue = (field) => values[field.id] ?? ''
 const updateValue = (field, value) => { values[field.id] = value }

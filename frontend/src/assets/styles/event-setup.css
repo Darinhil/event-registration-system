@@ -21,7 +21,7 @@
 .es-header-title{display:grid;gap:4px;min-width:0;justify-self:start}
 .es-header-title h1{overflow:hidden;font-size:24px;font-weight:750;letter-spacing:-.045em;text-overflow:ellipsis;white-space:nowrap}
 .es-header-title small{display:flex;flex-wrap:wrap;align-items:center;gap:7px;color:var(--es-muted);font-size:11px}
-.es-header-title small:before{content:'Event workspace';color:#a1b0bf;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.es-header-title small:before{content:'';color:#a1b0bf;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .es-chip{padding:3px 8px;border-radius:999px;background:#eef3f9;color:#5f7893;font-size:10px;font-weight:700}
 .es-chip--draft{background:#fff4d9;color:#a96a05}
 .es-tabs{display:flex;gap:2px;padding:3px;border:1px solid var(--es-border);border-radius:9px;background:#eef3f9;justify-self:center}

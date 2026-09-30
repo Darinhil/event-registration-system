@@ -1,0 +1,769 @@
+/* ============================================================
+   ui-refresh.css — final consistency layer (loaded last)
+   One design language across every page:
+   • Blue SaaS admin (dashboard, events, attendance, reports, check-in)
+   • Teal public/attendee experience (home, auth, registration)
+   • Unified type scale, buttons, inputs, tables, pills, states
+   ============================================================ */
+
+/* ---------------- 1. Design tokens ---------------- */
+:root {
+  /* Shared brand ramp */
+  --ur-blue: #2563eb;
+  --ur-blue-dark: #1d4ed8;
+  --ur-blue-soft: #eff6ff;
+  --ur-teal: #0d9488;
+  --ur-teal-dark: #0f766e;
+
+  /* Neutrals */
+  --ur-ink: #0f172a;
+  --ur-body: #475569;
+  --ur-muted: #7c8ba1;
+  --ur-faint: #94a3b8;
+  --ur-border: #e2e8f0;
+  --ur-line: #f1f5f9;
+  --ur-surface: #ffffff;
+  --ur-bg-soft: #f8fafc;
+
+  /* Feedback */
+  --ur-green: #059669;
+  --ur-green-soft: #ecfdf5;
+  --ur-amber: #b45309;
+  --ur-amber-soft: #fffbeb;
+  --ur-red: #b42318;
+  --ur-red-soft: #fef2f2;
+  --ur-violet: #7c3aed;
+
+  --ur-radius: 12px;
+  --ur-shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
+  --ur-shadow-md: 0 10px 30px -12px rgba(15, 23, 42, .14);
+  --ur-shadow-lg: 0 24px 50px -20px rgba(15, 23, 42, .2);
+
+  /* Keep public form accents in the teal family (was purple) */
+  --form-purple-action: #0d9488;
+}
+
+/* Public registration hero matches the landing gradient */
+.dynamic-event-hero {
+  background: linear-gradient(140deg, #0c2a33 0%, #103b43 48%, #0d9488 130%);
+}
+
+/* ---------------- 2. Base refinements ---------------- */
+::selection { background: rgba(37, 99, 235, .16); }
+
+html { scroll-behavior: smooth; }
+
+img { max-width: 100%; }
+
+/* Don't lift tiny controls on hover — only real buttons/links lift */
+.filter-menu button,
+.create-stepper button,
+.view-toggle button,
+.profile-menu-panel a,
+.profile-menu-panel button,
+.es-tabs button,
+.es-mode-grid button,
+.es-width-options button,
+.es-step-tab,
+.event-card-actions a,
+.event-card-actions .delete-event-action,
+.attendee-toolbar .toolbar-clear,
+.es-quick-dates button,
+.table-search input { transform: none !important; }
+
+/* Slim, consistent scrollbars for scrollable regions */
+.attendee-table-wrap,
+.attendance-table-scroll,
+.reports-table-wrap,
+.managed-events-table,
+.es-preview-stage,
+.field-modal--builder .field-modal-body { scrollbar-width: thin; scrollbar-color: #c7d5e4 transparent; }
+.attendee-table-wrap::-webkit-scrollbar,
+.attendance-table-scroll::-webkit-scrollbar,
+.reports-table-wrap::-webkit-scrollbar,
+.managed-events-table::-webkit-scrollbar { height: 8px; width: 8px; }
+.attendee-table-wrap::-webkit-scrollbar-thumb,
+.attendance-table-scroll::-webkit-scrollbar-thumb,
+.reports-table-wrap::-webkit-scrollbar-thumb,
+.managed-events-table::-webkit-scrollbar-thumb { border-radius: 999px; background: #c7d5e4; }
+
+/* Respect reduced motion everywhere */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ---------------- 3. Typography rhythm ---------------- */
+.admin-eyebrow {
+  margin: 0;
+  color: var(--ur-blue);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+/* One h1 scale for every admin page (was 3 different clamps) */
+.event-dashboard-heading h1,
+.dashboard-page-heading h1,
+.flow-heading h1,
+.detail-workspace-heading h1,
+.checkin-heading h1,
+.registrants-heading h1,
+.attendance-workspace-heading h1,
+.reports-heading h1 {
+  margin: 6px 0 8px;
+  color: var(--ur-ink);
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+}
+
+.event-dashboard-heading p,
+.dashboard-page-heading p,
+.flow-heading p,
+.checkin-heading p,
+.registrants-heading p,
+.attendance-workspace-heading p,
+.reports-heading p {
+  margin: 0;
+  color: var(--ur-body);
+  font-size: .95rem;
+  line-height: 1.55;
+}
+
+/* Panel titles */
+.event-list-toolbar h2,
+.checkin-summary h2,
+.scanner-panel h2,
+.checkin-table-panel h2,
+.detail-panel h2 {
+  color: var(--ur-ink);
+  letter-spacing: -.015em;
+}
+
+/* ---------------- 4. Buttons ---------------- */
+.primary-button,
+.workflow-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .65);
+  color: #fff;
+  font-size: .86rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.primary-button:hover,
+.workflow-primary:hover {
+  background: linear-gradient(135deg, #2f6fe0, #1d4ed8);
+  box-shadow: 0 12px 24px -10px rgba(37, 99, 235, .7);
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #d7e2ee;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--ur-shadow-sm);
+  color: #3f5a7d;
+  font-size: .84rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.secondary-button:hover {
+  border-color: #9fc3f2;
+  background: #f8fbff;
+  color: var(--ur-blue);
+}
+
+.text-link,
+.text-link-button { color: var(--ur-blue); font-weight: 700; }
+.text-link:hover,
+.text-link-button:hover { color: var(--ur-blue-dark); }
+
+/* Public (attendee) submit actions use the teal brand */
+.dynamic-form > .primary-button,
+.dynamic-review-actions .primary-button,
+.preview-register-button {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  box-shadow: 0 10px 22px -10px rgba(13, 148, 136, .7);
+}
+.dynamic-form > .primary-button:hover,
+.dynamic-review-actions .primary-button:hover,
+.preview-register-button:hover {
+  background: linear-gradient(135deg, #0f9d8e, #0f766e);
+  box-shadow: 0 14px 26px -10px rgba(13, 148, 136, .75);
+}
+.dynamic-field input:hover,
+.dynamic-field select:hover,
+.dynamic-field textarea:hover { border-color: #bcd8d4; background: #fff; }
+.dynamic-field input:focus,
+.dynamic-field select:focus,
+.dynamic-field textarea:focus { border-color: #2ab3a5; box-shadow: 0 0 0 3px rgba(13, 148, 136, .13); }
+.dynamic-field input[type='file']::file-selector-button { border-color: #c8ddd9; color: var(--ur-teal-dark); }
+.dynamic-review > .admin-eyebrow { color: var(--ur-teal); }
+
+/* ---------------- 5. Inputs & selects ---------------- */
+.events-search,
+.table-search,
+.attendance-table-search,
+.reports-search,
+.admin-search { transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease; }
+
+.events-search:focus-within,
+.table-search:focus-within,
+.attendance-table-search:focus-within,
+.reports-search:focus-within {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .1);
+}
+
+.toolbar-controls select,
+.attendance-table-toolbar select,
+.reports-tools select {
+  border-color: var(--ur-border);
+  border-radius: 10px;
+  color: #334155;
+  font-weight: 600;
+}
+.toolbar-controls select:focus,
+.attendance-table-toolbar select:focus,
+.reports-tools select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
+  outline: 0;
+}
+.attendance-table-toolbar select.is-active,
+.reports-tools select.is-active { border-color: #93c5fd; background: var(--ur-blue-soft); color: var(--ur-blue); }
+
+/* ---------------- 6. Cards & panels ---------------- */
+.event-list-panel,
+.registrants-panel,
+.attendance-summary-card,
+.attendance-table-card,
+.attendance-event-list > *,
+.checkin-summary,
+.scanner-panel,
+.checkin-table-panel,
+.reports-panel {
+  border-radius: 16px;
+}
+
+.event-list-panel { overflow: hidden; }
+
+/* Sidebar event list (attendance workspace) */
+.attendance-event-item { border-radius: 12px; transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease; }
+.attendance-event-item:hover { border-color: #c3d9f5; background: #f8fbff; }
+.attendance-event-item.active {
+  border-color: #bfd8f8;
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  box-shadow: 0 8px 20px -12px rgba(37, 99, 235, .45);
+}
+.attendance-event-tabs button { border-radius: 999px; font-weight: 600; transition: background-color .15s ease, color .15s ease; }
+.attendance-event-tabs button.active { background: var(--ur-blue); color: #fff; }
+.attendance-terminal { border-radius: 12px; }
+
+/* ---------------- 7. Tables ---------------- */
+.managed-events-table th,
+.attendee-table-wrap th,
+.attendance-table th,
+.reports-table-wrap th,
+.registrants-panel th {
+  color: var(--ur-faint);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.managed-events-table tbody tr,
+.attendance-table tbody tr,
+.reports-table-wrap tbody tr,
+.registrants-panel tbody tr { transition: background-color .14s ease; }
+
+.managed-events-table tbody tr:hover,
+.attendance-table tbody tr:hover,
+.reports-table-wrap tbody tr:hover,
+.registrants-panel tbody tr:hover { background: #f8faff; }
+
+.managed-events-table .table-event-actions a,
+.attendance-view-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 15px;
+  border: 1px solid var(--ur-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ur-blue);
+  font-size: .78rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.managed-events-table .table-event-actions a:hover,
+.attendance-view-button:hover {
+  border-color: var(--ur-blue);
+  background: var(--ur-blue);
+  color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .5);
+}
+
+/* ---------------- 8. Status pills (one shape everywhere) ---------------- */
+.event-status,
+.status-pill,
+.attendance-status-pill,
+.checkin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #526579;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.event-status::before,
+.status-pill::before,
+.attendance-status-pill::before,
+.checkin-pill::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.event-status.open,
+.event-status.published,
+.status-pill.registered,
+.status-pill.checked,
+.attendance-status-pill.checked,
+.checkin-pill.checked,
+.attendee-status.is-checked-in {
+  background: var(--ur-green-soft);
+  color: #047857;
+}
+
+.event-status.draft,
+.status-pill.pending,
+.attendance-status-pill.pending,
+.checkin-pill.pending,
+.attendee-status.is-ready {
+  background: var(--ur-amber-soft);
+  color: var(--ur-amber);
+}
+
+.event-status.closed,
+.event-status.cancelled {
+  background: var(--ur-red-soft);
+  color: var(--ur-red);
+}
+
+/* Live indicator on the check-in desk */
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border: 1px solid #b5e5cd;
+  border-radius: 999px;
+  background: var(--ur-green-soft);
+  box-shadow: var(--ur-shadow-sm);
+  color: #047857;
+  font-size: .74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------------- 9. Empty, loading & error states ---------------- */
+.event-empty-state,
+.attendance-empty-state {
+  gap: 6px;
+  min-height: 320px;
+}
+
+.empty-icon,
+.attendance-empty-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  border: 1px solid #d7e7fb;
+  background: linear-gradient(180deg, #f5f9ff, #fff);
+  box-shadow: 0 12px 26px -14px rgba(37, 99, 235, .5);
+  color: var(--ur-blue);
+}
+
+.event-empty-state h3,
+.attendance-empty-state strong {
+  color: var(--ur-ink);
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.event-empty-state p,
+.attendance-empty-state p,
+.attendance-empty-state small {
+  color: var(--ur-muted);
+  font-size: .86rem;
+  line-height: 1.55;
+}
+
+.inline-error,
+.dashboard-error,
+.dynamic-form-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: var(--ur-red-soft);
+  color: #b91c1c;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.dynamic-loading { color: var(--ur-muted); }
+
+/* ---------------- 10. Page-specific polish ---------------- */
+
+/* --- Vector icon system (replaces text glyphs) --- */
+.stat-mark svg,
+.empty-icon svg,
+.attendance-empty-icon svg,
+.scanner-frame svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.empty-icon svg,
+.attendance-empty-icon svg { width: 24px; height: 24px; }
+.stat-mark svg { width: 18px; height: 18px; }
+
+/* Sidebar nav icons */
+.admin-nav a span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+.admin-nav a span svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.admin-user-card button svg,
+.export-log-button svg,
+.secondary-button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Search field icons (events, attendance) */
+.events-search svg,
+.attendance-event-search span svg,
+.attendance-table-search span svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.attendance-event-search span,
+.attendance-table-search span { display: grid; place-items: center; }
+
+/* Card + table action icons */
+.event-card-actions a svg,
+.event-card-actions .delete-event-action svg { flex: 0 0 auto; }
+
+/* Event card meta icons */
+.event-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.event-card-meta span svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--ur-blue);
+}
+
+/* Check-in log empty state icon */
+.recent-empty > span svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Back link + scanner frame */
+.back-link { display: inline-flex; align-items: center; gap: 7px; }
+.back-link svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.scanner-frame svg { width: 34px; height: 34px; stroke-width: 1.7; }
+.attendance-table-empty span svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Event card visual: cleaner overlay chips --- */
+.event-card-visual { height: 220px; background: linear-gradient(135deg, #16324f, #3f6079); }
+.event-card-visual-shade {
+  background: linear-gradient(180deg, rgba(8, 20, 34, .12), transparent 38%, rgba(8, 20, 34, .55));
+}
+.event-card-overlay-category,
+.event-card-overlay-status {
+  top: 12px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.event-card-overlay-category {
+  left: 12px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(10, 25, 42, .55);
+  color: #fff;
+}
+.event-card-overlay-status {
+  right: 12px;
+  background: rgba(236, 253, 245, .92);
+  box-shadow: 0 4px 12px -4px rgba(5, 90, 60, .45);
+  color: #047857;
+  text-transform: none;
+}
+
+/* --- Admin sidebar: same active language as the topbar --- */
+.admin-nav a.is-active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .65);
+}
+.admin-brand { color: #fff; }
+
+/* --- Events page --- */
+.event-dashboard-page .dashboard-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 12px;
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+/* --- Check-in workspace --- */
+.scanner-placeholder { border-radius: 14px; }
+.scanner-frame { border-radius: 16px; background: var(--ur-blue-soft); }
+.attendee-preview { border-radius: 14px; }
+.export-log-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: var(--ur-blue-soft);
+  color: var(--ur-blue);
+  font-size: .78rem;
+  font-weight: 700;
+}
+.export-log-button:hover:not(:disabled) { background: var(--ur-blue); border-color: var(--ur-blue); color: #fff; }
+.export-log-button:disabled { opacity: .55; cursor: wait; }
+
+/* --- Reports --- */
+.reports-rate-track { border-radius: 999px; }
+.checkin-pill { font-size: .7rem; }
+
+/* --- Event setup flow --- */
+.event-flow-page .flow-heading h1 {
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+}
+.event-flow-page .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+}
+
+/* ---------------- 11. Responsive behavior ---------------- */
+
+/* --- Tablet: keep tables readable, relax the grid --- */
+@media (max-width: 1100px) {
+  .event-dashboard-heading h1,
+  .dashboard-page-heading h1 { font-size: clamp(1.65rem, 3vw, 2rem); }
+}
+
+/* --- Small tablet / large phone --- */
+@media (max-width: 720px) {
+  /* Sidebar becomes a horizontal, scrollable nav — no hidden links */
+  .admin-app-shell { display: block; }
+  .admin-sidebar { position: sticky; top: 0; z-index: 45; width: 100%; padding: 12px 14px 10px; }
+  .admin-brand { margin: 0 4px 10px; font-size: 1.05rem; }
+  .admin-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .admin-nav::-webkit-scrollbar { display: none; }
+  .admin-nav a {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 13px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .06);
+    color: #c3d3e6;
+    font-size: .74rem;
+    white-space: nowrap;
+  }
+  .admin-nav a span { display: grid; }
+  /* Un-hide every nav item (older rules hid Reports/Settings/Check-in) */
+  .admin-nav a:nth-child(n + 4),
+  .admin-nav a:nth-child(n + 5) { display: inline-flex; }
+  .admin-nav a.is-active { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+
+  .admin-main-shell { width: 100%; margin-left: 0; }
+
+  /* Page headers stack */
+  .event-dashboard-heading,
+  .dashboard-page-heading,
+  .checkin-heading,
+  .registrants-heading,
+  .attendance-workspace-heading,
+  .reports-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dashboard-create,
+  .registrants-heading .secondary-button,
+  .detail-heading-actions .secondary-button { width: 100%; }
+
+  /* Scrollable tables instead of squeezed columns */
+  .managed-events-table,
+  .attendee-table-wrap,
+  .attendance-table-scroll,
+  .reports-table-wrap,
+  .registrants-panel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .managed-events-table table,
+  .attendee-table-wrap table,
+  .attendance-table,
+  .reports-table-wrap table,
+  .registrants-panel table { min-width: 640px; }
+
+  /* Stat cards: 2-up */
+  .event-overview-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+
+/* --- Phones --- */
+@media (max-width: 640px) {
+  .event-overview-stats,
+  .metric-grid { grid-template-columns: 1fr; }
+
+  .event-list-toolbar { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .toolbar-controls { align-items: stretch; flex-direction: column; width: 100%; }
+  .events-search { width: 100%; }
+  .view-toggle { display: none; }
+
+  .attendance-event-tabs { overflow-x: auto; }
+  .attendance-event-header { flex-wrap: wrap; }
+  .attendance-header-actions { width: 100%; }
+  .attendance-header-actions > * { flex: 1; }
+  .attendance-summary-tabs { overflow-x: auto; }
+  .attendance-table-toolbar { flex-wrap: wrap; }
+  .attendance-table-toolbar .attendance-table-search { flex-basis: 100%; }
+
+  .event-card-actions { flex-wrap: wrap; }
+  .event-card-actions a,
+  .event-card-actions .delete-event-action { flex: 1 1 auto; justify-content: center; }
+
+  .ews-header-actions { flex-direction: column; }
+  .ews-header-actions .ews-btn { width: 100%; }
+
+  .dynamic-form > .primary-button,
+  .dynamic-review-actions .primary-button,
+  .dynamic-review-actions .secondary-button { width: 100%; }
+}
+
+@media (max-width: 430px) {
+  .admin-nav a { padding: 8px 11px; font-size: .7rem; }
+  .admin-main-shell main { padding: 0 12px 40px; }
+  .event-dashboard-heading h1,
+  .dashboard-page-heading h1,
+  .checkin-heading h1,
+  .registrants-heading h1,
+  .attendance-workspace-heading h1,
+  .reports-heading h1 { font-size: 1.5rem; }
+}
