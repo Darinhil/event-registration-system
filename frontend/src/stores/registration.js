@@ -33,7 +33,8 @@ export const useRegistrationStore = defineStore('registration', {
         this.current = data.data
         return this.current
       } catch (error) {
-        this.error = error.response?.data?.message || 'Registration failed.'
+        const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0]
+        this.error = validationMessage || error.response?.data?.message || (error.response ? `Registration failed (API ${error.response.status}).` : 'Cannot connect to the registration service.')
         throw error
       } finally {
         this.loading = false

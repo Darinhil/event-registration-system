@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/registrations', [RegistrationController::class, 'store']);
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
+    Route::get('/check-ins/lookup', [CheckInController::class, 'lookup']);
     Route::post('/check-ins', [CheckInController::class, 'store']);
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
