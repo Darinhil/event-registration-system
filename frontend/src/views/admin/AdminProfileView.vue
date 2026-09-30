@@ -28,6 +28,30 @@ const password = reactive({
   new_password_confirmation: '',
 })
 
+const showPassword = reactive({ current: false, new: false, confirm: false })
+
+const passwordChecks = computed(() => ({
+  length: password.new_password.length >= 8,
+  match: password.new_password.length > 0 && password.new_password === password.new_password_confirmation,
+}))
+
+const confirmMismatch = computed(() => password.new_password_confirmation.length > 0 && !passwordChecks.value.match)
+
+const passwordStrength = computed(() => {
+  const pw = password.new_password
+  if (!pw) return null
+  let score = 0
+  if (pw.length >= 8) score += 1
+  if (pw.length >= 12) score += 1
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score += 1
+  if (/\d/.test(pw)) score += 1
+  if (/[^A-Za-z0-9]/.test(pw)) score += 1
+  if (score <= 2) return { label: 'Weak', value: 30, color: '#e46a77' }
+  if (score <= 3) return { label: 'Fair', value: 55, color: '#e9a23b' }
+  if (score <= 4) return { label: 'Good', value: 80, color: '#3fb984' }
+  return { label: 'Strong', value: 100, color: '#0d9488' }
+})
+
 const initials = computed(() => (profile.name || 'AD').slice(0, 2).toUpperCase())
 const displayPhoto = computed(() => selectedPhoto.value ? photoPreview.value : serverPhotoSrc.value)
 const createdDate = computed(() => {
@@ -160,7 +184,7 @@ const changePassword = async () => {
         <div class="profile-settings-main">
           <section class="profile-settings-card">
             <div class="profile-card-heading">
-              <div><h2>Personal information</h2><p>Keep your account details up to date.</p></div>
+              <div><span class="profile-card-icon">👤</span><div><h2>Personal information</h2><p>Keep your account details up to date.</p></div></div>
               <button v-if="!editing" type="button" class="button button-secondary" @click="startEditing">Edit profile</button>
             </div>
 
@@ -193,12 +217,47 @@ const changePassword = async () => {
           </section>
 
           <section class="profile-settings-card">
-            <div class="profile-card-heading"><div><h2>Security</h2><p>Change your password regularly to keep your account secure.</p></div></div>
+            <div class="profile-card-heading"><div><span class="profile-card-icon">🔒</span><div><h2>Security</h2><p>Change your password regularly to keep your account secure.</p></div></div></div>
             <form class="profile-password-form" @submit.prevent="changePassword">
-              <label>Current password<input v-model="password.current_password" type="password" autocomplete="current-password" required /></label>
-              <label>New password<input v-model="password.new_password" type="password" minlength="8" autocomplete="new-password" required /><small>Use at least 8 characters.</small></label>
-              <label>Confirm new password<input v-model="password.new_password_confirmation" type="password" minlength="8" autocomplete="new-password" required /></label>
-              <div class="profile-card-actions"><button type="submit" class="button button-secondary" :disabled="changingPassword">{{ changingPassword ? 'Changing…' : 'Change password' }}</button></div>
+              <label>Current password
+                <span class="password-field">
+                  <input v-model="password.current_password" :type="showPassword.current ? 'text' : 'password'" autocomplete="current-password" required />
+                  <button type="button" class="password-toggle" :aria-label="showPassword.current ? 'Hide current password' : 'Show current password'" @click="showPassword.current = !showPassword.current">
+                    <svg v-if="showPassword.current" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.2A11.2 11.2 0 0 1 12 6c6.5 0 10 6 10 6a17.8 17.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8.1 2 12 2 12s3.5 6 10 6c1.7 0 3.1-.4 4.4-1"/></svg>
+                  </button>
+                </span>
+              </label>
+              <label>New password
+                <span class="password-field">
+                  <input v-model="password.new_password" :type="showPassword.new ? 'text' : 'password'" minlength="8" autocomplete="new-password" required />
+                  <button type="button" class="password-toggle" :aria-label="showPassword.new ? 'Hide new password' : 'Show new password'" @click="showPassword.new = !showPassword.new">
+                    <svg v-if="showPassword.new" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.2A11.2 11.2 0 0 1 12 6c6.5 0 10 6 10 6a17.8 17.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8.1 2 12 2 12s3.5 6 10 6c1.7 0 3.1-.4 4.4-1"/></svg>
+                  </button>
+                </span>
+                <span v-if="passwordStrength" class="password-strength">
+                  <span class="password-strength-track"><i :style="{ width: `${passwordStrength.value}%`, background: passwordStrength.color }"></i></span>
+                  <small :style="{ color: passwordStrength.color }">{{ passwordStrength.label }}</small>
+                </span>
+              </label>
+              <label>Confirm new password
+                <span class="password-field" :class="{ 'has-error': confirmMismatch }">
+                  <input v-model="password.new_password_confirmation" :type="showPassword.confirm ? 'text' : 'password'" minlength="8" autocomplete="new-password" required />
+                  <button type="button" class="password-toggle" :aria-label="showPassword.confirm ? 'Hide password confirmation' : 'Show password confirmation'" @click="showPassword.confirm = !showPassword.confirm">
+                    <svg v-if="showPassword.confirm" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.2A11.2 11.2 0 0 1 12 6c6.5 0 10 6 10 6a17.8 17.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8.1 2 12 2 12s3.5 6 10 6c1.7 0 3.1-.4 4.4-1"/></svg>
+                  </button>
+                </span>
+              </label>
+              <ul class="password-requirements" aria-label="Password requirements">
+                <li :class="{ ok: passwordChecks.length }">At least 8 characters</li>
+                <li :class="{ ok: passwordChecks.match }">Both new passwords match</li>
+              </ul>
+              <div class="profile-card-actions">
+                <p class="password-actions-note"><span>🔐</span> You'll stay signed in after changing your password.</p>
+                <button type="submit" class="button button-primary" :disabled="changingPassword">{{ changingPassword ? 'Changing…' : 'Change password' }}</button>
+              </div>
             </form>
           </section>
         </div>

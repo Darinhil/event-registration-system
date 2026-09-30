@@ -2,14 +2,15 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 import api from '../services/api'
 import adminLogo from '../assets/Adminlogo.png'
 
 const router = useRouter()
 const auth = useAuthStore()
+const theme = useThemeStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
-const darkMode = ref(false)
 const profilePhotoBroken = ref(false)
 const profilePhotoSrc = ref('')
 const searchInput = ref(null)
@@ -59,7 +60,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <header class="admin-topbar" :class="{ 'is-dark': darkMode }">
+  <header class="admin-topbar" :class="{ 'is-dark': theme.dark }">
     <label class="admin-search">
       <span class="admin-search-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
@@ -73,8 +74,9 @@ onBeforeUnmount(() => {
     </label>
 
     <div class="admin-top-actions">
-      <button type="button" class="admin-icon-action theme-toggle" :aria-pressed="darkMode" aria-label="Toggle theme" @click="darkMode = !darkMode">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" /></svg>
+      <button type="button" class="admin-icon-action theme-toggle" :aria-pressed="theme.dark" aria-label="Toggle dark mode" @click="theme.toggle()">
+        <svg class="theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4" /></svg>
+        <svg class="theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" /></svg>
       </button>
 
       <div class="admin-action-wrap">

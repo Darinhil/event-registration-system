@@ -1,0 +1,238 @@
+/* ============================================================
+   App-wide dark theme — driven by `html.theme-dark`
+   (toggled from the admin topbar moon/sun button).
+   Loaded last in main.js so it wins the cascade.
+   ============================================================ */
+
+/* ---------------- Icon swap on the toggle button ---------------- */
+.theme-toggle .theme-icon-sun { display: none; }
+.theme-toggle .theme-icon-moon { display: block; }
+
+.theme-dark .theme-toggle .theme-icon-sun { display: block; }
+.theme-dark .theme-toggle .theme-icon-moon { display: none; }
+
+/* ---------------- Design tokens (dark values) ---------------- */
+.theme-dark {
+  --ui-ink: #e6edf7;
+  --ui-muted: #9fb0c5;
+  --ui-subtle: #8496ac;
+  --ui-blue: #60a5fa;
+  --ui-blue-dark: #93c5fd;
+  --ui-border: #2c3a4e;
+  --ui-surface: #151d29;
+  --ui-bg: #0d141d;
+  --ui-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+
+.theme-dark body {
+  background:
+    radial-gradient(900px 480px at 88% -10%, rgba(20, 184, 166, .07), transparent 60%),
+    radial-gradient(700px 420px at -8% 110%, rgba(59, 130, 246, .08), transparent 55%),
+    #0d141d;
+  color: var(--ui-ink);
+}
+
+/* ---------------- Admin shell ---------------- */
+.theme-dark .admin-app-shell,
+.theme-dark .shell { background: #0d141d; }
+
+.theme-dark .admin-sidebar {
+  background: linear-gradient(180deg, #101a26 0%, #0e1621 100%);
+  border-right: 1px solid #1e2a3a;
+}
+
+.theme-dark .admin-brand { color: #eef3fa; }
+.theme-dark .admin-nav a { color: #93a7be; }
+.theme-dark .admin-nav a:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.theme-dark .admin-nav a.is-active { background: #0d9488; box-shadow: 0 8px 18px rgba(13, 148, 136, .35); color: #fff; }
+.theme-dark .admin-event-card { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .1); color: #c7d3e2; }
+.theme-dark .admin-event-card strong { color: #eef3fa; }
+.theme-dark .admin-user-card { border-color: rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .04); }
+
+/* Topbar follows the app theme, not just its own strip */
+.theme-dark .admin-topbar {
+  border-color: #1e2a3a;
+  background: rgba(13, 20, 29, .88);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 10px 30px -18px rgba(0, 0, 0, .6);
+}
+
+/* ---------------- Generic surfaces ---------------- */
+.theme-dark .panel,
+.theme-dark .step-card,
+.theme-dark .event-list-panel,
+.theme-dark .detail-panel,
+.theme-dark .scanner-panel,
+.theme-dark .checkin-summary,
+.theme-dark .checkin-table-panel,
+.theme-dark .registrants-panel,
+.theme-dark .event-detail-qr,
+.theme-dark .metric-card,
+.theme-dark .event-overview-stats > div,
+.theme-dark .managed-event-card,
+.theme-dark .workflow-card,
+.theme-dark .confirmation-details,
+.theme-dark .confirmation-pass,
+.theme-dark .published-link-card,
+.theme-dark .published-qr-card,
+.theme-dark .event-detail-qr,
+.theme-dark .dynamic-registration-shell,
+.theme-dark .wizard-form,
+.theme-dark .setup-form,
+.theme-dark .field-modal,
+.theme-dark .user-preview-form {
+  background: #151d29;
+  border-color: #273548;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+}
+
+/* ---------------- Headings & text ---------------- */
+.theme-dark .event-dashboard-heading h1,
+.theme-dark .dashboard-page-heading h1,
+.theme-dark .flow-heading h1,
+.theme-dark .detail-workspace-heading h1,
+.theme-dark .checkin-heading h1,
+.theme-dark .workflow-heading h1,
+.theme-dark .registrants-heading h1,
+.theme-dark .event-dashboard-heading h1 { color: #e6edf7; }
+
+.theme-dark .dashboard-page-heading p:last-child,
+.theme-dark .flow-heading p:last-child,
+.theme-dark .detail-workspace-heading p:last-child,
+.theme-dark .checkin-heading p:last-child,
+.theme-dark .registrants-heading p:last-child,
+.theme-dark .workflow-heading p:not(.eyebrow),
+.theme-dark .event-dashboard-heading p:last-child { color: #93a5bd; }
+
+.theme-dark .metric-card strong,
+.theme-dark .event-overview-stats strong,
+.theme-dark .review-summary strong { color: #e6edf7; }
+
+.theme-dark .event-list-toolbar h2,
+.theme-dark .scanner-panel h2,
+.theme-dark .checkin-summary h2,
+.theme-dark .checkin-table-panel h2,
+.theme-dark .detail-panel h2,
+.theme-dark .published-link-card h2,
+.theme-dark .published-qr-card h2 { color: #dbe5f2; }
+
+.theme-dark .admin-eyebrow { color: #2dd4bf; }
+
+/* ---------------- Tables ---------------- */
+.theme-dark .managed-events-table tbody tr { border-color: #273548; }
+.theme-dark .managed-events-table tbody tr:hover { background: #1a2534; }
+.theme-dark .managed-events-table th { color: #8fa3ba; border-color: #273548; }
+.theme-dark .managed-events-table td { color: #c7d3e2; border-color: #273548; }
+
+/* ---------------- Forms ---------------- */
+.theme-dark .form-grid input,
+.theme-dark .form-grid textarea,
+.theme-dark .form-grid select,
+.theme-dark .field-modal input,
+.theme-dark .field-modal select,
+.theme-dark .toolbar-controls select,
+.theme-dark .events-search,
+.theme-dark .admin-search {
+  background: #101926;
+  border-color: #2c3a4e;
+  color: #dbe5f2;
+}
+
+.theme-dark .form-grid input:focus,
+.theme-dark .form-grid textarea:focus,
+.theme-dark .form-grid select:focus {
+  border-color: #14a08f;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, .18);
+}
+
+/* ---------------- Buttons ---------------- */
+.theme-dark .primary-button,
+.theme-dark .workflow-primary { background: #0d9488; box-shadow: 0 8px 18px rgba(13, 148, 136, .3); }
+.theme-dark .primary-button:hover,
+.theme-dark .workflow-primary:hover { background: #0f8577; }
+
+.theme-dark .secondary-button { background: #151d29; border-color: #33435a; color: #aebfd4; }
+.theme-dark .secondary-button:hover { border-color: #14a08f; background: #101926; color: #2dd4bf; }
+
+.theme-dark .outline-button { background: #151d29; border-color: #33435a; color: #7cc7bf; }
+
+/* ---------------- Status pills ---------------- */
+.theme-dark .event-status { background: #1c2735; color: #93a5bd; }
+.theme-dark .event-status.open { background: rgba(16, 185, 129, .14); color: #34d399; }
+.theme-dark .event-status.draft { background: rgba(245, 158, 11, .14); color: #fbbf24; }
+.theme-dark .event-status.closed { background: rgba(239, 68, 68, .14); color: #f87171; }
+
+/* ---------------- Toolbar / chrome details ---------------- */
+.theme-dark .event-list-toolbar { border-color: #273548; }
+.theme-dark .view-toggle { border-color: #2c3a4e; }
+.theme-dark .view-toggle button { background: #151d29; color: #8fa3ba; }
+.theme-dark .view-toggle button.active { background: rgba(13, 148, 136, .18); color: #2dd4bf; }
+.theme-dark .events-search input { color: #dbe5f2; }
+.theme-dark .events-search input::placeholder,
+.theme-dark .admin-search input::placeholder { color: #64798f; }
+.theme-dark .admin-search { border-color: #2c3a4e; background: #101926; color: #8fa3ba; }
+.theme-dark .admin-search:focus-within { border-color: #14a08f; box-shadow: 0 0 0 3px rgba(13, 148, 136, .18); }
+.theme-dark .admin-search > span { color: #64798f; }
+
+/* ---------------- Auth + profile pages keep their own contrast ---------------- */
+.theme-dark .profile-settings-card,
+.theme-dark .profile-account-card {
+  background: #151d29;
+  border-color: #273548;
+  box-shadow: 0 22px 50px -26px rgba(0, 0, 0, .6);
+}
+
+.theme-dark .profile-settings-header h1,
+.theme-dark .profile-card-heading h2,
+.theme-dark .profile-account-card h2,
+.theme-dark .profile-photo-editor strong { color: #e6edf7; }
+
+.theme-dark .profile-settings-header p:not(.admin-eyebrow),
+.theme-dark .profile-card-heading p,
+.theme-dark .profile-account-note,
+.theme-dark .profile-photo-editor p,
+.theme-dark .profile-form-grid small,
+.theme-dark .profile-password-form small { color: #93a5bd; }
+
+.theme-dark .profile-form-grid label,
+.theme-dark .profile-password-form label { color: #aebfd4; }
+
+.theme-dark .profile-form-grid input,
+.theme-dark .profile-password-form input { background: #101926; border-color: #2c3a4e; color: #dbe5f2; }
+
+.theme-dark .profile-form-grid input:disabled { background: #182230; color: #74879c; }
+
+.theme-dark .profile-form-grid input:focus:not(:disabled),
+.theme-dark .profile-password-form input:focus { border-color: #14a08f; box-shadow: 0 0 0 4px rgba(13, 148, 136, .16); }
+
+.theme-dark .profile-photo-editor { border-color: #273548; background: linear-gradient(135deg, #14202e, #131c2a); }
+.theme-dark .profile-password-form .password-requirements { border-color: #273548; background: #101926; }
+.theme-dark .profile-password-form .password-requirements li { color: #7d95a9; }
+.theme-dark .profile-password-form .password-requirements li.ok { color: #2dd4bf; }
+.theme-dark .profile-password-form .profile-card-actions { border-color: #22303f; }
+.theme-dark .profile-password-form .password-actions-note { color: #7d95a9; }
+.theme-dark .profile-password-form .password-strength-track { background: #22303f; }
+
+.theme-dark .profile-account-card dl { border-color: #22303f; }
+.theme-dark .profile-account-card dt { color: #7d95a9; }
+.theme-dark .profile-account-card dd { color: #c7d3e2; }
+.theme-dark .profile-account-icon { background: linear-gradient(135deg, #0d9488, #0b7f74); color: #fff; }
+
+.theme-dark .profile-settings-page .button-secondary { background: #151d29; border-color: #33435a; color: #aebfd4; }
+.theme-dark .profile-settings-page .button-secondary:hover:not(:disabled) { border-color: #14a08f; background: #101926; color: #2dd4bf; }
+
+/* Alert bars on dark */
+.theme-dark .profile-alert-success { border-color: rgba(16, 185, 129, .35); background: rgba(16, 185, 129, .1); color: #6ee7b7; }
+.theme-dark .profile-alert-error { border-color: rgba(239, 68, 68, .35); background: rgba(239, 68, 68, .1); color: #fca5a5; }
+
+/* Empty states */
+.theme-dark .event-empty-state h3 { color: #dbe5f2; }
+.theme-dark .event-empty-state p,
+.theme-dark .recent-empty strong { color: #93a5bd; }
+.theme-dark .recent-empty p { color: #7d95a9; }
+.theme-dark .empty-icon { background: rgba(13, 148, 136, .14); color: #2dd4bf; }
+
+/* Scrollbars */
+.theme-dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.theme-dark ::-webkit-scrollbar-thumb { border: 2px solid #0d141d; border-radius: 99px; background: #2c3a4e; }
+.theme-dark ::-webkit-scrollbar-track { background: transparent; }
