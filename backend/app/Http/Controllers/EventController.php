@@ -12,8 +12,16 @@ class EventController extends Controller
     public function index() { return Event::where('status', 'published')->latest('starts_at')->get(); }
     public function adminIndex() { return Event::withCount('registrations')->latest('starts_at')->get(); }
     public function show(Event $event) { return response()->json(['data' => $event->only(['id', 'name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status']), 'registered' => $event->registrations()->count(), 'remaining' => max(0, $event->capacity - $event->registrations()->count())]); }
-    public function form(Event $event) { return response()->json(['data' => $event->formFields()->get(['id', 'label', 'description', 'placeholder', 'type', 'required', 'options', 'settings', 'sort_order']), 'settings' => $event->form_config['settings'] ?? []]); }
+    /** Full public form config — the exact fields/steps/settings the admin built. */
+    public function form(Event $event)
+    {
+        $payload = app(FormBuilderController::class)->publicPayload($event);
+        $payload['registration_open'] = $event->status === 'published';
+
+        return response()->json(['data' => $payload]);
+    }
     public function registrants(Event $event) { return RegistrationResource::collection($event->registrations()->with('checkIn')->latest()->paginate(25)); }
+    public function regenerateCheckInQr(Event $event): \Illuminate\Http\JsonResponse { $event->update(['check_in_qr_token' => (string) \Illuminate\Support\Str::uuid()]); return response()->json(['data' => ['check_in_qr_token' => $event->fresh()->check_in_qr_token]]); }
     public function close(Event $event) { $event->update(['status' => 'closed']); return response()->json(['data' => $event->fresh()]); }
     public function cancel(Event $event) { $event->update(['status' => 'cancelled']); return response()->json(['data' => $event->fresh()]); }
     public function destroy(Event $event) { $event->delete(); return response()->json(['message' => 'Event deleted.']); }

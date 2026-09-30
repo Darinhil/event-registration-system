@@ -10,7 +10,16 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function show(Request $request): UserResource { return new UserResource($request->user()->load('registrations.checkIn', 'registrations.event')); }
+    public function show(Request $request): UserResource
+    {
+        $user = $request->user()->load('registrations.checkIn', 'registrations.event');
+        $fields = $user->registrations->isNotEmpty()
+            ? \App\Models\FormField::whereIn('event_id', $user->registrations->pluck('event_id'))->orderBy('sort_order')->get()
+            : collect();
+        $user->registrations->each(fn (\App\Models\Registration $registration) => $registration->append_form_values($fields->where('event_id', $registration->event_id)));
+
+        return new UserResource($user);
+    }
 
     public function updateProfile(Request $request): UserResource
     {

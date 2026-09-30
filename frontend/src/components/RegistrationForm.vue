@@ -1,8 +1,16 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+/**
+ * Public registration form — renders exactly what the admin built in the
+ * Form Builder (fields, types, labels, options, required flags, descriptions,
+ * order, steps, and form settings) via the shared FormRenderer.
+ */
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import FormRenderer from './FormRenderer.vue'
+import { useAuthStore } from '../stores/auth'
 import { useRegistrationStore } from '../stores/registration'
 import api from '../services/api'
+import { buildSubmission, displayValue, normalizeStoredValue, validateFields } from '../utils/formValidation'
 
 const route = useRoute(); const router = useRouter(); const store = useRegistrationStore()
 const event = ref(null); const fields = ref([]); const values = reactive({}); const loading = ref(true); const error = ref(''); const step = ref(1)

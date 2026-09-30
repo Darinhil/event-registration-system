@@ -28,12 +28,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
     Route::get('/check-ins/lookup', [CheckInController::class, 'lookup']);
     Route::post('/check-ins', [CheckInController::class, 'store']);
+    Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
+        Route::post('/check-ins/lookup', [CheckInController::class, 'lookup']);
+        Route::post('/check-ins/search', [CheckInController::class, 'search']);
         Route::get('/events', [EventController::class, 'adminIndex']);
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update']);
         Route::get('/events/{event}/registrants', [EventController::class, 'registrants']);
+        Route::post('/events/{event}/check-in-qr', [EventController::class, 'regenerateCheckInQr']);
         Route::get('/events/{event}/form-builder', [FormBuilderController::class, 'show']);
         Route::put('/events/{event}/form-builder', [FormBuilderController::class, 'update']);
         Route::patch('/events/{event}/form-builder/publish', [FormBuilderController::class, 'publish']);
@@ -41,7 +45,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('/events/{event}/cancel', [EventController::class, 'cancel']);
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/reports', [AdminController::class, 'reports']);
+        Route::get('/events/{event}/report-attendees', [AdminController::class, 'eventReportAttendees']);
         Route::get('/users', [AdminController::class, 'users']);
         Route::get('/check-ins', [AdminController::class, 'checkIns']);
+        Route::get('/events/{event}/check-ins', [AdminController::class, 'eventCheckIns']);
     });
 });

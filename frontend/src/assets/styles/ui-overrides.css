@@ -812,6 +812,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .admin-nav a span { color: #9ca7b7; }
 .admin-nav a:hover { background: rgba(94, 211, 190, .14); color: #f7f9fc; }
+.admin-nav a:first-child { transition: background-color .16s ease, box-shadow .16s ease, color .16s ease; }
+.admin-nav a:first-child:hover { background: #0b9f8f; box-shadow: 0 8px 20px rgba(4, 112, 103, .34); color: #fff; }
+.admin-nav a:first-child:hover span { color: #fff; }
 .admin-nav a.is-active,
 .admin-nav a.router-link-active.is-active {
   background: #0b9f8f;

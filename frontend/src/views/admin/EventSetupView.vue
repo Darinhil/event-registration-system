@@ -84,7 +84,8 @@ const loadEvent = async () => {
     if (Array.isArray(item.enabled_fields) && item.enabled_fields.length) fields.value = item.enabled_fields.map((field, index) => ({ id: field.id || index + 1, label: field.label, type: field.type, required: Boolean(field.required), options: field.options || [], settings: field.settings || {} }))
     else {
       const { data: formData } = await api.get(`/events/${editingId}/form`)
-      if (Array.isArray(formData.data) && formData.data.length) fields.value = formData.data.map((field) => ({ id: field.id, label: field.label, type: String(field.type).toLowerCase() === 'phonenumber' ? 'Phone' : String(field.type).toLowerCase() === 'select/dropdown' ? 'Select' : setupFieldType(String(field.type).toLowerCase()), required: Boolean(field.required), options: field.options || [], settings: field.settings || {} }))
+      const formFields = formData.data?.fields || formData.data || []
+      if (Array.isArray(formFields) && formFields.length) fields.value = formFields.map((field) => ({ id: field.id, label: field.label, type: String(field.type).toLowerCase() === 'select/dropdown' ? 'Select' : setupFieldType(String(field.type).toLowerCase()), required: Boolean(field.required), options: field.options || [], settings: field.settings || {} }))
     }
     if (!data.registered && isLegacyStarterForm(fields.value)) fields.value = starterFields().map((field, index) => ({ ...field, id: index + 1, type: setupFieldType(field.type) }))
     else fields.value = addNonBinaryGenderOption(fields.value)

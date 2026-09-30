@@ -1,227 +1,473 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
-import api from '../../services/api'
-import { getCheckIns, getDashboard, getUsers } from '../../services/adminService'
-import { useAuthStore } from '../../stores/auth'
+import { getEventReportAttendees, getReports } from '../../services/adminService'
+import { formatDate } from '../../utils/formatDate'
+import * as XLSX from 'xlsx'
 
-const router = useRouter()
-const auth = useAuthStore()
+/** Write rows as a styled .xlsx: bold white-on-blue header, sized columns, autofilter, frozen header row. */
+const saveXlsx = (headers, rows, fileName, sheetName, columnWidths) => {
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  worksheet['!cols'] = columnWidths || headers.map(() => ({ wch: 18 }))
+  worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${rows.length + 1}` }
+  worksheet['!freeze'] = { xSplit: 0, ySplit: 1 }
+  headers.forEach((_, columnIndex) => {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: columnIndex })]
+    if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1677D2' } }, alignment: { horizontal: 'center' } }
+  })
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  XLSX.writeFile(workbook, `${fileName}.xlsx`, { cellStyles: true })
+}
+
+const excelDate = (value) => (value ? formatDate(value) : '')
+
 const loading = ref(true)
 const error = ref('')
-const stats = ref({ users: 0, registrations: 0, check_ins: 0 })
-const events = ref([])
-const checkIns = ref([])
-const selectedEvent = ref('all')
-const attendees = ref([])
-const formFields = ref([])
-const loadingAttendeeValues = ref(false)
+const reports = ref([])
+const searchQuery = ref('')
+const statusFilter = ref('all')
 
-const filteredCheckIns = computed(() => selectedEvent.value === 'all'
-  ? checkIns.value
-  : checkIns.value.filter((item) => String(item.registration?.event_id) === String(selectedEvent.value)))
-const filteredRegistrations = computed(() => selectedEvent.value === 'all'
-  ? stats.value.registrations
-  : events.value.find((event) => String(event.id) === String(selectedEvent.value))?.registrations_count || 0)
-const checkedInCount = computed(() => filteredCheckIns.value.length)
-const remainingCount = computed(() => Math.max(filteredRegistrations.value - checkedInCount.value, 0))
-const attendanceRate = computed(() => filteredRegistrations.value ? Math.round((checkedInCount.value / filteredRegistrations.value) * 1000) / 10 : 0)
-const eventRows = computed(() => events.value.map((event) => {
-  const registrations = Number(event.registrations_count || event.registered || 0)
-  const checkedIn = checkIns.value.filter((item) => String(item.registration?.event_id) === String(event.id)).length
-  return { ...event, registrations, checkedIn, remaining: Math.max(registrations - checkedIn, 0), rate: registrations ? Math.round((checkedIn / registrations) * 1000) / 10 : 0 }
-}))
-const visibleEventRows = computed(() => selectedEvent.value === 'all'
-  ? eventRows.value
-  : eventRows.value.filter((event) => String(event.id) === String(selectedEvent.value)))
+const selectedEvent = ref(null)
+const detail = ref(null)
+const detailLoading = ref(false)
+const detailError = ref('')
+const attendeeFilter = ref('all')
+const attendeeSearch = ref('')
+const attendeePanel = ref(null)
 
-// --- Attendee submitted form values for the selected event ---
-const normalizeKey = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-const formFieldOptions = computed(() => formFields.value.map((field) => ({ id: field.id, label: field.label, normalized: normalizeKey(field.label) })))
-// Fields that at least one attendee actually answered (have content).
-const usedFieldIds = computed(() => {
-  const used = new Set()
-  attendees.value.forEach((user) => (user.registrations || []).forEach((registration) => {
-    const formData = registration.form_data || {}
-    Object.entries(formData).forEach(([key, value]) => { if (value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && !value.length)) used.add(String(key)) })
-  }))
-  return used
+const statusOptions = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'published', label: 'Published' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'cancelled', label: 'Cancelled' },
+]
+
+const statusLabel = (value) => ({
+  published: 'Published',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+  draft: 'Draft',
+}[value] || (value || 'Unknown'))
+
+const filteredReports = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  return reports.value.filter((row) => {
+    const matchesQuery = !query || `${row.name} ${row.location}`.toLowerCase().includes(query)
+    const matchesStatus = statusFilter.value === 'all' || row.status === statusFilter.value
+    return matchesQuery && matchesStatus
+  })
 })
-const dynamicColumns = computed(() => formFieldOptions.value.filter((field) => usedFieldIds.value.has(String(field.id)) || usedFieldIds.value.has(field.normalized)))
-const attendeeRows = computed(() => selectedEvent.value === 'all'
-  ? []
-  : attendees.value.flatMap((user) => (user.registrations || []).map((registration) => ({
-      id: `${user.id}-${registration.id}`,
-      name: registration.full_name || user.name || 'Unnamed attendee',
-      email: registration.email || user.email || '',
-      phone: registration.phone || user.phone || '',
-      organization: registration.organization || '',
-      checkedIn: Boolean(registration.check_in || registration.checked_in_at),
-      registration,
-    }))))
-// Resolve a form field's submitted answer by field id or label (works for both
-// id-keyed form_data and legacy label-keyed data), falling back to the
-// backend-resolved form_values when available.
-const formFieldAnswer = (registration, field) => {
-  if (!registration || !field) return ''
-  const formData = registration.form_data || {}
-  if (formData[field.id] !== undefined && formData[field.id] !== null && formData[field.id] !== '') return formData[field.id]
-  const key = Object.keys(formData).find((key) => normalizeKey(key) === field.normalized)
-  if (key !== undefined && formData[key] !== '' && formData[key] !== null && formData[key] !== undefined) return formData[key]
-  const values = registration.form_values || {}
-  return values[field.label] ?? ''
-}
-const formatAnswer = (value) => {
-  if (value === null || value === undefined) return '-'
-  if (Array.isArray(value)) return value.length ? value.join(', ') : '-'
-  const text = String(value).trim()
-  return text === '' ? '-' : text
-}
-const formValueFor = (registration, field) => formatAnswer(formFieldAnswer(registration, field))
 
-const loadAttendeeValues = async () => {
-  const eventId = selectedEvent.value
-  if (eventId === 'all') {
-    attendees.value = []
-    formFields.value = []
-    return
-  }
-  loadingAttendeeValues.value = true
-  try {
-    const [usersResponse, formResponse] = await Promise.all([
-      getUsers({ event_id: eventId, per_page: 10000 }),
-      api.get(`/events/${eventId}/form`).catch(() => null),
-    ])
-    formFields.value = formResponse?.data?.data || []
-    attendees.value = usersResponse.data.data || []
-  } catch {
-    formFields.value = []
-    attendees.value = []
-  } finally {
-    loadingAttendeeValues.value = false
-  }
-}
-watch(selectedEvent, loadAttendeeValues)
+const totals = computed(() => filteredReports.value.reduce((sum, row) => ({
+  events: sum.events + 1,
+  registrations: sum.registrations + Number(row.registrations || 0),
+  checked_in: sum.checked_in + Number(row.checked_in || 0),
+  no_show: sum.no_show + Number(row.no_show || 0),
+}), { events: 0, registrations: 0, checked_in: 0, no_show: 0 }))
 
-// Events load independently of the stats so the event dropdown still fills in
-// even when the dashboard or check-in endpoints fail, mirroring EventsView.
-const loadEvents = async () => {
-  try {
-    const eventsResponse = await api.get('/admin/events')
-    events.value = eventsResponse.data.data || eventsResponse.data || []
-  } catch {
-    events.value = JSON.parse(localStorage.getItem('event_list') || '[]')
-  }
-}
+const overallRate = computed(() =>
+  totals.value.registrations ? Math.round((totals.value.checked_in / totals.value.registrations) * 1000) / 10 : 0
+)
 
-const loadReport = async () => {
+const rateClass = (rate) => (Number(rate) >= 70 ? 'good' : Number(rate) >= 40 ? 'mid' : 'low')
+
+const loadReports = async () => {
   loading.value = true
   error.value = ''
-  loadEvents()
   try {
-    const [dashboardResponse, checkInsResponse] = await Promise.all([
-      getDashboard(),
-      getCheckIns({ per_page: 10000 }),
-    ])
-    stats.value = dashboardResponse.data
-    checkIns.value = checkInsResponse.data.data || []
-  } catch (requestError) {
-    const status = requestError.response?.status
-    error.value = status === 401
-      ? 'Your admin session has expired. Sign in again to view reports.'
-      : status === 403
-        ? 'Your account does not have permission to view reports.'
-        : status
-          ? `Unable to load report data (API ${status}).`
-          : 'Unable to connect to the report service.'
+    const { data } = await getReports()
+    reports.value = data.data || data || []
+  } catch {
+    error.value = 'Unable to load reports. Check your admin session.'
   } finally {
     loading.value = false
   }
 }
 
-const exportReport = () => {
-  const includeAttendees = selectedEvent.value !== 'all' && attendeeRows.value.length > 0
-  const header = includeAttendees
-    ? ['Attendee', 'Email', 'Phone', 'Organization', 'Registration status', 'Checked in', ...dynamicColumns.value.map((field) => field.label)]
-    : ['Event', 'Registrations', 'Checked in', 'Remaining', 'Attendance rate']
-  const rows = includeAttendees
-    ? attendeeRows.value.map((row) => [
-        row.name,
-        row.email,
-        row.phone,
-        row.organization,
-        row.registration.status || 'confirmed',
-        row.checkedIn ? 'Yes' : 'No',
-        ...dynamicColumns.value.map((field) => formValueFor(row.registration, field)),
-      ])
-    : visibleEventRows.value.map((row) => [row.name, row.registrations, row.checkedIn, row.remaining, `${row.rate}%`])
-  const eventName = events.value.find((event) => String(event.id) === String(selectedEvent.value))?.name
-  const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n')
-  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = includeAttendees
-    ? `attendee-values-${eventName || selectedEvent.value}-${new Date().toISOString().slice(0, 10)}.csv`
-    : `event-report-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+const exportCsv = () => {
+  const headers = ['No.', 'Event', 'Date', 'Location', 'Status', 'Capacity', 'Registrations', 'Checked In', 'No Show', 'Attendance Rate %']
+  const rows = filteredReports.value.map((row, index) => [
+    index + 1,
+    row.name,
+    row.starts_at ? formatDate(row.starts_at) : '',
+    row.location || '',
+    statusLabel(row.status),
+    row.capacity ?? '',
+    row.registrations,
+    row.checked_in,
+    row.no_show,
+    row.attendance_rate,
+  ])
+  saveXlsx(headers, rows, `event-reports-${new Date().toISOString().slice(0, 10)}`, 'Event Reports', [
+    { wch: 5 }, { wch: 34 }, { wch: 22 }, { wch: 24 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 17 },
+  ])
 }
 
-const signInAgain = async () => {
-  await auth.logout()
-  router.push('/login')
+/* ---------- Per-event attendee report ---------- */
+
+const loadAttendees = async () => {
+  if (!selectedEvent.value) return
+  detailLoading.value = true
+  detailError.value = ''
+  try {
+    const { data } = await getEventReportAttendees(selectedEvent.value.id)
+    detail.value = data.data || data
+  } catch {
+    detailError.value = 'Unable to load the attendee list for this event.'
+  } finally {
+    detailLoading.value = false
+  }
 }
 
-onMounted(loadReport)
+const selectEvent = async (row) => {
+  if (selectedEvent.value?.id === row.id) return
+  selectedEvent.value = row
+  detail.value = null
+  expandedId.value = null
+  attendeeFilter.value = 'all'
+  attendeeSearch.value = ''
+  await loadAttendees()
+  await nextTick()
+  attendeePanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+const closeAttendees = () => {
+  selectedEvent.value = null
+  detail.value = null
+  expandedId.value = null
+  attendeeFilter.value = 'all'
+  attendeeSearch.value = ''
+}
+
+const summary = computed(() => detail.value?.summary || { total: 0, checked_in: 0, not_checked_in: 0 })
+
+const expandedId = ref(null)
+const toggleProfile = (row) => { expandedId.value = expandedId.value === row.id ? null : row.id }
+const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
+const avatarHue = (name) => Array.from(String(name || '')).reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) % 360, 7)
+const profileEntries = (row) => Object.entries(row.profile || {})
+const formEntries = (row) => Object.entries(row.form_answers || {})
+const hasProfileData = (row) => profileEntries(row).length > 0 || formEntries(row).length > 0
+
+const attendeeRows = computed(() => {
+  const query = attendeeSearch.value.trim().toLowerCase()
+  return (detail.value?.attendees || []).filter((row) => {
+    const checked = Boolean(row.checked_in_at)
+    const matchesSegment = attendeeFilter.value === 'all' || (attendeeFilter.value === 'in' ? checked : !checked)
+    const matchesQuery = !query || `${row.name} ${row.email} ${row.phone} ${row.registration_code}`.toLowerCase().includes(query)
+    return matchesSegment && matchesQuery
+  })
+})
+
+const segmentMeta = computed(() => ({
+  all: { label: 'all attendees', file: 'all', short: 'All' },
+  in: { label: 'checked-in attendees', file: 'checked-in', short: 'Checked-in' },
+  out: { label: 'not yet checked in', file: 'not-checked-in', short: 'Not-checked-in' },
+})[attendeeFilter.value])
+
+const exportAttendeesCsv = () => {
+  const headers = ['No.', 'Name', 'Email', 'Phone', 'Registration Code', 'Registration Status', 'Checked In', 'Checked In At', 'Checked In By']
+  const rows = attendeeRows.value.map((row, index) => [
+    index + 1,
+    row.name,
+    row.email || '',
+    row.phone || '',
+    row.registration_code || '',
+    row.status || '',
+    row.checked_in_at ? 'Yes' : 'No',
+    excelDate(row.checked_in_at),
+    row.checked_in_at ? (row.checked_in_by || 'Self check-in') : '',
+  ])
+  const slug = String(selectedEvent.value?.name || `event-${selectedEvent.value?.id}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  saveXlsx(headers, rows, `${slug}-attendees-${segmentMeta.value.file}-${new Date().toISOString().slice(0, 10)}`, 'Attendees', [
+    { wch: 5 }, { wch: 26 }, { wch: 28 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 11 }, { wch: 22 }, { wch: 16 },
+  ])
+}
+
+onMounted(loadReports)
 </script>
 
 <template>
   <AdminLayout>
     <section class="reports-page">
-      <header class="reports-heading">
-        <div><p class="admin-eyebrow">Performance overview</p><h1>Reports</h1><p>Track registrations and attendance across your events.</p></div>
-        <button class="reports-export" type="button" :disabled="loading || !visibleEventRows.length" @click="exportReport">Export report</button>
+      <header class="reports-heading dashboard-page-heading">
+        <div>
+          <p class="admin-eyebrow">Insights · all events</p>
+          <h1>Reports</h1>
+          <p>Compare registrations, check-ins, and no-shows across every event — then drill into attendees.</p>
+        </div>
+        <button type="button" class="secondary-button" :disabled="loading || !filteredReports.length" @click="exportCsv">↓ Export Excel</button>
       </header>
 
-      <p v-if="error" class="reports-error">{{ error }} <button v-if="error.includes('session')" type="button" @click="signInAgain">Sign in again</button></p>
-      <div v-if="loading" class="reports-loading">Loading report data...</div>
-      <template v-else>
-        <div class="reports-toolbar"><label for="report-event">Event</label><select id="report-event" v-model="selectedEvent"><option value="all">All events</option><option v-for="event in events" :key="event.id" :value="String(event.id)">{{ event.name }}</option></select></div>
-        <div class="report-metrics"><article><small>Total registrations</small><strong>{{ filteredRegistrations }}</strong><span>People registered</span></article><article><small>Checked in</small><strong>{{ checkedInCount }}</strong><span>Attendance confirmed</span></article><article><small>Remaining</small><strong>{{ remainingCount }}</strong><span>Not checked in</span></article><article><small>Attendance rate</small><strong>{{ attendanceRate }}%</strong><span>Of registrations</span></article></div>
-        <section class="report-table-panel"><header><div><p class="admin-eyebrow">Event breakdown</p><h2>Attendance by event</h2></div><span>{{ visibleEventRows.length }} event{{ visibleEventRows.length === 1 ? '' : 's' }}</span></header><div v-if="visibleEventRows.length" class="report-table-wrap"><table><thead><tr><th>Event</th><th>Registrations</th><th>Checked in</th><th>Remaining</th><th>Rate</th></tr></thead><tbody><tr v-for="row in visibleEventRows" :key="row.id"><td><strong>{{ row.name }}</strong><small>{{ row.location || 'Location not set' }}</small></td><td>{{ row.registrations }}</td><td>{{ row.checkedIn }}</td><td>{{ row.remaining }}</td><td><b>{{ row.rate }}%</b><div class="report-progress"><span :style="{ width: `${row.rate}%` }"></span></div></td></tr></tbody></table></div><div v-else class="reports-empty">No event data available yet.</div></section>
-        <section v-if="selectedEvent !== 'all'" class="report-table-panel"><header><div><p class="admin-eyebrow">Submitted form values</p><h2>Attendee form values</h2></div><span>{{ attendeeRows.length }} registration{{ attendeeRows.length === 1 ? '' : 's' }}</span></header><div v-if="loadingAttendeeValues" class="reports-loading">Loading attendee values...</div><div v-else-if="attendeeRows.length" class="report-table-wrap"><table><thead><tr><th>Attendee</th><th>Contact</th><th>Status</th><th>Checked in</th><th v-for="field in dynamicColumns" :key="`field-${field.id}`">{{ field.label }}</th></tr></thead><tbody><tr v-for="row in attendeeRows" :key="row.id"><td><strong>{{ row.name }}</strong><small>{{ row.organization || 'No organization' }}</small></td><td>{{ row.email || '—' }}<small>{{ row.phone || '—' }}</small></td><td>{{ row.registration.status || 'confirmed' }}</td><td>{{ row.checkedIn ? 'Checked in' : 'Not checked in' }}</td><td v-for="field in dynamicColumns" :key="`value-${field.id}`">{{ formValueFor(row.registration, field) }}</td></tr></tbody></table></div><div v-else class="reports-empty">No form values submitted for this event yet.</div></section>
-      </template>
+      <p v-if="error" class="inline-error" role="alert">{{ error }} <button type="button" @click="loadReports">Retry</button></p>
+
+      <div class="reports-metrics">
+        <article class="metric-card metric-blue">
+          <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg></span>
+          <div><small>Events</small><strong>{{ totals.events.toLocaleString() }}</strong></div>
+        </article>
+        <article class="metric-card metric-green">
+          <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>
+          <div><small>Total Registrations</small><strong>{{ totals.registrations.toLocaleString() }}</strong></div>
+        </article>
+        <article class="metric-card metric-purple">
+          <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" /></svg></span>
+          <div><small>Checked In</small><strong>{{ totals.checked_in.toLocaleString() }}</strong></div>
+        </article>
+        <article class="metric-card metric-orange">
+          <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" /></svg></span>
+          <div><small>Attendance Rate</small><strong>{{ overallRate }}%</strong></div>
+        </article>
+      </div>
+
+      <article class="reports-panel">
+        <header class="reports-toolbar">
+          <div>
+            <h2>Per-event breakdown</h2>
+            <p v-if="!loading">{{ filteredReports.length }} event{{ filteredReports.length === 1 ? '' : 's' }} shown · click a row to see its attendees</p>
+          </div>
+          <div class="reports-tools">
+            <label class="reports-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input v-model="searchQuery" type="search" placeholder="Search events…" aria-label="Search events" />
+            </label>
+            <select v-model="statusFilter" class="reports-status-select" aria-label="Filter by status">
+              <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </div>
+        </header>
+
+        <div v-if="loading" class="dynamic-loading">Loading reports…</div>
+
+        <div v-else-if="filteredReports.length" class="reports-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Registrations</th>
+                <th>Checked In</th>
+                <th>No Show</th>
+                <th>Attendance</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in filteredReports" :key="row.id" class="reports-row" :class="{ 'is-selected': selectedEvent?.id === row.id }" @click="selectEvent(row)">
+                <td>
+                  <strong>{{ row.name }}</strong>
+                  <small>{{ row.location || 'Location pending' }}</small>
+                </td>
+                <td>{{ row.starts_at ? formatDate(row.starts_at) : 'To be confirmed' }}</td>
+                <td><span class="event-status" :class="row.status">{{ statusLabel(row.status) }}</span></td>
+                <td>
+                  <strong>{{ row.registrations }}</strong>
+                  <small v-if="row.capacity">of {{ row.capacity }} capacity</small>
+                </td>
+                <td>{{ row.checked_in }}</td>
+                <td>{{ row.no_show }}</td>
+                <td>
+                  <div class="reports-rate">
+                    <div class="reports-rate-track"><span :class="rateClass(row.attendance_rate)" :style="{ width: `${Math.min(100, Number(row.attendance_rate) || 0)}%` }"></span></div>
+                    <b>{{ row.attendance_rate }}%</b>
+                  </div>
+                </td>
+                <td class="reports-row-action"><button type="button" @click.stop="selectEvent(row)">View attendees</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else class="event-empty-state">
+          <div class="empty-icon">▥</div>
+          <h3>{{ searchQuery || statusFilter !== 'all' ? 'No matching events' : 'No events to report on yet' }}</h3>
+          <p>{{ searchQuery || statusFilter !== 'all' ? 'Try adjusting your search or status filter.' : 'Create an event and collect registrations to see reports here.' }}</p>
+        </div>
+      </article>
+
+      <article v-if="selectedEvent" ref="attendeePanel" class="reports-panel attendee-report-panel">
+        <header class="reports-toolbar">
+          <div>
+            <p class="admin-eyebrow">Attendee report</p>
+            <h2>{{ selectedEvent.name }}</h2>
+            <p v-if="detail && !detailLoading">{{ summary.checked_in }} checked in · {{ summary.not_checked_in }} not yet checked in · {{ summary.total }} total</p>
+          </div>
+          <div class="reports-tools">
+            <label class="reports-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input v-model="attendeeSearch" type="search" placeholder="Search attendees…" aria-label="Search attendees in this event" title="Search by name, email, phone, or registration code" />
+            </label>
+            <button type="button" class="secondary-button" :disabled="detailLoading || !attendeeRows.length" :title="`Download ${segmentMeta.label} as Excel`" @click="exportAttendeesCsv">↓ {{ segmentMeta.short }} Excel</button>
+            <button type="button" class="attendee-close" aria-label="Close attendee report" @click="closeAttendees">✕</button>
+          </div>
+        </header>
+
+        <div class="attendee-tabs" role="tablist" aria-label="Check-in segments">
+          <button type="button" :class="{ active: attendeeFilter === 'all' }" @click="attendeeFilter = 'all'">All ({{ summary.total }})</button>
+          <button type="button" :class="{ active: attendeeFilter === 'in' }" @click="attendeeFilter = 'in'">Checked in ({{ summary.checked_in }})</button>
+          <button type="button" :class="{ active: attendeeFilter === 'out' }" @click="attendeeFilter = 'out'">Not checked in ({{ summary.not_checked_in }})</button>
+        </div>
+
+        <p v-if="detailError" class="inline-error attendee-inline-error" role="alert">{{ detailError }} <button type="button" @click="loadAttendees">Retry</button></p>
+
+        <div v-if="detailLoading" class="dynamic-loading">Loading attendees…</div>
+
+        <div v-else-if="attendeeRows.length" class="reports-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Attendee</th>
+                <th>Contact</th>
+                <th>Code</th>
+                <th>Check-in</th>
+                <th>Checked in at</th>
+                <th>By</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="row in attendeeRows" :key="row.id">
+                <tr class="attendee-row" :class="{ 'is-expanded': expandedId === row.id }" @click="toggleProfile(row)">
+                  <td>
+                    <div class="attendee-name-cell">
+                      <span class="table-avatar" :style="{ '--avatar-hue': avatarHue(row.name) }">{{ initials(row.name) }}</span>
+                      <strong>{{ row.name || 'Unnamed attendee' }}</strong>
+                    </div>
+                  </td>
+                  <td>{{ row.email || '—' }}<small v-if="row.phone">{{ row.phone }}</small></td>
+                  <td>{{ row.registration_code || row.id }}</td>
+                  <td>
+                    <span class="checkin-pill" :class="row.checked_in_at ? 'checked' : 'pending'">{{ row.checked_in_at ? 'Checked in' : 'Not yet' }}</span>
+                  </td>
+                  <td>{{ row.checked_in_at ? formatDate(row.checked_in_at) : '—' }}</td>
+                  <td>{{ row.checked_in_at ? (row.checked_in_by || 'Self check-in') : '—' }}</td>
+                  <td class="attendee-expand-cell"><span class="attendee-expand" aria-hidden="true">{{ expandedId === row.id ? '▾' : '▸' }}</span></td>
+                </tr>
+                <tr v-if="expandedId === row.id" class="attendee-profile-row">
+                  <td colspan="7">
+                    <div class="attendee-profile">
+                      <aside class="profile-id-card">
+                        <span class="profile-avatar-lg" :style="{ '--avatar-hue': avatarHue(row.name) }">{{ initials(row.name) }}</span>
+                        <div>
+                          <strong>{{ row.name || 'Unnamed attendee' }}</strong>
+                          <small>{{ row.registration_code || `#${row.id}` }}</small>
+                          <span class="checkin-pill" :class="row.checked_in_at ? 'checked' : 'pending'">{{ row.checked_in_at ? 'Checked in' : 'Not yet' }}</span>
+                        </div>
+                      </aside>
+                      <div class="profile-details">
+                        <section>
+                          <h4>Contact</h4>
+                          <dl>
+                            <div><dt>Email</dt><dd>{{ row.email || '—' }}</dd></div>
+                            <div><dt>Phone</dt><dd>{{ row.phone || '—' }}</dd></div>
+                            <div v-if="row.checked_in_at"><dt>Checked in by</dt><dd>{{ row.checked_in_by || 'Self check-in' }}</dd></div>
+                          </dl>
+                        </section>
+                        <section v-if="profileEntries(row).length">
+                          <h4>Profile</h4>
+                          <dl>
+                            <div v-for="[label, value] in profileEntries(row)" :key="label"><dt>{{ label.replace(/_/g, ' ') }}</dt><dd>{{ value }}</dd></div>
+                          </dl>
+                        </section>
+                        <section v-if="formEntries(row).length">
+                          <h4>Form answers</h4>
+                          <dl>
+                            <div v-for="[label, value] in formEntries(row)" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+                          </dl>
+                        </section>
+                        <p v-if="!hasProfileData(row)" class="profile-empty">No additional profile details were collected for this attendee.</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else class="event-empty-state">
+          <div class="empty-icon">♙</div>
+          <h3>{{ attendeeSearch ? 'No matching attendees' : attendeeFilter === 'in' ? 'No check-ins yet' : attendeeFilter === 'out' ? 'Everyone has checked in' : 'No attendees yet' }}</h3>
+          <p>{{ attendeeSearch ? 'Try a different name, email, or code.' : 'Attendee registrations for this event will appear here.' }}</p>
+        </div>
+      </article>
     </section>
   </AdminLayout>
 </template>
 
 <style scoped>
-.reports-page { max-width: 1280px; margin: 0 auto; padding: 34px 0 70px; }
-.reports-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin: 16px 0 28px; }
-.reports-heading h1 { margin: 6px 0 8px; color: #142f56; font-size: clamp(2.25rem, 4vw, 3.4rem); letter-spacing: -.06em; line-height: 1; }
-.reports-heading p:last-child { margin: 0; color: #71869e; }
-.reports-export { min-height: 42px; padding: 0 18px; border: 1px solid #1f8f72; border-radius: 8px; background: #168365; box-shadow: 0 8px 18px rgba(22, 131, 101, .18); color: #fff; font-weight: 700; cursor: pointer; }
-.reports-export:hover { background: #106b53; }
-.reports-export:disabled { cursor: not-allowed; opacity: .5; }
-.reports-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; color: #365783; font-size: .75rem; font-weight: 700; }
-.reports-toolbar select { min-width: 240px; padding: 10px 12px; border: 1px solid #dce7f2; border-radius: 8px; background: #fff; color: #365783; }
-.report-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-.report-metrics article { padding: 19px; border: 1px solid #dce7f2; border-radius: 12px; background: #fff; box-shadow: 0 10px 30px rgba(28, 63, 100, .06); }
-.report-metrics small, .report-metrics span { display: block; color: #8295aa; font-size: .68rem; }
-.report-metrics strong { display: block; margin: 10px 0 4px; color: #173b67; font-size: 1.8rem; }
-.report-table-panel { overflow: hidden; border: 1px solid #dce7f2; border-radius: 12px; background: #fff; box-shadow: 0 10px 30px rgba(28, 63, 100, .06); }
-.report-table-panel > header { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #edf2f6; }
-.report-table-panel h2 { margin: 4px 0 0; color: #173b67; font-size: 1rem; }
-.report-table-panel > header > span { color: #8295aa; font-size: .7rem; }
-.report-table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 680px; }
-th, td { padding: 15px 20px; border-bottom: 1px solid #edf2f6; color: #526e8d; font-size: .72rem; text-align: left; vertical-align: top; }
-th { color: #8295aa; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-td strong, td small { display: block; } td strong { color: #173b67; } td small { margin-top: 4px; color: #9aabbe; font-size: .64rem; }
-.report-progress { width: 80px; height: 5px; margin-top: 7px; overflow: hidden; border-radius: 5px; background: #e8eff5; }.report-progress span { display: block; height: 100%; border-radius: inherit; background: #168365; }
-.reports-error, .reports-empty, .reports-loading { padding: 15px; border-radius: 8px; background: #fff0f1; color: #b42318; font-size: .78rem; }.reports-loading, .reports-empty { background: #f7faff; color: #71869e; }
-.reports-error button { margin-left: 8px; padding: 5px 9px; border: 1px solid #e3a4aa; border-radius: 6px; background: #fff; color: #b42318; font: inherit; font-weight: 700; cursor: pointer; }
-@media (max-width: 800px) { .reports-heading { align-items: flex-start; flex-direction: column; }.reports-export { width: 100%; }.report-metrics { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 500px) { .report-metrics { grid-template-columns: 1fr; }.reports-toolbar { align-items: stretch; flex-direction: column; }.reports-toolbar select { width: 100%; } }
+.reports-page { display: grid; gap: 18px; max-width: 1280px; }
+.reports-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin: 30px 0 4px; }
+.reports-heading p:not(.admin-eyebrow) { margin: 6px 0 0; color: #7890a8; font-size: .8rem; }
+.reports-heading button { margin: 0; white-space: nowrap; }
+.reports-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.reports-metrics .metric-card { margin: 0; }
+.reports-panel { padding: 0 0 16px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: #fff; box-shadow: var(--ui-shadow); }
+.reports-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 22px 14px; }
+.reports-toolbar h2 { margin: 0; color: #16345f; font-size: 1rem; }
+.reports-toolbar p { margin: 4px 0 0; color: #8295aa; font-size: .7rem; }
+.reports-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.reports-tools .secondary-button { margin: 0; height: 38px; padding: 0 14px; display: inline-flex; align-items: center; font-size: .7rem; white-space: nowrap; }
+.attendee-close { margin: 0; height: 38px; padding: 0 12px; border: 1px solid #dce8f4; border-radius: 8px; background: #fff; color: #7890a8; display: inline-flex; align-items: center; }
+.attendee-close:hover { border-color: #f3c1c7; color: #b42318; }
+.reports-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid #d2dfeb; border-radius: 8px; background: #fcfdff; color: #9aabba; transition: border-color .15s ease, box-shadow .15s ease, color .15s ease; }
+.reports-search:hover { border-color: #abc9f2; }
+.reports-search:focus-within { border-color: #76a8ef; box-shadow: 0 0 0 3px rgba(39, 124, 242, .12); background: #fff; color: #277cf2; }
+.reports-search svg { flex: 0 0 auto; }
+.reports-search input { width: 220px; min-width: 0; border: 0; outline: 0; background: transparent; font: .74rem 'Space Grotesk', sans-serif; color: #16345f; }
+.reports-search input::placeholder { color: #9aabba; }
+.reports-status-select { height: 38px; padding: 0 30px 0 12px; border: 1px solid #d2dfeb; border-radius: 8px; background: #fff; color: #16345f; font-size: .72rem; font-weight: 600; }
+.reports-table-wrap { overflow-x: auto; padding: 0 18px; }
+.reports-table-wrap table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.reports-table-wrap th { padding: 11px 12px; border-bottom: 1px solid #edf2f6; background: #f6faff; color: #365783; font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; text-align: left; }
+.reports-table-wrap td { padding: 13px 12px; border-bottom: 1px solid #f2f6fa; color: #456887; font-size: .74rem; vertical-align: top; }
+.reports-table-wrap tr:last-child td { border-bottom: 0; }
+.reports-table-wrap td strong { display: block; color: #16345f; font-size: .78rem; }
+.reports-table-wrap td small { display: block; margin-top: 2px; color: #9aabba; font-size: .65rem; }
+.reports-row { cursor: pointer; }
+.reports-row:hover td { background: #fafdff; }
+.reports-row.is-selected td { background: #f2f8ff; }
+.reports-row-action button { margin: 0; padding: 6px 11px; border: 1px solid #dce8f4; border-radius: 7px; background: #fff; color: #277cf2; font-size: .66rem; font-weight: 700; white-space: nowrap; }
+.reports-row-action button:hover { border-color: #8fbaff; background: #f7fbff; }
+.reports-rate { display: flex; align-items: center; gap: 10px; }
+.reports-rate-track { flex: 0 0 84px; height: 6px; border-radius: 999px; background: #eef3f9; overflow: hidden; }
+.reports-rate-track span { display: block; height: 100%; border-radius: 999px; background: #277cf2; transition: width .25s ease; }
+.reports-rate-track span.good { background: #0d9b68; }
+.reports-rate-track span.mid { background: #d77911; }
+.reports-rate-track span.low { background: #db5360; }
+.reports-rate b { color: #16345f; font-size: .72rem; }
+.attendee-tabs { display: flex; gap: 8px; margin: 4px 22px 14px; }
+.attendee-tabs button { margin: 0; padding: 8px 14px; border: 1px solid #dce8f4; border-radius: 999px; background: #fff; color: #526e97; font-size: .68rem; font-weight: 600; }
+.attendee-tabs button.active { border-color: #277cf2; background: #eef5ff; color: #216bd8; }
+.attendee-inline-error { margin: 0 22px 14px; }
+.checkin-pill { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: .62rem; font-weight: 700; }
+.checkin-pill.checked { background: #d9f7e9; color: #0b9b63; }
+.checkin-pill.pending { background: #fff0dc; color: #d77911; }
+.attendee-row { cursor: pointer; }
+.attendee-row:hover td { background: #fafdff; }
+.attendee-row:hover .table-avatar { transform: scale(1.08); }
+.attendee-row.is-expanded td { background: #f4f9ff; border-bottom-color: transparent; }
+.attendee-name-cell { gap: 12px; }
+.attendee-name-cell .table-avatar { width: 32px; height: 32px; font-size: .64rem; }
+.attendee-name-cell { display: flex; align-items: center; gap: 10px; }
+.attendee-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; background: hsl(var(--avatar-hue), 62%, 92%); color: hsl(var(--avatar-hue), 55%, 32%); font-size: .64rem; font-weight: 700; }
+.attendee-expand-cell { width: 34px; text-align: right; }
+.attendee-expand { color: #9aabba; font-size: .8rem; }
+.attendee-profile-row td { padding: 0 18px 14px; background: #f4f9ff; border-bottom: 1px solid #f2f6fa; }
+.attendee-profile { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; padding: 18px; border: 1px solid #dbe7f3; border-radius: 11px; background: #fff; }
+.profile-id-card { display: flex; align-items: flex-start; gap: 12px; padding-right: 18px; border-right: 1px solid #edf2f6; }
+.profile-avatar-lg { display: grid; place-items: center; flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, hsl(var(--avatar-hue, 217), 78%, 62%), hsl(calc(var(--avatar-hue, 217) + 40), 72%, 48%)); color: #fff; font-size: .95rem; font-weight: 700; letter-spacing: .02em; box-shadow: 0 8px 18px -8px hsl(var(--avatar-hue, 217) 78% 48% / .6); }
+.profile-id-card div { display: grid; gap: 4px; justify-items: start; }
+.profile-id-card strong { color: #16345f; font-size: .85rem; }
+.profile-id-card small { color: #8295aa; font-size: .66rem; }
+.profile-details { display: grid; gap: 14px; }
+.profile-details h4 { margin: 0 0 6px; color: #3978d8; font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.profile-details dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; margin: 0; }
+.profile-details dl > div { display: grid; gap: 2px; padding: 8px 11px; border: 1px solid #e9eff6; border-radius: 8px; background: #fbfdff; }
+.profile-details dt { color: #8295aa; font-size: .62rem; text-transform: capitalize; }
+.profile-details dd { margin: 0; color: #24486f; font-size: .74rem; font-weight: 600; overflow-wrap: anywhere; }
+.profile-empty { margin: 0; color: #8295aa; font-size: .72rem; }
+@media (max-width: 900px) { .reports-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .reports-heading { flex-direction: column; } .attendee-profile { grid-template-columns: 1fr; } .profile-id-card { border-right: 0; padding-right: 0; border-bottom: 1px solid #edf2f6; padding-bottom: 14px; } }
 </style>

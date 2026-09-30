@@ -177,7 +177,7 @@ const loadAttendees = async () => {
         getUsers({ event_id: eventId, per_page: 200 }),
         api.get(`/events/${eventId}/form`).catch(() => null),
       ])
-      formFields.value = formResponse?.data?.data || []
+      formFields.value = formResponse?.data?.data?.fields || formResponse?.data?.data || []
       attendees.value = usersResponse.data.data || []
     } else {
       const usersResponse = await getUsers({ per_page: 200 })

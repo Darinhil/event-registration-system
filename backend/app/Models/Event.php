@@ -10,7 +10,7 @@ class Event extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status'];
+    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'check_in_qr_token'];
 
     protected function casts(): array
     {
@@ -19,4 +19,13 @@ class Event extends Model
 
     public function registrations(): HasMany { return $this->hasMany(Registration::class); }
     public function formFields(): HasMany { return $this->hasMany(FormField::class)->orderBy('sort_order'); }
+
+    public function checkInQrToken(): string
+    {
+        if (! $this->check_in_qr_token) {
+            $this->forceFill(['check_in_qr_token' => (string) \Illuminate\Support\Str::uuid()])->save();
+        }
+
+        return $this->check_in_qr_token;
+    }
 }
