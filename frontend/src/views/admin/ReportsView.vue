@@ -281,7 +281,7 @@ onMounted(loadReports)
         </div>
 
         <div v-else class="event-empty-state">
-          <div class="empty-icon">▥</div>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></div>
           <h3>{{ searchQuery || statusFilter !== 'all' ? 'No matching events' : 'No events to report on yet' }}</h3>
           <p>{{ searchQuery || statusFilter !== 'all' ? 'Try adjusting your search or status filter.' : 'Create an event and collect registrations to see reports here.' }}</p>
         </div>
@@ -388,7 +388,7 @@ onMounted(loadReports)
         </div>
 
         <div v-else class="event-empty-state">
-          <div class="empty-icon">♙</div>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg></div>
           <h3>{{ attendeeSearch ? 'No matching attendees' : attendeeFilter === 'in' ? 'No check-ins yet' : attendeeFilter === 'out' ? 'Everyone has checked in' : 'No attendees yet' }}</h3>
           <p>{{ attendeeSearch ? 'Try a different name, email, or code.' : 'Attendee registrations for this event will appear here.' }}</p>
         </div>

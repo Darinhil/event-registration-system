@@ -110,7 +110,7 @@ onMounted(loadCheckIns)
             <QRScanner @scan="handleScan" @error="scannerError = $event" />
           </div>
           <div v-else-if="!store.attendee" class="scanner-placeholder">
-            <div class="scanner-frame">⌗</div>
+            <div class="scanner-frame"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></div>
             <strong>Scanner is paused</strong>
             <p>Start the scanner when you are ready to scan a QR pass.</p>
             <button type="button" class="primary-button" @click="scanning = true">Start scanner</button>
@@ -159,7 +159,7 @@ onMounted(loadCheckIns)
 
       <section class="checkin-table-panel">
         <header><div><p class="admin-eyebrow">Attendance log</p><h2>Recent check-ins</h2></div><button type="button" class="export-log-button" :disabled="logLoading || !checkIns.length" @click="exportLog">{{ logLoading ? 'Loading...' : 'Export log' }}</button></header>
-        <div v-if="!checkIns.length" class="recent-empty"><span>✓</span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
+        <div v-if="!checkIns.length" class="recent-empty"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
         <div v-else class="checkin-log-list"><div v-for="item in checkIns" :key="item.id" class="checkin-log-row"><div><strong>{{ item.registration?.full_name || 'Unnamed attendee' }}</strong><small>{{ item.registration?.registration_code }}</small></div><time>{{ item.checked_in_at ? new Date(item.checked_in_at).toLocaleString() : 'Just now' }}</time></div></div>
       </section>
     </section>

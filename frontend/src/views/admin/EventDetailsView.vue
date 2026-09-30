@@ -55,7 +55,6 @@ const actionGroups = computed(() => [
       { key: 'form', label: 'Manage registration form', description: 'Edit attendee fields', icon: 'clipboard', to: `/admin/events/${event.value?.id}/form-builder`, primary: true },
       { key: 'registrants', label: 'View registrants', description: 'Review attendees', icon: 'users', to: `/admin/events/${event.value?.id}/registrants`, primary: true },
       { key: 'copy', label: 'Copy registration link', description: 'Share the event URL', icon: 'link', handler: copyLink },
-      { key: 'close', label: 'Close registration', description: 'Stop new sign-ups', icon: 'pause', handler: () => updateEventStatus('close', 'Registration closed.'), disabled: registrationClosed },
     ],
   },
   {
@@ -107,7 +106,6 @@ const actionGroups = computed(() => [
 
         <header class="ews-header">
           <div class="ews-header-copy">
-            <p class="ews-eyebrow">Event workspace</p>
             <div class="ews-title-row">
               <h1 id="ews-title">{{ event.name }}</h1>
               <span class="event-status" :class="event.status">{{ event.status === 'open' ? 'Published' : event.status }}</span>
@@ -169,7 +167,6 @@ const actionGroups = computed(() => [
             <article id="stats" class="ews-panel">
               <header class="ews-panel-head">
                 <div>
-                  <p class="ews-eyebrow">At a glance</p>
                   <h2>Registration overview</h2>
                 </div>
                 <span class="ews-panel-date">{{ dateLabel }}</span>
