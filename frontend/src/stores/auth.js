@@ -12,15 +12,27 @@ const normalizeUserPhoto = (user) => {
   }
 }
 
+let profileStateVersion = 0
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem('event_user') || 'null'),
     token: localStorage.getItem('event_token'),
+    profilePhotoPreview: null,
     loading: false,
     error: null,
   }),
   getters: { isAuthenticated: (state) => Boolean(state.token) },
   actions: {
+    setProfilePhotoPreview(blob) {
+      if (this.profilePhotoPreview?.startsWith('blob:')) URL.revokeObjectURL(this.profilePhotoPreview)
+      this.profilePhotoPreview = URL.createObjectURL(blob)
+      return this.profilePhotoPreview
+    },
+    clearProfilePhotoPreview() {
+      if (this.profilePhotoPreview?.startsWith('blob:')) URL.revokeObjectURL(this.profilePhotoPreview)
+      this.profilePhotoPreview = null
+    },
     saveSession(data) {
       this.user = normalizeUserPhoto(data.data)
       this.token = data.token
@@ -39,17 +51,23 @@ export const useAuthStore = defineStore('auth', {
     },
     async fetchMe() {
       if (!this.token) return
+      const requestVersion = profileStateVersion
       const { data } = await api.get('/me')
+      if (requestVersion !== profileStateVersion) return
       this.user = normalizeUserPhoto(data.data)
+      if (!this.user?.profile_photo) this.clearProfilePhotoPreview()
       localStorage.setItem('event_user', JSON.stringify(this.user))
     },
     async updateProfile(payload) {
+      // Invalidate any older /me request so it cannot restore stale profile data.
+      profileStateVersion += 1
       this.loading = true
       this.error = null
       try {
         // Let Axios/browser add the multipart boundary automatically.
         const { data } = await api.post('/me/profile', payload)
         this.user = normalizeUserPhoto(data.data)
+        if (!this.user?.profile_photo) this.clearProfilePhotoPreview()
         localStorage.setItem('event_user', JSON.stringify(this.user))
         return this.user
       } catch (error) {
@@ -72,7 +90,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async logout() {
-      try { if (this.token) await api.post('/auth/logout') } finally { this.user = null; this.token = null; localStorage.removeItem('event_token'); localStorage.removeItem('event_user') }
+      try { if (this.token) await api.post('/auth/logout') } finally { this.clearProfilePhotoPreview(); this.user = null; this.token = null; localStorage.removeItem('event_token'); localStorage.removeItem('event_user') }
     },
   },
 })

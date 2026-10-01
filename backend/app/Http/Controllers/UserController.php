@@ -30,7 +30,16 @@ class UserController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'username' => ['nullable', 'string', 'max:80', Rule::unique('users', 'username')->ignore($user->id)],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_profile_photo' => ['nullable', 'boolean'],
         ]);
+
+        $removePhoto = (bool) ($data['remove_profile_photo'] ?? false);
+        unset($data['remove_profile_photo']);
+
+        if ($removePhoto && $user->profile_photo) {
+            Storage::disk('public')->delete($user->profile_photo);
+            $data['profile_photo'] = null;
+        }
 
         if ($request->hasFile('profile_photo')) {
             $data['profile_photo'] = $request->file('profile_photo')->store('profile-photos', 'public');

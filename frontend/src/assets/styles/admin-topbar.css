@@ -183,6 +183,9 @@
   box-shadow: 0 0 0 1px #e2eaf3, 0 4px 10px -4px rgba(21, 55, 90, .4);
 }
 .admin-topbar .admin-top-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.admin-top-avatar .admin-avatar-fallback { color: #315276; font-size: .75rem; font-weight: 700; }
+.admin-sidebar .admin-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.admin-topbar .admin-top-avatar img.brand-logo { object-fit: contain; background: #fff; }
 .admin-topbar .admin-chevron {
   display: grid;
   place-items: center;

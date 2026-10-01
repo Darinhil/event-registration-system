@@ -1,10 +1,12 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import UserLayout from '../../layouts/UserLayout.vue'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
 
 const auth = useAuthStore()
+const isAdmin = computed(() => auth.user?.role === 'admin')
 const editing = ref(false)
 const saving = ref(false)
 const changingPassword = ref(false)
@@ -12,8 +14,10 @@ const successMessage = ref('')
 const errorMessage = ref('')
 const photoPreview = ref(auth.user?.profile_photo || '')
 const selectedPhoto = ref(null)
+const removePhoto = ref(false)
 const profilePhotoBroken = ref(false)
-const serverPhotoSrc = ref('')
+const serverPhotoSrc = ref(auth.profilePhotoPreview || '')
+let profilePhotoRequest = 0
 
 const profile = reactive({
   name: auth.user?.name || '',
@@ -29,7 +33,7 @@ const password = reactive({
 })
 
 const initials = computed(() => (profile.name || 'AD').slice(0, 2).toUpperCase())
-const displayPhoto = computed(() => selectedPhoto.value ? photoPreview.value : serverPhotoSrc.value)
+const displayPhoto = computed(() => removePhoto.value ? '' : (selectedPhoto.value ? photoPreview.value : serverPhotoSrc.value))
 const createdDate = computed(() => {
   if (!auth.user?.created_at) return 'Not available'
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(auth.user.created_at))
@@ -37,22 +41,26 @@ const createdDate = computed(() => {
 
 watch(photoPreview, () => { profilePhotoBroken.value = false })
 const loadServerPhoto = async () => {
+  const requestId = ++profilePhotoRequest
   if (!auth.user?.profile_photo) {
     serverPhotoSrc.value = ''
     return
   }
   try {
-    const { data } = await api.get('/me/profile-photo', { responseType: 'blob' })
-    if (serverPhotoSrc.value.startsWith('blob:')) URL.revokeObjectURL(serverPhotoSrc.value)
-    serverPhotoSrc.value = URL.createObjectURL(data)
+    const { data } = await api.get('/me/profile-photo', {
+      params: { photo: auth.user.profile_photo },
+      responseType: 'blob',
+    })
+    if (requestId !== profilePhotoRequest) return
+    serverPhotoSrc.value = auth.setProfilePhotoPreview(data)
     profilePhotoBroken.value = false
   } catch {
+    if (requestId !== profilePhotoRequest) return
     serverPhotoSrc.value = ''
   }
 }
 onMounted(loadServerPhoto)
 watch(() => auth.user?.profile_photo, loadServerPhoto)
-onBeforeUnmount(() => { if (serverPhotoSrc.value.startsWith('blob:')) URL.revokeObjectURL(serverPhotoSrc.value) })
 
 const clearMessages = () => {
   successMessage.value = ''
@@ -72,6 +80,7 @@ const cancelEditing = () => {
   photoPreview.value = auth.user?.profile_photo || ''
   profilePhotoBroken.value = false
   selectedPhoto.value = null
+  removePhoto.value = false
   editing.value = false
 }
 
@@ -83,8 +92,16 @@ const choosePhoto = (event) => {
     return
   }
   selectedPhoto.value = file
+  removePhoto.value = false
   profilePhotoBroken.value = false
   photoPreview.value = URL.createObjectURL(file)
+}
+
+const removeSelectedPhoto = () => {
+  selectedPhoto.value = null
+  removePhoto.value = true
+  photoPreview.value = ''
+  profilePhotoBroken.value = false
 }
 
 const saveProfile = async () => {
@@ -98,11 +115,13 @@ const saveProfile = async () => {
     const payload = new FormData()
     Object.entries(profile).forEach(([key, value]) => payload.append(key, value || ''))
     if (selectedPhoto.value) payload.append('profile_photo', selectedPhoto.value)
+    if (removePhoto.value) payload.append('remove_profile_photo', '1')
     await auth.updateProfile(payload)
     // Reload the persisted profile so the UI uses the server's stored photo URL.
     await auth.fetchMe()
     photoPreview.value = auth.user?.profile_photo || photoPreview.value
     selectedPhoto.value = null
+    removePhoto.value = false
     editing.value = false
     successMessage.value = 'Profile changes saved successfully.'
   } catch (error) {
@@ -143,7 +162,7 @@ const changePassword = async () => {
 </script>
 
 <template>
-  <AdminLayout>
+  <component :is="isAdmin ? AdminLayout : UserLayout">
     <section class="profile-settings-page">
       <header class="profile-settings-header">
         <div>
@@ -176,6 +195,7 @@ const changePassword = async () => {
                   {{ editing ? 'Choose photo' : 'Change photo' }}
                   <input type="file" accept="image/jpeg,image/png,image/webp" :disabled="!editing" @change="choosePhoto" />
                 </label>
+                <button v-if="editing && (displayPhoto || auth.user?.profile_photo)" type="button" class="button button-secondary profile-photo-remove" @click="removeSelectedPhoto">Remove photo</button>
               </div>
             </div>
 
@@ -206,11 +226,11 @@ const changePassword = async () => {
         <aside class="profile-account-card">
           <div class="profile-account-icon">✓</div>
           <p class="admin-eyebrow">Account information</p>
-          <h2>{{ profile.name || 'Admin account' }}</h2>
-          <dl><div><dt>Role</dt><dd><span class="profile-role-badge">Admin</span></dd></div><div><dt>Account created</dt><dd>{{ createdDate }}</dd></div></dl>
+          <h2>{{ profile.name || 'User account' }}</h2>
+          <dl><div><dt>Role</dt><dd><span class="profile-role-badge">{{ isAdmin ? 'Admin' : 'Attendee' }}</span></dd></div><div><dt>Account created</dt><dd>{{ createdDate }}</dd></div></dl>
           <p class="profile-account-note">Your role and permissions are managed by the system and cannot be changed here.</p>
         </aside>
       </div>
     </section>
-  </AdminLayout>
+  </component>
 </template>

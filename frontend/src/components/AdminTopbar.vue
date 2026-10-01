@@ -3,28 +3,33 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../services/api'
-import adminLogo from '../assets/Adminlogo.png'
 
 const router = useRouter()
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
 const profilePhotoBroken = ref(false)
-const profilePhotoSrc = ref('')
+const profilePhotoSrc = ref(auth.profilePhotoPreview || '')
 const searchInput = ref(null)
+let profilePhotoRequest = 0
 
 const logout = async () => { await auth.logout(); router.push('/login') }
 const loadProfilePhoto = async () => {
+  const requestId = ++profilePhotoRequest
   if (!auth.user?.profile_photo) {
     profilePhotoSrc.value = ''
     return
   }
   try {
-    const { data } = await api.get('/me/profile-photo', { responseType: 'blob' })
-    if (profilePhotoSrc.value.startsWith('blob:')) URL.revokeObjectURL(profilePhotoSrc.value)
-    profilePhotoSrc.value = URL.createObjectURL(data)
+    const { data } = await api.get('/me/profile-photo', {
+      params: { photo: auth.user.profile_photo },
+      responseType: 'blob',
+    })
+    if (requestId !== profilePhotoRequest) return
+    profilePhotoSrc.value = auth.setProfilePhotoPreview(data)
     profilePhotoBroken.value = false
   } catch {
+    if (requestId !== profilePhotoRequest) return
     profilePhotoSrc.value = ''
     profilePhotoBroken.value = true
   }
@@ -53,7 +58,6 @@ watch(() => auth.user?.profile_photo, loadProfilePhoto)
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onGlobalKeydown)
   document.removeEventListener('click', onDocumentClick)
-  if (profilePhotoSrc.value.startsWith('blob:')) URL.revokeObjectURL(profilePhotoSrc.value)
 })
 </script>
 
@@ -83,7 +87,7 @@ onBeforeUnmount(() => {
         <button type="button" class="profile-menu-trigger" :aria-expanded="profileMenuOpen" @click="togglePanel('profile')">
           <span class="admin-top-avatar">
             <img v-if="profilePhotoSrc && !profilePhotoBroken" :key="profilePhotoSrc" :src="profilePhotoSrc" alt="" @error="profilePhotoBroken = true" />
-            <img v-else :src="adminLogo" alt="Event Admin logo" />
+            <span v-else class="admin-avatar-fallback">{{ (auth.user?.name || 'AD').slice(0, 2).toUpperCase() }}</span>
           </span>
           <span class="admin-profile-copy"><strong>{{ auth.user?.name || 'Event Admin' }}</strong><small>Administrator</small></span>
           <span class="admin-chevron" aria-hidden="true">
