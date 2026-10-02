@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 const search = ref('')
 const status = ref('all')
@@ -10,6 +11,25 @@ const loading = ref(true)
 const error = ref('')
 const deletingId = ref(null)
 const events = ref([])
+const auth = useAuthStore()
+const eventHeading = computed(() => auth.isAdmin ? 'All events' : 'My events')
+
+const readCachedEvents = () => {
+  try {
+    const cached = JSON.parse(localStorage.getItem('event_list') || '[]')
+    return Array.isArray(cached) ? cached.map(normalizeEvent) : []
+  } catch {
+    return []
+  }
+}
+
+const saveCachedEvents = (items) => {
+  try {
+    localStorage.setItem('event_list', JSON.stringify(items))
+  } catch {
+    // Storage is optional; the API remains the source of truth.
+  }
+}
 
 const normalizeEvent = (event) => ({
   ...event,
@@ -22,13 +42,27 @@ const normalizeEvent = (event) => ({
 })
 
 const loadEvents = async () => {
+  const cached = readCachedEvents()
+  if (cached.length) {
+    // Show the last known workspace immediately while refreshing in the
+    // background. This removes the blank loading state on repeat visits.
+    events.value = cached
+    loading.value = false
+  }
   try {
     const { data } = await api.get('/admin/events')
-    events.value = (data.data || data).map(normalizeEvent)
+    const cachedById = new Map(cached.map((item) => [String(item.id), item]))
+    events.value = (data.data || data).map((item) => normalizeEvent({
+      ...item,
+      // Reuse an already cached banner without making the API list carry it.
+      branding: cachedById.get(String(item.id))?.branding || item.branding,
+    }))
+    saveCachedEvents(events.value)
   } catch (requestError) {
-    const local = JSON.parse(localStorage.getItem('event_list') || '[]')
-    events.value = local
-    error.value = requestError.response?.data?.message || (local.length ? '' : 'Unable to load events from the API.')
+    if (!events.value.length) events.value = cached
+    error.value = requestError.code === 'ECONNABORTED'
+      ? 'The events service is taking too long to respond.'
+      : requestError.response?.data?.message || (events.value.length ? '' : 'Unable to load events from the API.')
   } finally {
     loading.value = false
   }
@@ -70,7 +104,7 @@ onMounted(loadEvents)
       </div>
       <article class="event-list-panel">
         <div class="event-list-toolbar">
-          <div><h2>All events</h2><p v-if="!loading">{{ filteredEvents.length }} event{{ filteredEvents.length === 1 ? '' : 's' }} in your workspace</p></div>
+          <div><h2>{{ eventHeading }}</h2><p v-if="!loading">{{ filteredEvents.length }} event{{ filteredEvents.length === 1 ? '' : 's' }} in your workspace</p></div>
           <div class="toolbar-controls"><label class="events-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg><input v-model="search" placeholder="Search events..." /></label><select v-model="status"><option value="all">All statuses</option><option value="open">Published</option><option value="draft">Draft</option><option value="closed">Closed</option></select><div class="view-toggle"><button type="button" aria-label="Card view" :class="{ active: view === 'cards' }" @click="view = 'cards'"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg></button><button type="button" aria-label="Table view" :class="{ active: view === 'table' }" @click="view = 'table'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button></div></div>
         </div>
         <div v-if="loading" class="dynamic-loading">Loading events…</div>

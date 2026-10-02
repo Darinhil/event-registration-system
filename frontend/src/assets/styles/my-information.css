@@ -18,6 +18,7 @@
   padding: 18px 4px 90px;
   color: var(--mi-ink);
 }
+.mi-event-link{display:block;color:var(--mi-ink);font-weight:700;text-decoration:none}.mi-event-link:hover{color:var(--mi-blue)}
 
 /* ---------------- Page heading ---------------- */
 .mi-heading {

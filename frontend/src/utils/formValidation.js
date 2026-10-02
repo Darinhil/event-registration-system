@@ -81,6 +81,16 @@ export const normalizeStoredValue = (field, stored) => {
   }
   if (Array.isArray(stored)) return [...stored]
   if (field.type === 'file') return stored || null // storage path; replaced when a new File is picked
+  if (field.type === 'radio' && stored !== null && stored !== undefined) {
+    const raw = String(stored).trim().toLowerCase()
+    const exact = (field.options || []).find((option) => String(option).trim().toLowerCase() === raw)
+    if (exact) return exact
+    const matchingOption = (field.options || []).find((option) => {
+      const parts = String(option).split(':')
+      return parts.length > 1 && parts.slice(1).join(':').trim().toLowerCase() === raw
+    })
+    if (matchingOption) return matchingOption
+  }
   return stored ?? ''
 }
 

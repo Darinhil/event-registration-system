@@ -12,7 +12,12 @@ class UserController extends Controller
 {
     public function show(Request $request): UserResource
     {
-        $user = $request->user()->load('registrations.checkIn', 'registrations.event');
+        // A registration must not remain visible if its event was removed.
+        // The event delete flow removes these rows, while this constraint also
+        // protects users from seeing legacy orphaned registrations.
+        $user = $request->user()->load([
+            'registrations' => fn ($query) => $query->whereHas('event')->with('checkIn', 'event'),
+        ]);
         $fields = $user->registrations->isNotEmpty()
             ? \App\Models\FormField::whereIn('event_id', $user->registrations->pluck('event_id'))->orderBy('sort_order')->get()
             : collect();

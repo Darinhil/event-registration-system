@@ -2,8 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import { getCheckIns, getDashboard, getUsers } from '../../services/adminService'
+import { useAuthStore } from '../../stores/auth'
 
 const loading = ref(true)
+const auth = useAuthStore()
 const error = ref('')
 const stats = ref({ users: 0, registrations: 0, check_ins: 0 })
 const attendees = ref([])
@@ -114,7 +116,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); document.removeEventListener(
 <template>
   <AdminLayout>
     <section class="event-dashboard">
-      <header class="event-dashboard-heading"><div><h1>Event Dashboard</h1></div></header>
+      <header class="event-dashboard-heading"><div><h1>Event Dashboard</h1><p class="admin-eyebrow">{{ auth.roleLabel }} · {{ auth.isAdmin ? 'All events' : 'Your events only' }}</p></div></header>
       <p v-if="error" class="dashboard-error" role="alert">{{ error }} <button type="button" @click="loadDashboard">Retry</button></p>
 
       <div class="metric-grid">

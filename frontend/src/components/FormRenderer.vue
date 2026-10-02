@@ -115,7 +115,7 @@ const checkedState = (field) => {
 <template>
   <form class="fr-form" novalidate @submit.prevent="proceed">
     <header v-if="eventBanner || eventName" class="fr-event">
-      <img v-if="eventBanner" class="fr-event-banner" :src="eventBanner" alt="" />
+      <img v-if="eventBanner" class="fr-event-banner" :src="eventBanner" alt="" loading="lazy" decoding="async" />
       <div class="fr-event-copy">
         <h2>{{ eventName || formTitle }}</h2>
         <p v-if="formDescription">{{ formDescription }}</p>

@@ -6,7 +6,9 @@ import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
 
 const auth = useAuthStore()
-const isAdmin = computed(() => auth.user?.role === 'admin')
+const isAdmin = computed(() => auth.isAdmin)
+const isStaff = computed(() => auth.canAccessAdmin)
+const roleLabel = computed(() => auth.roleLabel)
 const editing = ref(false)
 const saving = ref(false)
 const changingPassword = ref(false)
@@ -162,7 +164,7 @@ const changePassword = async () => {
 </script>
 
 <template>
-  <component :is="isAdmin ? AdminLayout : UserLayout">
+  <component :is="isStaff ? AdminLayout : UserLayout">
     <section class="profile-settings-page">
       <header class="profile-settings-header">
         <div>
@@ -227,7 +229,7 @@ const changePassword = async () => {
           <div class="profile-account-icon">✓</div>
           <p class="admin-eyebrow">Account information</p>
           <h2>{{ profile.name || 'User account' }}</h2>
-          <dl><div><dt>Role</dt><dd><span class="profile-role-badge">{{ isAdmin ? 'Admin' : 'Attendee' }}</span></dd></div><div><dt>Account created</dt><dd>{{ createdDate }}</dd></div></dl>
+          <dl><div><dt>Role</dt><dd><span class="profile-role-badge">{{ roleLabel }}</span></dd></div><div><dt>Account created</dt><dd>{{ createdDate }}</dd></div></dl>
           <p class="profile-account-note">Your role and permissions are managed by the system and cannot be changed here.</p>
         </aside>
       </div>

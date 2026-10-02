@@ -22,7 +22,13 @@ export const useAuthStore = defineStore('auth', {
     loading: false,
     error: null,
   }),
-  getters: { isAuthenticated: (state) => Boolean(state.token) },
+  getters: {
+    isAuthenticated: (state) => Boolean(state.token),
+    isAdmin: (state) => state.user?.role === 'admin',
+    isEventAdmin: (state) => state.user?.role === 'event_admin',
+    canAccessAdmin: (state) => ['admin', 'event_admin'].includes(state.user?.role),
+    roleLabel: (state) => state.user?.role === 'admin' ? 'Admin' : state.user?.role === 'event_admin' ? 'Event Admin' : 'Attendee',
+  },
   actions: {
     setProfilePhotoPreview(blob) {
       if (this.profilePhotoPreview?.startsWith('blob:')) URL.revokeObjectURL(this.profilePhotoPreview)

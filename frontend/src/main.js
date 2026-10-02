@@ -14,6 +14,7 @@ import './assets/styles/event-setup-overrides.css'
 import './assets/styles/attendee-registration.css'
 import './assets/styles/my-information.css'
 import './assets/styles/home-hero.css'
+import './assets/styles/event-page.css'
 import './assets/styles/auth-refresh.css'
 import './assets/styles/ui-refresh.css'
 

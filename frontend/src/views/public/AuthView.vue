@@ -26,7 +26,7 @@ const login = async () => {
     if (rememberMe.value) localStorage.setItem('event_remembered_email', loginForm.email)
     else localStorage.removeItem('event_remembered_email')
     const requestedPath = redirectPath.value
-    router.push(auth.user?.role === 'admin' ? (requestedPath.startsWith('/admin') ? requestedPath : '/admin') : (requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/register'))
+    router.push(auth.canAccessAdmin ? (requestedPath.startsWith('/admin') ? requestedPath : '/admin') : (requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/register'))
   } catch { /* displayed in the form */ }
 }
 const signup = async () => {
@@ -61,7 +61,7 @@ const signup = async () => {
             <p class="auth-switch">Don't have an account? <RouterLink :to="{ path: '/account/register', query: redirectPath ? { redirect: redirectPath } : undefined }">Sign up for free!</RouterLink></p>
             </div>
           </div>
-          <div class="auth-visual"><img class="auth-visual-image" :src="picture" alt="Mountain landscape" /><img class="auth-visual-logo" :src="logo" alt="Live &amp; Learn Cambodia" /><strong>Make every moment count.</strong><small>Register once, check in with a QR pass, and enjoy the day.</small></div>
+          <div class="auth-visual"><img class="auth-visual-image" :src="picture" alt="Mountain landscape" loading="lazy" decoding="async" /><img class="auth-visual-logo" :src="logo" alt="Live &amp; Learn Cambodia" decoding="async" /><strong>Make every moment count.</strong><small>Register once, check in with a QR pass, and enjoy the day.</small></div>
         </section>
 
         <section v-else class="auth-card auth-card-signup">
@@ -84,7 +84,7 @@ const signup = async () => {
             <div class="social-login-options"><button type="button" class="google-auth-button"><svg class="google-auth-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.27c0-.71-.06-1.4-.18-2.06H12v3.9h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.23Z"/><path fill="#34A853" d="M12 21.52c2.63 0 4.84-.87 6.45-2.37l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.7-1.72-5.47-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.52Z"/><path fill="#FBBC05" d="M6.53 13.59A5.86 5.86 0 0 1 6.23 12c0-.55.1-1.09.3-1.59V7.88H3.29A9.74 9.74 0 0 0 2.26 12c0 1.57.38 3.05 1.03 4.12l3.24-2.53Z"/><path fill="#EA4335" d="M12 6.38c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.48 14.63 2.48 12 2.48a9.74 9.74 0 0 0-8.71 5.4l3.24 2.53c.77-2.31 2.93-4.03 5.47-4.03Z"/></svg><span>Login with Google</span></button></div>
             </div>
           </div>
-          <div class="auth-visual"><img class="auth-visual-image" :src="picture" alt="Mountain landscape" /><img class="auth-visual-logo" :src="logo" alt="Live &amp; Learn Cambodia" /><strong>Bring your ideas to life.</strong><small>One account for every event — free for attendees.</small></div>
+          <div class="auth-visual"><img class="auth-visual-image" :src="picture" alt="Mountain landscape" loading="lazy" decoding="async" /><img class="auth-visual-logo" :src="logo" alt="Live &amp; Learn Cambodia" decoding="async" /><strong>Bring your ideas to life.</strong><small>One account for every event — free for attendees.</small></div>
         </section>
       </div>
     </section>

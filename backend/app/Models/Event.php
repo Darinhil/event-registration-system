@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
 
 class Event extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'check_in_qr_token'];
+    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'check_in_qr_token', 'created_by'];
 
     protected function casts(): array
     {
@@ -18,6 +20,11 @@ class Event extends Model
     }
 
     public function registrations(): HasMany { return $this->hasMany(Registration::class); }
+    public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $user->role === 'admin' ? $query : $query->where('created_by', $user->id);
+    }
     public function formFields(): HasMany { return $this->hasMany(FormField::class)->orderBy('sort_order'); }
 
     public function checkInQrToken(): string

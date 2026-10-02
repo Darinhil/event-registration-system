@@ -11,16 +11,23 @@ use Illuminate\Http\JsonResponse;
 
 class AdminController extends Controller
 {
-    public function dashboard(): JsonResponse { return response()->json(['users' => User::count(), 'registrations' => Registration::count(), 'check_ins' => CheckIn::count()]); }
+    public function dashboard(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $eventIds = Event::visibleTo($request->user())->select('id');
+        $registrations = Registration::whereIn('event_id', $eventIds)->count();
+        $checkIns = CheckIn::whereHas('registration', fn ($query) => $query->whereIn('event_id', $eventIds))->count();
+        return response()->json(['users' => $registrations, 'registrations' => $registrations, 'check_ins' => $checkIns]);
+    }
 
     /**
      * Per-event report: registrations, check-ins, no-shows and attendance rate.
      * Feeds the admin Reports page and its CSV export.
      */
-    public function reports(): JsonResponse
+    public function reports(\Illuminate\Http\Request $request): JsonResponse
     {
         $events = Event::query()
             ->withCount(['registrations', 'registrations as checked_in_count' => fn ($query) => $query->whereHas('checkIn')])
+            ->visibleTo($request->user())
             ->latest('starts_at')
             ->get();
 
@@ -116,11 +123,13 @@ class AdminController extends Controller
             ? FormField::where('event_id', $eventId)->orderBy('sort_order')->get()
             : collect();
 
+        $visibleEventIds = Event::visibleTo($request->user())->pluck('id');
+        if ($eventId > 0 && ! $visibleEventIds->contains($eventId)) abort(403);
         $page = User::query()
             ->where('role', '!=', 'admin')
-            ->whereHas('registrations', fn ($q) => $q->when($eventId > 0, fn ($query) => $query->where('event_id', $eventId)))
-            ->withCount(['registrations' => fn ($q) => $q->when($eventId > 0, fn ($query) => $query->where('event_id', $eventId))])
-            ->with(['registrations' => fn ($q) => $q->when($eventId > 0, fn ($query) => $query->where('event_id', $eventId)), 'registrations.checkIn'])
+            ->whereHas('registrations', fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds))
+            ->withCount(['registrations' => fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds)])
+            ->with(['registrations' => fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds), 'registrations.checkIn'])
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
@@ -129,7 +138,7 @@ class AdminController extends Controller
             ->when($checkIn === 'in', fn ($query) => $query->whereHas('registrations.checkIn'))
             ->when($checkIn === 'out', fn ($query) => $query->whereHas('registrations', fn ($q) => $q->whereDoesntHave('checkIn')))
             ->latest()
-            ->paginate();
+            ->paginate(min(max((int) $request->query('per_page', 25), 1), 100));
         $page->getCollection()->each(fn (User $user) => $user->registrations->each(fn (Registration $registration) => $registration->append_form_values($formFields)));
 
         return $page->appends(array_filter([
@@ -139,7 +148,7 @@ class AdminController extends Controller
             'event_id' => $eventId > 0 ? $eventId : null,
         ]));
     }
-    public function checkIns() { return CheckIn::with('registration.user', 'staff')->latest('checked_in_at')->paginate(); }
+    public function checkIns(\Illuminate\Http\Request $request) { return CheckIn::query()->whereHas('registration.event', fn ($q) => $q->visibleTo($request->user()))->with(['registration:id,user_id,event_id,registration_code,full_name,email,phone', 'registration.user:id,name,email,phone', 'staff:id,name,email'])->latest('checked_in_at')->paginate(min(max((int) $request->query('per_page', 25), 1), 100)); }
 
     /** Per-event check-in log + summary for the live check-in desk. */
     public function eventCheckIns(\Illuminate\Http\Request $request, Event $event): \Illuminate\Http\JsonResponse
@@ -178,5 +187,39 @@ class AdminController extends Controller
                 'checked_in_at' => $registration->checkIn?->checked_in_at?->toIso8601String(),
             ]),
         ]]);
+    }
+
+    public function adminAccounts(): JsonResponse
+    {
+        return response()->json(['data' => User::whereIn('role', ['admin', 'event_admin'])->latest()->get()]);
+    }
+
+    public function createAdminAccount(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8'],
+            'role' => ['required', 'in:admin,event_admin'],
+        ]);
+        $user = User::create($data);
+        return response()->json(['data' => $user], 201);
+    }
+
+    public function updateAdminAccount(\Illuminate\Http\Request $request, User $user): JsonResponse
+    {
+        abort_unless(in_array($user->role, ['admin', 'event_admin'], true), 404);
+        $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:100'], 'role' => ['sometimes', 'required', 'in:admin,event_admin'], 'password' => ['sometimes', 'nullable', 'string', 'min:8']]);
+        if (array_key_exists('password', $data) && ! $data['password']) unset($data['password']);
+        $user->update($data);
+        return response()->json(['data' => $user->fresh()]);
+    }
+
+    public function deleteAdminAccount(\Illuminate\Http\Request $request, User $user): JsonResponse
+    {
+        abort_unless(in_array($user->role, ['admin', 'event_admin'], true), 404);
+        abort_if($request->user()->is($user), 422, 'You cannot delete your own account.');
+        $user->delete();
+        return response()->json(['message' => 'Admin account deleted.']);
     }
 }

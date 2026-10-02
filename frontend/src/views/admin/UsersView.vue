@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import * as XLSX from 'xlsx'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import api from '../../services/api'
 import { getUsers } from '../../services/adminService'
@@ -209,7 +208,8 @@ const clearFilters = () => {
   ethnicityFilter.value = 'all'
   disabilityFilter.value = 'all'
 }
-const exportFilteredExcel = () => {
+const exportFilteredExcel = async () => {
+  const XLSX = await import('xlsx')
   const baseHeaders = ['#', 'Full Name', 'Gender', 'Age', 'Ethnicity', 'Disability', 'Checked-time', 'Status']
   const dynamicHeaders = dynamicColumns.value.map((field) => field.label)
   const headers = [...baseHeaders, ...dynamicHeaders]

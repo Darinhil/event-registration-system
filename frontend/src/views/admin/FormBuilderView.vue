@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import FormRenderer from '../../components/FormRenderer.vue'
+import AdminLayout from '../../layouts/AdminLayout.vue'
 import {
   FIELD_CATEGORIES, TYPE_META, FIELD_ICONS, FIELD_WIDTHS, OPTION_TYPES,
   addNonBinaryGenderOption, createField, createSteps, isLegacyStarterForm, starterFields, slugify, baseFieldSettings,
@@ -133,6 +134,8 @@ const load = async () => {
     formTitle.value = payload.form_title || formTitle.value
     formDescription.value = payload.form_description || ''
     Object.assign(settings, payload.config?.settings || {})
+    settings.registration_start = settings.registration_start?.slice(0, 10) || ''
+    settings.registration_end = settings.registration_end?.slice(0, 10) || ''
     fields.value = (payload.fields || []).map(mapServerField)
     if (!fields.value.length) fields.value = starterFields(0)
     else if (!registrationsCount.value && isLegacyStarterForm(fields.value)) {
@@ -447,6 +450,7 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
 </script>
 
 <template>
+  <AdminLayout>
   <div class="fb-shell" :class="{ 'is-previewing': previewOpen }">
     <!-- ============ Loading / error / not found ============ -->
     <div v-if="loading" class="fb-state">
@@ -472,29 +476,22 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
     <template v-else>
       <!-- Top header: breadcrumb + title + tabs + actions -->
       <header class="fb-header">
-        <nav class="fb-breadcrumb" aria-label="Breadcrumb">
-          <RouterLink to="/admin">Dashboard</RouterLink>
-          <span>/</span>
-          <RouterLink to="/admin/events">Events</RouterLink>
-          <span>/</span>
-          <span class="fb-crumb-event">{{ eventName }}</span>
-          <span>/</span>
-          <b aria-current="page">Form Builder</b>
-        </nav>
         <div class="fb-header-row">
           <div class="fb-header-title">
+            <span class="fb-header-kicker">Attendee form</span>
             <h1>{{ formTitle || 'Event Registration Form' }}</h1>
             <small>
               {{ eventName }}
               <span class="fb-status-chip" :class="`is-${eventStatus}`">{{ statusLabel }}</span>
               <span v-if="hasRegistrations" class="fb-reg-badge">{{ registrationsCount }} registration{{ registrationsCount === 1 ? '' : 's' }}</span>
             </small>
+            <p class="fb-header-help">Build the questions and registration experience attendees will complete.</p>
           </div>
 
           <nav class="fb-tabs" role="tablist" aria-label="Builder sections">
-            <button type="button" role="tab" :aria-selected="activeTab === 'builder'" :class="{ active: activeTab === 'builder' }" @click="activeTab = 'builder'">Form Builder</button>
+            <button type="button" role="tab" :aria-selected="activeTab === 'builder'" :class="{ active: activeTab === 'builder' }" @click="activeTab = 'builder'">Form fields</button>
             <button type="button" role="tab" :aria-selected="activeTab === 'actions'" :class="{ active: activeTab === 'actions' }" @click="activeTab = 'actions'">Actions</button>
-            <button type="button" role="tab" :aria-selected="activeTab === 'settings'" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Form Settings</button>
+            <button type="button" role="tab" :aria-selected="activeTab === 'settings'" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Registration settings</button>
           </nav>
 
           <div class="fb-header-actions">
@@ -515,11 +512,22 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
         </div>
       </header>
 
+      <div v-if="activeTab === 'builder'" class="fb-guide" aria-label="Form builder steps">
+        <span><b>1</b><strong>Choose a field</strong></span>
+        <i aria-hidden="true">→</i>
+        <span><b>2</b><strong>Edit its settings</strong></span>
+        <i aria-hidden="true">→</i>
+        <span><b>3</b><strong>Save and preview</strong></span>
+      </div>
+
       <!-- Structural edit warning -->
       <div v-if="activeTab === 'builder' && hasRegistrations && !structuralWarningDismissed" class="fb-banner fb-banner--warning">
-        <div>
-          <strong>This form already has {{ registrationsCount }} registration{{ registrationsCount === 1 ? '' : 's' }}.</strong>
+        <div class="fb-banner-inner">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <strong>This form already has {{ registrationsCount }} registration{{ registrationsCount === 1 ? '' : 's' }}.</strong>
           <p>Changing or deleting fields may affect existing registration data.</p>
+          </div>
         </div>
         <button class="fb-banner-dismiss" type="button" @click="structuralWarningDismissed = true">Dismiss</button>
       </div>
@@ -669,15 +677,15 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
                   <button class="fb-action-btn" type="button" :title="`Settings for ${field.label}`" @click="selectField(field)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>
                   </button>
-                  <button class="fb-action-btn" type="button" :title="`Duplicate ${field.label}`" @click="duplicateField(field)">⧉</button>
-                  <button class="fb-action-btn fb-action-btn--danger" type="button" :title="`Delete ${field.label}`" @click="requestDelete(field)">🗑</button>
+                  <button class="fb-action-btn" type="button" :title="`Duplicate ${field.label}`" @click="duplicateField(field)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                  <button class="fb-action-btn fb-action-btn--danger" type="button" :title="`Delete ${field.label}`" @click="requestDelete(field)"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
                 </div>
               </article>
             </TransitionGroup>
 
             <!-- Empty state -->
             <div v-if="!visibleFields.length" class="fb-empty">
-              <div class="fb-empty-icon">⌘</div>
+              <div class="fb-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div>
               <h3>Start building your form</h3>
               <p>Drag a field from the left panel or click a component to add it.</p>
               <button class="fb-btn fb-btn--primary" type="button" @click="openPalette">+ Add Field</button>
@@ -698,7 +706,7 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
           </div>
 
           <div v-if="!selectedField" class="fb-settings-empty">
-            <div class="fb-settings-empty-icon">☝</div>
+            <div class="fb-settings-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg></div>
             <p>Select a field to edit its label, options, and validation.</p>
           </div>
 
@@ -905,8 +913,8 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
             <header class="fb-panel-head"><div><p class="fb-panel-eyebrow">Access</p><h2>Registration settings</h2></div></header>
             <div class="fb-panel-body">
               <div class="fb-setting-pair">
-                <label class="fb-setting-field"><span>Registration start</span><input v-model="settings.registration_start" type="datetime-local" @change="updateField" /></label>
-                <label class="fb-setting-field"><span>Registration end</span><input v-model="settings.registration_end" type="datetime-local" @change="updateField" /></label>
+                <label class="fb-setting-field"><span>Registration start</span><input v-model="settings.registration_start" type="date" @change="updateField" /></label>
+                <label class="fb-setting-field"><span>Registration end</span><input v-model="settings.registration_end" type="date" @change="updateField" /></label>
               </div>
               <div class="fb-setting-pair">
                 <label class="fb-setting-field"><span>Maximum participants</span><input v-model.number="settings.max_participants" type="number" min="1" @change="updateField" /></label>
@@ -1064,4 +1072,5 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
   <Transition name="fb-toast">
     <div v-if="toast.show" class="fb-toast" :class="`is-${toast.kind}`" role="status">{{ toast.message }}</div>
   </Transition>
+  </AdminLayout>
 </template>

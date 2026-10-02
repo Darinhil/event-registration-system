@@ -102,6 +102,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .topbar nav { transform: none; }
 .topbar nav .login-link { transform: translateY(12px); line-height: 1; }
 .topbar nav .login-link { font-size: 1.05rem; }
+.shell>.topbar{max-width:none;margin:8px 14px;padding:5px 14px 5px 18px;min-height:64px;border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 12px 28px -12px rgba(15,40,80,.2)}
+.shell>.topbar .brand img{width:165px;height:46px}.shell>.topbar nav{gap:8px}.shell>.topbar nav .nav-link{padding:9px 16px;font-size:.9rem}.shell>.topbar nav .nav-user-chip{margin-left:8px;padding-right:14px}.shell>.topbar nav .logout-button{padding:9px 16px}
 .shell main { padding-top: 42px; }
 .auth-page { background: linear-gradient(135deg, #edf5ff, #f8fbff); }
 .shell > main:has(.auth-page) { padding: 0; }
