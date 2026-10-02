@@ -52,10 +52,29 @@ const loadEvents = async () => {
   try {
     const { data } = await api.get('/admin/events')
     const cachedById = new Map(cached.map((item) => [String(item.id), item]))
-    events.value = (data.data || data).map((item) => normalizeEvent({
-      ...item,
-      // Reuse an already cached banner without making the API list carry it.
-      branding: cachedById.get(String(item.id))?.branding || item.branding,
+    const items = (data.data || data).map((item) => {
+      const cachedImage = cachedById.get(String(item.id))?.branding?.image
+      return normalizeEvent({
+        ...item,
+        branding: cachedImage && !cachedImage.startsWith('blob:') ? { image: cachedImage } : item.branding,
+      })
+    })
+    events.value = items
+    await Promise.all(items.filter((item) => !item.branding?.image).map(async (item) => {
+      try {
+        let response
+        try {
+          response = await api.get(`/admin/events/${item.id}/banner`, { responseType: 'blob' })
+        } catch {
+          // Published event banners are also readable through the public
+          // event endpoint, which supports Event Admin-owned events safely.
+          response = await api.get(`/events/${item.id}/banner`, { responseType: 'blob' })
+        }
+        if (response.data?.type?.startsWith('application/json')) return
+        item.branding = { image: URL.createObjectURL(response.data) }
+      } catch {
+        // A missing banner should leave the normal initials placeholder.
+      }
     }))
     saveCachedEvents(events.value)
   } catch (requestError) {

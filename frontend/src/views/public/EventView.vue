@@ -14,7 +14,7 @@ const dateLabel = computed(() => event.value?.starts_at
   ? new Date(event.value.starts_at).toLocaleDateString(undefined, { dateStyle: 'full' })
   : 'Date to be confirmed')
 const timeLabel = computed(() => event.value?.starts_at
-  ? new Date(event.value.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  ? `${new Date(event.value.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${new Date(event.value.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   : 'Time to be confirmed')
 const isOpen = computed(() => event.value?.status === 'published' || event.value?.status === 'open')
 
@@ -43,7 +43,7 @@ load()
 
         <header class="public-event-hero">
           <div>
-            <p class="public-event-kicker">Event registration</p>
+            <p class="public-event-kicker">{{ event.category || 'Event registration' }}</p>
             <h1>{{ event.name }}</h1>
             <p class="public-event-description">{{ event.description || 'Join us for this event.' }}</p>
           </div>
@@ -56,8 +56,9 @@ load()
           <main>
             <div class="public-event-meta">
               <div><span>📅</span><strong>{{ dateLabel }}</strong><small>Event date</small></div>
-              <div><span>🕐</span><strong>{{ timeLabel }}</strong><small>Start time</small></div>
+              <div><span>🕐</span><strong>{{ timeLabel }}</strong><small>Event time</small></div>
               <div><span>📍</span><strong>{{ event.location || 'Location to be confirmed' }}</strong><small>Location</small></div>
+              <div><span>👤</span><strong>{{ event.creator?.name || 'Event organizer' }}</strong><small>Organizer</small></div>
             </div>
 
             <section class="public-event-about">

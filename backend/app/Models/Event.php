@@ -12,7 +12,7 @@ class Event extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'check_in_qr_token', 'created_by'];
+    protected $fillable = ['name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'check_in_qr_token', 'created_by'];
 
     protected function casts(): array
     {

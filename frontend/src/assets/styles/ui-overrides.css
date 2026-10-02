@@ -594,6 +594,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .profile-photo-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .profile-photo-button.is-disabled { cursor: not-allowed; opacity: .58; }
 .profile-photo-button input:disabled { cursor: not-allowed; }
+.profile-photo-copy { min-width: 0; }
+.profile-photo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.profile-photo-actions .button { margin: 0; }
+.profile-readonly-grid input[readonly] { cursor: not-allowed; background: #f5f8fc; color: #607995; }
+.profile-photo-button input { cursor: pointer; }
+.nav-avatar { overflow: hidden; }
+.nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 560px) { .profile-photo-editor { align-items: flex-start; flex-direction: column; } .profile-photo-actions { width: 100%; } .profile-photo-actions .button { flex: 1; } }
 
 .camera-reader {
   min-height: 300px;
@@ -1185,6 +1193,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .table-event-name > div { min-width: 0; }
 .event-table-thumb { flex: 0 0 auto; width: 46px; height: 34px; border-radius: 7px; object-fit: cover; background: #eaf3f2; }
 @media (max-width: 640px) { .event-card-banner { height: 104px; } }
+.event-card-visual { height: 170px !important; }
+.event-card-visual > .event-card-banner { display: block; width: 100%; height: 100% !important; margin: 0; object-fit: cover; }
+@media (max-width: 640px) { .event-card-visual { height: 140px !important; } }
 .managed-event-card { display: flex; flex-direction: column; padding: 17px 18px; border-radius: 13px; background: #fff; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .managed-event-card:hover { border-color: #abc9f2; box-shadow: 0 16px 34px -18px rgba(28, 63, 100, .32); transform: translateY(-2px); }
 .managed-event-card h3 { margin: 12px 0 4px; font-size: 1.02rem; letter-spacing: -.015em; }

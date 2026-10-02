@@ -21,8 +21,8 @@ const step = ref(0)
 
 const fields = computed(() => {
   const list = formConfig.value?.fields || []
-  const hasGenderChoice = list.some((field) => String(field.label || '').trim().toLowerCase() === 'gender' && field.type === 'radio')
-  return list.filter((field) => !(hasGenderChoice && String(field.label || '').trim().toLowerCase() === 'gender' && field.type === 'text'))
+  const hasGenderChoice = list.some((field) => { const label = String(field.label || '').trim().toLowerCase(); return (label === 'gender' || label.includes('ភេទ')) && field.type === 'radio' })
+  return list.filter((field) => { const label = String(field.label || '').trim().toLowerCase(); return !(hasGenderChoice && (label === 'gender' || label.includes('ភេទ')) && field.type === 'text') })
 })
 const steps = computed(() => formConfig.value?.steps || [])
 const settings = computed(() => formConfig.value?.settings || {})

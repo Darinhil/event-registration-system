@@ -66,7 +66,7 @@ class FormBuilderController extends Controller
             'steps' => array_values($steps),
             'settings' => array_merge($defaults['settings'], (array) ($config['settings'] ?? [])),
             'fields' => $event->formFields()->get(['id', 'label', 'description', 'placeholder', 'type', 'required', 'options', 'settings', 'sort_order'])
-                ->map(fn ($field) => $this->presentField($field))
+                ->map(fn ($field) => $this->presentField($field, true))
                 ->values(),
         ];
     }
@@ -195,16 +195,55 @@ class FormBuilderController extends Controller
         ];
     }
 
-    private function presentField($field): array
+    private function presentField($field, bool $bilingual = false): array
     {
+        $label = $field->label;
+        $placeholder = $field->placeholder;
+        $type = $field->type;
+        $options = $field->options ?? [];
+        if ($bilingual && in_array($type, ['radio', 'select'], true) && preg_match('/(?:gender|age|ភេទ|អាយុ)/iu', $field->label)) {
+            $type = 'select';
+        }
+        if ($bilingual && preg_match('/(?:ethnicity|ជនជាតិ)/iu', $field->label)) {
+            $type = 'select';
+            if ($options === []) {
+                $options = [
+                    'ខ្មែរ/Khmer people',
+                    'ជនជាតិភាគតិច/Ethnic minorities',
+                    'ជនជាតិដើមភាគតិច/Indigenous peoples',
+                ];
+            }
+        }
+        if ($bilingual) {
+            $label = [
+                'Name' => 'ឈ្មោះពេញ/Full Name',
+                'ឈ្មោះ/Name' => 'ឈ្មោះពេញ/Full Name',
+                'Full Name' => 'ឈ្មោះពេញ/Full Name',
+                'Email' => 'អ៊ីមែល/Email',
+                'Email Address' => 'អាសយដ្ឋានអ៊ីមែល/Email Address',
+                'Gender' => 'ភេទ/Gender',
+                'Age' => 'អាយុ/Age',
+                'Disability' => 'ពិការភាព/Disability',
+                'Ethnicity' => 'ជនជាតិ/Ethnicity',
+                'Institution' => 'ស្ថាប័ន/Institution',
+                'Business Entity' => 'អង្គភាពអាជីវកម្ម/Business Entity',
+                'Position' => 'មុខតំណែង/Position',
+                'TEL' => 'លេខទូរស័ព្ទ/Phone',
+                'Phone Number' => 'លេខទូរស័ព្ទ/Phone Number',
+                'Photo request and use' => 'ការអនុញ្ញាតប្រើប្រាស់រូបថត/Photo consent',
+            ][$field->label] ?? $field->label;
+            if (in_array($field->label, ['Name', 'ឈ្មោះ/Name', 'Full Name', 'ឈ្មោះពេញ/Full Name'], true)) {
+                $placeholder = 'បញ្ចូលឈ្មោះពេញ/Enter full name';
+            }
+        }
         return [
             'id' => $field->id,
-            'label' => $field->label,
+            'label' => $label,
             'description' => $field->description,
-            'placeholder' => $field->placeholder,
-            'type' => $field->type,
+            'placeholder' => $placeholder,
+            'type' => $type,
             'required' => (bool) $field->required,
-            'options' => $field->options ?? [],
+            'options' => $options,
             'settings' => $field->settings ?? [],
             'sort_order' => $field->sort_order,
         ];

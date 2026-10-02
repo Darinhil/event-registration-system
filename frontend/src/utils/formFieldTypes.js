@@ -157,32 +157,40 @@ export const starterFields = (step = 0) => {
   }
 
   return [
-    field('text', 'Name', true),
-    field('email', 'Email', true),
-    field('radio', 'Gender', true, ['M: Male', 'F: Female', 'P: Prefer not to say', 'N: Non-binary']),
-    field('radio', 'Age', true, ['K: Under 18', 'Y: 18–29', 'A: 30–60', 'E: Above 60']),
-    field('checkbox', 'Disability', false, [
-      'C: Difficulty seeing',
-      'H: Difficulty hearing',
-      'M: Difficulty moving',
-      'R: Difficulty remembering',
-      'S: Difficulty with self-care',
-      'X: Difficulty communicating',
+    field('text', 'ឈ្មោះពេញ/Full Name', true),
+    field('email', 'អ៊ីមែល/Email', true),
+    field('select', 'ភេទ/Gender', true, ['M: ប្រុស/Male', 'F: ស្រី/Female', 'P: មិនបញ្ជាក់/Prefer not to say', 'N: មិនមែនពីរភេទ/Non-binary']),
+    field('select', 'អាយុ/Age', true, ['K: ក្រោម 18 ឆ្នាំ/Under 18', 'Y: 18–29', 'A: 30–60', 'E: លើស 60 ឆ្នាំ/Above 60']),
+    field('checkbox', 'ពិការភាព/Disability', false, [
+      'C: ពិបាកមើលឃើញ/Difficulty seeing',
+      'H: ពិបាកស្តាប់/Difficulty hearing',
+      'M: ពិបាកធ្វើចលនា/Difficulty moving',
+      'R: ពិបាកចងចាំ/Difficulty remembering',
+      'S: ពិបាកថែទាំខ្លួនឯង/Difficulty with self-care',
+      'X: ពិបាកទំនាក់ទំនង/Difficulty communicating',
     ], { multiple: true }),
-    field('text', 'Ethnicity'),
-    field('text', 'Institution', true),
-    field('text', 'Business Entity'),
-    field('text', 'Position'),
-    field('radio', 'Photo request and use', false, ['Yes', 'No']),
-    field('phone', 'TEL', true),
+    field('select', 'ជនជាតិ/Ethnicity', false, [
+      'ខ្មែរ/Khmer people',
+      'ជនជាតិភាគតិច/Ethnic minorities',
+      'ជនជាតិដើមភាគតិច/Indigenous peoples',
+    ]),
+    field('text', 'ស្ថាប័ន/Institution', true),
+    field('text', 'អង្គភាពអាជីវកម្ម/Business Entity'),
+    field('text', 'មុខតំណែង/Position'),
+    field('radio', 'ការអនុញ្ញាតប្រើប្រាស់រូបថត/Photo consent', false, ['បាទ/ចាស/Yes', 'ទេ/No']),
+    field('phone', 'លេខទូរស័ព្ទ/Phone', true),
   ]
 }
 
 /** Add the new standard Gender option without changing organizer-defined choices. */
 export const addNonBinaryGenderOption = (fields) => fields.map((field) => {
   const standardOptions = ['M: Male', 'F: Female', 'P: Prefer not to say']
-  if (field.label?.trim().toLowerCase() !== 'gender' || JSON.stringify(field.options || []) !== JSON.stringify(standardOptions)) return field
-  return { ...field, options: [...standardOptions, 'N: Non-binary'] }
+  const bilingualOptions = ['M: ប្រុស/Male', 'F: ស្រី/Female', 'P: មិនបញ្ជាក់/Prefer not to say']
+  const label = field.label?.toLowerCase() || ''
+  if (!label.includes('gender') && !label.includes('ភេទ')) return field
+  if (JSON.stringify(field.options || []) === JSON.stringify(standardOptions)) return { ...field, options: [...standardOptions, 'N: Non-binary'] }
+  if (JSON.stringify(field.options || []) === JSON.stringify(bilingualOptions)) return { ...field, options: [...bilingualOptions, 'N: មិនមែនពីរភេទ/Non-binary'] }
+  return field
 })
 
 /** Identify untouched built-in forms from earlier app versions for safe upgrades. */
@@ -192,6 +200,8 @@ export const isLegacyStarterForm = (fields) => {
     ['Full Name', 'Email', 'Phone Number', 'Department', 'Age Group', 'Organization / School'],
     ['Full Name', 'Email', 'Phone Number', 'Department', 'Age Group', 'Organization / School', 'Business Entity', 'Position', 'Photo request and Using', 'TEL', 'Signature'],
     ['Name', 'Email', 'Gender', 'Age', 'Disability', 'Ethnicity', 'Institution', 'Business Entity', 'Position', 'Photo request and use', 'TEL', 'Signature'],
+    ['Name', 'Email', 'Gender', 'Age', 'Disability', 'Ethnicity', 'Institution', 'Business Entity', 'Position', 'Photo request and use', 'TEL'],
+    ['ឈ្មោះពេញ/Full Name', 'អ៊ីមែល/Email', 'ភេទ/Gender', 'អាយុ/Age', 'ពិការភាព/Disability', 'ជនជាតិ/Ethnicity', 'ស្ថាប័ន/Institution', 'អង្គភាពអាជីវកម្ម/Business Entity', 'មុខតំណែង/Position', 'ការអនុញ្ញាតប្រើប្រាស់រូបថត/Photo consent', 'លេខទូរស័ព្ទ/Phone'],
   ]
   return previousTemplates.some((labels) =>
     fields.length === labels.length && fields.every((field, index) => field.label === labels[index])

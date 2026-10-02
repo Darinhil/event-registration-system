@@ -91,7 +91,10 @@ class RegistrationService
     {
         $base = strtoupper(Str::slug($event->name));
         $n = 1;
-        while (Registration::where('event_id', $event->id)->where('registration_code', $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT))->exists()) {
+        // registration_code has a global unique index, not a per-event index.
+        // Check globally so two events with the same name cannot generate the
+        // same first code (for example TEST-EVENT-001).
+        while (Registration::where('registration_code', $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT))->exists()) {
             $n++;
         }
 
@@ -138,7 +141,9 @@ class RegistrationService
         foreach ($fields as $field) {
             $value = $formData[$field->id] ?? null;
             if ($value === null || $value === '' || $value === []) continue;
-            $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
+            // Bilingual labels such as "ឈ្មោះ/Name" retain their English
+            // identifier after Khmer characters and punctuation are removed.
+            $normalized = trim(strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label)), '_');
             $column = $coreMap[$normalized] ?? (in_array($normalized, $fillable, true) ? $normalized : null);
 
             if ($column === 'gender') {
@@ -149,6 +154,15 @@ class RegistrationService
                     in_array($prefix, ['f', 'female'], true) => 'female',
                     default => 'other',
                 };
+                continue;
+            }
+
+            if ($column === 'photo_consent') {
+                $answer = is_array($value) ? ($value[0] ?? '') : (string) $value;
+                $answer = strtolower(trim($answer));
+                $data['photo_consent'] = str_starts_with($answer, 'yes')
+                    || str_starts_with($answer, 'បាទ')
+                    || str_starts_with($answer, 'ចាស');
                 continue;
             }
 

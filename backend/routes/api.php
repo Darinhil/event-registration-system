@@ -14,6 +14,7 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/admin/login', [AuthController::class, 'adminLogin']);
 Route::get('/events', [EventController::class, 'index']);
+Route::get('/events/{event}/banner', [EventController::class, 'banner']);
 Route::get('/events/{event}', [EventController::class, 'show']);
 Route::get('/events/{event}/form', [EventController::class, 'form']);
 Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
@@ -35,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/check-ins/lookup', [CheckInController::class, 'lookup']);
         Route::post('/check-ins/search', [CheckInController::class, 'search']);
         Route::get('/events', [EventController::class, 'adminIndex']);
+        Route::get('/events/{event}/banner', [EventController::class, 'banner'])->middleware('can:view,event');
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update'])->middleware('can:update,event');
         Route::get('/events/{event}/registrants', [EventController::class, 'registrants'])->middleware('can:view,event');

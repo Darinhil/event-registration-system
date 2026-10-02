@@ -6,7 +6,7 @@ const apiUrl = typeof window !== 'undefined' && window.location.hostname !== 'lo
   : configuredApiUrl
 const api = axios.create({
   baseURL: apiUrl,
-  timeout: 8000,
+  timeout: 15000,
   headers: { Accept: 'application/json' },
 })
 api.interceptors.request.use((config) => { const token = localStorage.getItem('event_token'); if (token) config.headers.Authorization = `Bearer ${token}`; return config })

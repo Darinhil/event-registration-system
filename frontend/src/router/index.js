@@ -7,6 +7,7 @@ const lazy = (path) => () => import(path)
 const HomeView = lazy('../views/public/HomeView.vue')
 const RegistrationView = lazy('../views/public/RegistrationView.vue')
 const EventView = lazy('../views/public/EventView.vue')
+const UserEventsView = lazy('../views/public/EventsView.vue')
 const RegistrationSuccessView = lazy('../views/user/RegistrationSuccessView.vue')
 const MyInformationView = lazy('../views/user/MyInformationView.vue')
 const EditRegistrationView = lazy('../views/user/EditRegistrationView.vue')
@@ -27,7 +28,7 @@ const AdminAccountsView = lazy('../views/admin/AdminAccountsView.vue')
 const SystemSettingsView = lazy('../views/admin/SystemSettingsView.vue')
 
 const router = createRouter({ history: createWebHistory(), routes: [
-  { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView },
+  { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView }, { path: '/events', component: UserEventsView, meta: { auth: true } },
   { path: '/register', component: RegistrationView, meta: { auth: true } }, { path: '/events/:eventId', component: EventView }, { path: '/events/:eventId/register', component: RegistrationView, meta: { auth: true } },
   { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } }, { path: '/me', component: MyInformationView, meta: { auth: true } }, { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
   { path: '/profile', component: AdminProfileView, meta: { auth: true } },
