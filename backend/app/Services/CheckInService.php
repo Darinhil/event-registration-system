@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 class CheckInService
 {
-    public function findRegistration(string $credential): Registration
+    public function findRegistration(string $credential, ?User $staff = null): Registration
     {
         $credential = trim($credential);
         $payload = json_decode($credential, true);
@@ -23,14 +23,14 @@ class CheckInService
             ->when(! $token, fn ($query) => $query->where('registration_code', $registrationCode))
             ->first();
 
-        if (! $registration) { throw ValidationException::withMessages(['credential' => 'Registration not found. Check the QR code or attendee code.']); }
+        if (! $registration || ($staff && in_array($staff->role, ['admin', 'event_admin'], true) && $staff->role !== 'admin' && $registration->event->created_by !== $staff->id)) { throw ValidationException::withMessages(['credential' => 'Registration not found. Check the QR code or attendee code.']); }
 
         return $registration;
     }
 
     public function checkIn(string $credential, User $staff): CheckIn
     {
-        $registration = $this->findRegistration($credential);
+        $registration = $this->findRegistration($credential, $staff);
         if ($registration->checkIn()->exists()) { throw ValidationException::withMessages(['credential' => 'This registration is already checked in.']); }
         $checkIn = $registration->checkIn()->create(['checked_in_at' => now(), 'checked_in_by' => $staff->id]);
         $registration->update(['status' => 'checked_in']);

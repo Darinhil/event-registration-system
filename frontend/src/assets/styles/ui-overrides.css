@@ -76,6 +76,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .topbar nav .logout-button { display: inline-flex; align-items: center; margin: 0 0 0 6px; padding: 9px 16px; border: 1px solid rgba(21, 45, 80, .14); border-radius: 999px; background: transparent; color: #44597a; font-size: .85rem; font-weight: 600; cursor: pointer; transition: background-color .18s ease, color .18s ease, border-color .18s ease; }
 .topbar nav .logout-button:hover { border-color: #f3b4b4; background: #fdf1f1; color: #b23b3b; }
 .topbar nav .nav-user-chip { display: inline-flex; align-items: center; gap: 9px; margin-left: 12px; padding: 5px 14px 5px 5px; border: 1px solid rgba(21, 45, 80, .08); border-radius: 999px; background: #f4f8fd; }
+.topbar nav a.nav-user-chip { color: inherit; text-decoration: none; }
 .topbar nav .nav-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #2b73dc, #12b77e); color: #fff; font-size: .78rem; font-weight: 700; }
 .topbar nav .nav-user-name { max-width: 140px; overflow: hidden; color: var(--ui-ink); font-size: .84rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .topbar nav .cta-button { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; padding: 11px 22px; border-radius: 999px; background: linear-gradient(135deg, #2563eb, #12b77e); color: #fff; font-size: .9rem; font-weight: 600; box-shadow: 0 10px 22px -8px rgba(37, 99, 235, .55); transition: filter .18s ease, transform .18s ease; }
@@ -84,6 +85,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .topbar nav .cta-button:hover::after { transform: translateX(3px); }
 @media (max-width: 720px) {
   .topbar { top: 8px; gap: 10px; }
+  .topbar .brand img { width: 112px; height: 34px; border-radius: 0; }
   .topbar .brand-text { display: none; }
   .topbar nav .nav-link { padding: 8px 11px; font-size: .8rem; }
   .topbar nav .logout-button { padding: 8px 12px; font-size: .76rem; }
@@ -94,12 +96,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .brand { color: var(--ui-ink); font-size: 1.25rem; font-weight: 700; }
 .topbar .brand { display: inline-flex; align-items: center; gap: 11px; }
-.topbar .brand img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+.topbar .brand img { width: 154px; height: 42px; border-radius: 0; object-fit: contain; background: transparent; box-shadow: none; mix-blend-mode: multiply; }
 .topbar nav .get-started-link { display: inline-flex; align-items: center; justify-content: center; min-width: 150px; padding: 12px 20px; border-radius: 9px; background: #000; color: #fff; font-size: .95rem; }
 .topbar nav .get-started-link:hover { background: #1f2937; color: #fff; }
 .topbar nav { transform: none; }
 .topbar nav .login-link { transform: translateY(12px); line-height: 1; }
 .topbar nav .login-link { font-size: 1.05rem; }
+.shell>.topbar{max-width:none;margin:8px 14px;padding:5px 14px 5px 18px;min-height:64px;border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 12px 28px -12px rgba(15,40,80,.2)}
+.shell>.topbar .brand img{width:165px;height:46px}.shell>.topbar nav{gap:8px}.shell>.topbar nav .nav-link{padding:9px 16px;font-size:.9rem}.shell>.topbar nav .nav-user-chip{margin-left:8px;padding-right:14px}.shell>.topbar nav .logout-button{padding:9px 16px}
 .shell main { padding-top: 42px; }
 .auth-page { background: linear-gradient(135deg, #edf5ff, #f8fbff); }
 .shell > main:has(.auth-page) { padding: 0; }
@@ -590,6 +594,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .profile-photo-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .profile-photo-button.is-disabled { cursor: not-allowed; opacity: .58; }
 .profile-photo-button input:disabled { cursor: not-allowed; }
+.profile-photo-copy { min-width: 0; }
+.profile-photo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.profile-photo-actions .button { margin: 0; }
+.profile-readonly-grid input[readonly] { cursor: not-allowed; background: #f5f8fc; color: #607995; }
+.profile-photo-button input { cursor: pointer; }
+.nav-avatar { overflow: hidden; }
+.nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 560px) { .profile-photo-editor { align-items: flex-start; flex-direction: column; } .profile-photo-actions { width: 100%; } .profile-photo-actions .button { flex: 1; } }
 
 .camera-reader {
   min-height: 300px;
@@ -768,11 +780,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   line-height: 1;
 }
 .admin-brand-logo {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
-  border-radius: 50%;
-  object-fit: cover;
+  width: 190px;
+  height: 58px;
+  flex: 0 0 190px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px 8px;
 }
 .admin-brand > span:last-child { color: #f4f7fb; }
 .admin-brand > span:last-child span { color: #3f8bff; }
@@ -1179,6 +1193,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .table-event-name > div { min-width: 0; }
 .event-table-thumb { flex: 0 0 auto; width: 46px; height: 34px; border-radius: 7px; object-fit: cover; background: #eaf3f2; }
 @media (max-width: 640px) { .event-card-banner { height: 104px; } }
+.event-card-visual { height: 170px !important; }
+.event-card-visual > .event-card-banner { display: block; width: 100%; height: 100% !important; margin: 0; object-fit: cover; }
+@media (max-width: 640px) { .event-card-visual { height: 140px !important; } }
 .managed-event-card { display: flex; flex-direction: column; padding: 17px 18px; border-radius: 13px; background: #fff; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .managed-event-card:hover { border-color: #abc9f2; box-shadow: 0 16px 34px -18px rgba(28, 63, 100, .32); transform: translateY(-2px); }
 .managed-event-card h3 { margin: 12px 0 4px; font-size: 1.02rem; letter-spacing: -.015em; }

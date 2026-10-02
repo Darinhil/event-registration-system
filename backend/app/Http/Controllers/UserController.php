@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
     public function show(Request $request): UserResource
     {
-        $user = $request->user()->load('registrations.checkIn', 'registrations.event');
+        // A registration must not remain visible if its event was removed.
+        // The event delete flow removes these rows, while this constraint also
+        // protects users from seeing legacy orphaned registrations.
+        $user = $request->user()->load([
+            'registrations' => fn ($query) => $query->whereHas('event')->with('checkIn', 'event'),
+        ]);
         $fields = $user->registrations->isNotEmpty()
             ? \App\Models\FormField::whereIn('event_id', $user->registrations->pluck('event_id'))->orderBy('sort_order')->get()
             : collect();
@@ -24,19 +28,14 @@ class UserController extends Controller
     public function updateProfile(Request $request): UserResource
     {
         $user = $request->user();
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($user->id)],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'username' => ['nullable', 'string', 'max:80', Rule::unique('users', 'username')->ignore($user->id)],
-            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        $request->validate([
+            'profile_photo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        if ($request->hasFile('profile_photo')) {
-            $data['profile_photo'] = $request->file('profile_photo')->store('profile-photos', 'public');
-        }
-
-        $user->update($data);
+        $newPath = $request->file('profile_photo')->store('profile-photos', 'public');
+        $oldPath = $user->profile_photo;
+        $user->update(['profile_photo' => $newPath]);
+        if ($oldPath && $oldPath !== $newPath) Storage::disk('public')->delete($oldPath);
 
         return new UserResource($user->fresh());
     }

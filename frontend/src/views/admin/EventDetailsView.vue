@@ -46,7 +46,6 @@ const actionGroups = computed(() => [
     actions: [
       { key: 'preview', label: 'Preview', description: 'See attendee view', icon: 'eye', href: link.value, external: true, primary: true },
       { key: 'edit', label: 'Edit event', description: 'Update event details', icon: 'pencil', to: `/admin/events/${event.value?.id}/edit`, primary: true },
-      { key: 'share', label: 'Share event', description: 'Use device sharing', icon: 'megaphone', handler: shareEvent },
     ],
   },
   {
@@ -54,16 +53,14 @@ const actionGroups = computed(() => [
     actions: [
       { key: 'form', label: 'Manage registration form', description: 'Edit attendee fields', icon: 'clipboard', to: `/admin/events/${event.value?.id}/form-builder`, primary: true },
       { key: 'registrants', label: 'View registrants', description: 'Review attendees', icon: 'users', to: `/admin/events/${event.value?.id}/registrants`, primary: true },
-      { key: 'copy', label: 'Copy registration link', description: 'Share the event URL', icon: 'link', handler: copyLink },
     ],
   },
   {
-    key: 'attendance', label: 'Attendance',
-    actions: [
-      { key: 'checkin', label: 'Check-in participants', description: 'Scan attendee passes', icon: 'check', to: '/admin/check-ins', primary: true },
-      { key: 'stats', label: 'View statistics', description: 'Registration overview', icon: 'chart', anchor: '#stats' },
-      { key: 'export', label: 'Export registrants', description: 'Download CSV', icon: 'download', handler: exportRegistrants },
-    ],
+      key: 'attendance', label: 'Attendance',
+      actions: [
+        { key: 'checkin', label: 'Check-in participants', description: 'Scan attendee passes', icon: 'check', to: '/admin/check-ins', primary: true },
+        { key: 'export', label: 'Export registrants', description: 'Download CSV', icon: 'download', handler: exportRegistrants },
+      ],
   },
 ])
 </script>

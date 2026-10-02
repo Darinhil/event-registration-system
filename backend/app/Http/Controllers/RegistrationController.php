@@ -26,7 +26,7 @@ class RegistrationController extends Controller
             abort(403, 'Editing registration is disabled for this event.');
         }
         $deadline = $settings['registration_end'] ?? null;
-        if ($deadline && Carbon::parse($deadline)->isPast()) {
+        if ($deadline && Carbon::parse($deadline)->endOfDay()->isPast()) {
             throw ValidationException::withMessages(['registration' => 'The registration editing deadline has passed.']);
         }
         if ((int) $request->validated()['event_id'] !== (int) $registration->event_id) {

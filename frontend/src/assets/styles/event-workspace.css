@@ -375,3 +375,48 @@
   .ews-danger .ews-btn { width: 100%; }
   .ews-action { min-height: 64px; }
 }
+
+/* Final workspace polish: fewer choices per row and clearer action hierarchy. */
+@media (min-width: 861px) {
+  .ews {
+    max-width: 1360px;
+    padding: 28px 34px 64px;
+  }
+
+  .ews-header {
+    margin-bottom: 26px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--ews-border-soft);
+  }
+
+  .ews-title-row { gap: 12px; }
+  .ews-title-row h1 { font-size: clamp(1.9rem, 3vw, 2.45rem); }
+  .ews-description { font-size: .9rem; }
+
+  .ews-action-grid,
+  .ews-action-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+  .ews-action {
+    min-height: 72px;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 14px;
+  }
+
+  .ews-action-icon { width: 36px; height: 36px; border-radius: 10px; }
+  .ews-action-copy strong { font-size: .84rem; }
+  .ews-action-copy small { font-size: .72rem; }
+
+  .ews-danger { padding: 16px 18px; border-radius: 14px; }
+  .ews-danger-copy h2 { font-size: .88rem; }
+  .ews-danger-copy p { font-size: .74rem; }
+
+  .ews-qr {
+    padding: 22px;
+    border-radius: 16px;
+    box-shadow: 0 8px 28px -20px rgba(15, 36, 68, .35);
+  }
+  .ews-qr h2 { font-size: 1rem; }
+  .ews-qr-frame { padding: 18px; }
+  .ews-qr-frame .qr canvas { width: 180px !important; height: 180px !important; }
+}

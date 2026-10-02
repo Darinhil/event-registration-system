@@ -3,10 +3,10 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import { getEventReportAttendees, getReports } from '../../services/adminService'
 import { formatDate } from '../../utils/formatDate'
-import * as XLSX from 'xlsx'
 
 /** Write rows as a styled .xlsx: bold white-on-blue header, sized columns, autofilter, frozen header row. */
-const saveXlsx = (headers, rows, fileName, sheetName, columnWidths) => {
+const saveXlsx = async (headers, rows, fileName, sheetName, columnWidths) => {
+  const XLSX = await import('xlsx')
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
   worksheet['!cols'] = columnWidths || headers.map(() => ({ wch: 18 }))
   worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${rows.length + 1}` }

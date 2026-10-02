@@ -13,8 +13,8 @@ import AppIcon from '../../components/AppIcon.vue'
       </p>
 
       <div class="home-hero-actions">
-        <RouterLink class="home-cta" to="/register">
-          Reserve your place
+        <RouterLink class="home-cta" to="/events">
+          Browse events
           <AppIcon name="arrow-right" :size="18" />
         </RouterLink>
         <RouterLink class="home-ghost" to="/check-in">

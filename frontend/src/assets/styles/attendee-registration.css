@@ -9,6 +9,74 @@
   --form-purple-action: #7950dc;
 }
 
+/* Give the header mark a little personality without changing its artwork. */
+.topbar .brand {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  isolation: isolate;
+  transform: translateX(-14px);
+}
+
+.topbar .brand::before {
+  position: absolute;
+  z-index: -1;
+  top: 3px;
+  bottom: 3px;
+  left: -4px;
+  width: 150px;
+  right: auto;
+  border-radius: 999px;
+  background: linear-gradient(110deg, rgba(8, 127, 118, 0), rgba(8, 127, 118, .18), rgba(37, 99, 235, 0));
+  content: '';
+  opacity: 0;
+  transform: scaleX(.65);
+  transition: opacity .25s ease, transform .35s ease;
+}
+
+.topbar .brand img {
+  display: block;
+  width: 174px;
+  height: 48px;
+  object-fit: contain;
+  transform-origin: left center;
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), filter .35s ease;
+}
+
+.topbar .brand:hover img,
+.topbar .brand:focus-visible img {
+  filter: drop-shadow(0 7px 9px rgba(8, 127, 118, .28));
+  transform: translateY(-2px) rotate(-1.5deg) scale(1.045);
+}
+
+.topbar .brand:hover::before,
+.topbar .brand:focus-visible::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.topbar nav .cta-button::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar .brand img,
+  .topbar .brand::before {
+    transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar .brand::before {
+    width: 108px;
+  }
+
+  .topbar .brand img {
+    width: 120px;
+    height: 36px;
+  }
+}
+
 .dynamic-registration-page {
   max-width: 1240px;
   padding: 36px 28px 72px;

@@ -23,54 +23,7 @@ class RegistrationService
 
         // Mirror labeled answers onto the profile columns so admin tables,
         // exports, and check-in screens work without hardcoded field ids.
-        $fillable = (new Registration)->getFillable();
-        $coreMap = [
-            'full name' => 'full_name', 'name' => 'full_name',
-            'email' => 'email', 'email address' => 'email',
-            'phone' => 'phone', 'phone number' => 'phone', 'tel' => 'phone', 'telephone' => 'phone',
-            'organization' => 'organization', 'organisation' => 'organization', 'institution' => 'organization',
-            'position' => 'position', 'address' => 'address',
-        ];
-        foreach ($fields as $field) {
-            $value = $formData[$field->id] ?? null;
-            if ($value === null || $value === '' || $value === []) continue;
-            $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
-            $column = $coreMap[$normalized] ?? (in_array($normalized, $fillable, true) ? $normalized : null);
-
-            // "M: Male" / "F: Female" / "N: Non-binary" style choices map to the gender enum.
-            if ($column === 'gender') {
-                $first = is_array($value) ? ($value[0] ?? '') : $value;
-                $prefix = strtolower(trim(explode(':', (string) $first)[0]));
-                $data['gender'] = match (true) {
-                    in_array($prefix, ['m', 'male'], true) => 'male',
-                    in_array($prefix, ['f', 'female'], true) => 'female',
-                    default => 'other',
-                };
-                continue;
-            }
-            // Numeric Age answers fill age; group choices ("Y: 18–29") fill age_group.
-            if ($column === 'age' || $normalized === 'age_group') {
-                if (is_scalar($value) && is_numeric($value)) {
-                    $data['age'] = (int) $value;
-                } else {
-                    $data['age_group'] = is_array($value) ? implode(', ', array_map('strval', $value)) : (string) $value;
-                }
-                continue;
-            }
-            // Disability checkboxes store their option codes ("C: Difficulty seeing" -> "C").
-            if ($column === 'disability_type' || str_contains($normalized, 'disability')) {
-                $codes = [];
-                foreach ((array) $value as $item) {
-                    $code = strtoupper(trim(explode(':', (string) $item)[0]));
-                    if (preg_match('/^[A-Z]{1,2}$/', $code)) $codes[] = $code;
-                }
-                if ($codes !== []) $data['disability_type'] = $codes;
-                continue;
-            }
-            if ($column !== null && !isset($data[$column]) && is_scalar($value)) {
-                $data[$column] = $value;
-            }
-        }
+        $this->hydrateCoreFields($data, $fields, $formData);
         $data['form_data'] = $formData;
 
         $enabled = $event->enabled_fields ?: [];
@@ -112,12 +65,9 @@ class RegistrationService
         $event = $registration->event;
         $formData = $this->sanitizeFormData($data['form_data'] ?? []);
 
-        foreach ($event->formFields()->get() as $field) {
-            $value = $formData[$field->id] ?? null;
-            $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label));
-            if (is_array($value) || $value === null || $value === '') continue;
-            if (!isset($data[$normalized])) $data[$normalized] = $value;
-        }
+        // Use the same conversion as create(). In particular, age-group choices
+        // such as "K: Under 18" must never be written to the integer `age` column.
+        $this->hydrateCoreFields($data, $event->formFields()->get(), $formData);
 
         if (!empty($data['email']) && Registration::where('event_id', $event->id)->where('email', $data['email'])->where('id', '!=', $registration->id)->exists()) {
             throw ValidationException::withMessages(['email' => 'Already registered for this event.']);
@@ -141,7 +91,10 @@ class RegistrationService
     {
         $base = strtoupper(Str::slug($event->name));
         $n = 1;
-        while (Registration::where('event_id', $event->id)->where('registration_code', $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT))->exists()) {
+        // registration_code has a global unique index, not a per-event index.
+        // Check globally so two events with the same name cannot generate the
+        // same first code (for example TEST-EVENT-001).
+        while (Registration::where('registration_code', $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT))->exists()) {
             $n++;
         }
 
@@ -173,6 +126,70 @@ class RegistrationService
         }
     }
 
+    /** Copy dynamic form answers to legacy registration columns safely. */
+    private function hydrateCoreFields(array &$data, $fields, array $formData): void
+    {
+        $fillable = (new Registration)->getFillable();
+        $coreMap = [
+            'full_name' => 'full_name', 'name' => 'full_name',
+            'email' => 'email', 'email_address' => 'email',
+            'phone' => 'phone', 'phone_number' => 'phone', 'tel' => 'phone', 'telephone' => 'phone',
+            'organization' => 'organization', 'organisation' => 'organization', 'institution' => 'organization',
+            'position' => 'position', 'address' => 'address',
+        ];
+
+        foreach ($fields as $field) {
+            $value = $formData[$field->id] ?? null;
+            if ($value === null || $value === '' || $value === []) continue;
+            // Bilingual labels such as "ឈ្មោះ/Name" retain their English
+            // identifier after Khmer characters and punctuation are removed.
+            $normalized = trim(strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label)), '_');
+            $column = $coreMap[$normalized] ?? (in_array($normalized, $fillable, true) ? $normalized : null);
+
+            if ($column === 'gender') {
+                $first = is_array($value) ? ($value[0] ?? '') : $value;
+                $prefix = strtolower(trim(explode(':', (string) $first)[0]));
+                $data['gender'] = match (true) {
+                    in_array($prefix, ['m', 'male'], true) => 'male',
+                    in_array($prefix, ['f', 'female'], true) => 'female',
+                    default => 'other',
+                };
+                continue;
+            }
+
+            if ($column === 'photo_consent') {
+                $answer = is_array($value) ? ($value[0] ?? '') : (string) $value;
+                $answer = strtolower(trim($answer));
+                $data['photo_consent'] = str_starts_with($answer, 'yes')
+                    || str_starts_with($answer, 'បាទ')
+                    || str_starts_with($answer, 'ចាស');
+                continue;
+            }
+
+            if ($column === 'age' || $normalized === 'age_group') {
+                if (is_scalar($value) && is_numeric($value)) {
+                    $data['age'] = (int) $value;
+                } else {
+                    $data['age'] = null;
+                    $data['age_group'] = is_array($value) ? implode(', ', array_map('strval', $value)) : (string) $value;
+                }
+                continue;
+            }
+
+            if ($column === 'disability_type' || str_contains($normalized, 'disability')) {
+                $codes = [];
+                foreach ((array) $value as $item) {
+                    $code = strtoupper(trim(explode(':', (string) $item)[0]));
+                    if (preg_match('/^[A-Z]{1,2}$/', $code)) $codes[] = $code;
+                }
+                if ($codes !== []) $data['disability_type'] = $codes;
+                continue;
+            }
+
+            if ($column !== null && !isset($data[$column]) && is_scalar($value)) $data[$column] = $value;
+        }
+    }
+
     /** Enforce the optional registration window configured in the builder settings. */
     private function assertRegistrationWindow(Event $event, array $settings): void
     {
@@ -182,7 +199,7 @@ class RegistrationService
         if ($start && Carbon::parse($start)->isAfter(now())) {
             throw ValidationException::withMessages(['event_id' => 'Registration for this event has not opened yet.']);
         }
-        if ($end && Carbon::parse($end)->isPast()) {
+        if ($end && Carbon::parse($end)->endOfDay()->isPast()) {
             throw ValidationException::withMessages(['event_id' => 'Registration for this event has closed.']);
         }
     }

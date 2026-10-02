@@ -50,15 +50,19 @@ const seedValue = (field) => {
   if (field.type === 'yesno') return s.default_checked ? 'Yes' : ''
   return s.default_value ?? ''
 }
-const initValues = () => {
+const initValues = (forceInitialValues = false) => {
   for (const field of props.fields) {
-    if (values[field.id] !== undefined) continue
+    if (!forceInitialValues && values[field.id] !== undefined) continue
     const initial = props.initialValues?.[field.id]
     values[field.id] = initial !== undefined && initial !== null ? initial : seedValue(field)
   }
 }
 const values = reactive({})
-watch(() => [props.fields, props.initialValues], initValues, { immediate: true })
+// Fields and saved answers are loaded independently on the edit page. Seed
+// defaults first, then hydrate once the API-provided initial values arrive.
+// Without the second pass, blank defaults prevented saved answers from showing.
+watch(() => props.fields, () => initValues(false), { immediate: true })
+watch(() => props.initialValues, () => initValues(true), { immediate: true })
 
 const setValue = (field, value) => {
   values[field.id] = value
@@ -115,7 +119,7 @@ const checkedState = (field) => {
 <template>
   <form class="fr-form" novalidate @submit.prevent="proceed">
     <header v-if="eventBanner || eventName" class="fr-event">
-      <img v-if="eventBanner" class="fr-event-banner" :src="eventBanner" alt="" />
+      <img v-if="eventBanner" class="fr-event-banner" :src="eventBanner" alt="" loading="lazy" decoding="async" />
       <div class="fr-event-copy">
         <h2>{{ eventName || formTitle }}</h2>
         <p v-if="formDescription">{{ formDescription }}</p>

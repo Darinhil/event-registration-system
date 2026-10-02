@@ -95,7 +95,7 @@ const formatDeadline = (value) => {
         >
           <span class="mi-reg-icon"><AppIcon name="ticket" :size="20" /></span>
           <div class="mi-reg-main">
-            <strong>{{ registration.event_name }}</strong>
+            <RouterLink class="mi-event-link" :to="`/events/${registration.event_id}`">{{ registration.event_name }}</RouterLink>
             <div class="mi-reg-meta">
               <span>{{ formatDate(registration.event_date) }}</span>
             </div>
