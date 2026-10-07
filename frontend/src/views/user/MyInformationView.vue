@@ -138,8 +138,7 @@ const formatDeadline = (value) => {
       <div v-else-if="auth.user && !profileLoading" class="mi-empty">
         <span class="mi-empty-icon"><AppIcon name="inbox" :size="26" /></span>
         <strong>No registrations yet</strong>
-        <p>Browse available events and secure your spot in a few clicks.</p>
-        <RouterLink to="/events">Browse events</RouterLink>
+        <p>Your registrations will appear here after you register using an event link from the organizer.</p>
       </div>
     </section>
   </UserLayout>

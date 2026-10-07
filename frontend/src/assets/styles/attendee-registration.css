@@ -551,3 +551,179 @@
   background: transparent;
   box-shadow: none;
 }
+
+.dynamic-registration-shell > .registration-back-link {
+  width: fit-content;
+  margin-bottom: -14px;
+  padding: 0 13px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(23, 57, 75, .04);
+  transition: border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+.dynamic-registration-shell > .registration-back-link:hover {
+  color: #0c8279;
+  transform: translateX(-2px);
+}
+
+.dynamic-registration-shell > .event-flow-progress {
+  margin: 0;
+}
+
+.event-flow-progress.is-registration-step li.is-current {
+  border-color: #9bd8cd;
+  background: #effaf7;
+  box-shadow: 0 5px 16px rgba(13, 148, 136, .07);
+}
+
+.event-flow-progress.is-registration-step li.is-current > span,
+.event-flow-progress.is-registration-step li.is-complete > span {
+  background: #0d9488;
+}
+
+.dynamic-registration-page .dynamic-event-hero {
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 16px;
+}
+
+.dynamic-registration-page .dynamic-event-hero-copy h1 {
+  letter-spacing: -.035em;
+}
+
+.dynamic-registration-page .dynamic-registration-body {
+  padding-top: 2px;
+}
+
+.dynamic-registration-page .dynamic-progress {
+  max-width: 840px;
+  margin: 0 auto 15px;
+  padding: 0 4px;
+}
+
+.dynamic-registration-page .dynamic-progress small {
+  font-weight: 650;
+}
+
+.dynamic-registration-page .dynamic-form,
+.dynamic-registration-page .dynamic-review {
+  overflow: hidden;
+  border-color: #dce8f1;
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(23, 57, 75, .075);
+}
+
+.dynamic-registration-page .dynamic-form > .dynamic-form-heading {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 24px 30px;
+  border-bottom: 1px solid #deeee9;
+  background: linear-gradient(120deg, #effaf7, #f7fbff);
+}
+
+.dynamic-registration-page .dynamic-form-heading .admin-eyebrow {
+  display: block;
+  margin: 0 0 5px;
+  color: #0b8278;
+  font-size: .67rem;
+  font-weight: 800;
+}
+
+.dynamic-registration-page .dynamic-form-heading h2 {
+  margin: 0 0 5px;
+  color: #173b4c;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.dynamic-registration-page .dynamic-form-heading p:not(.admin-eyebrow) {
+  color: #6e8492;
+  font-size: .8rem;
+}
+
+.dynamic-registration-page .dynamic-form-heading > span {
+  display: inline-flex;
+  padding: 7px 11px;
+  border: 1px solid #d5e9e3;
+  border-radius: 999px;
+  background: #fff;
+  color: #42756e;
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.dynamic-registration-page .dynamic-fields {
+  gap: 22px;
+}
+
+.dynamic-registration-page .dynamic-field > span {
+  color: #294b5d;
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.dynamic-registration-page .dynamic-field input,
+.dynamic-registration-page .dynamic-field select,
+.dynamic-registration-page .dynamic-field textarea {
+  border-color: #d7e2eb;
+  border-radius: 10px;
+  background-color: #fbfdff;
+}
+
+.dynamic-registration-page .dynamic-field input:hover,
+.dynamic-registration-page .dynamic-field select:hover,
+.dynamic-registration-page .dynamic-field textarea:hover {
+  border-color: #9bcfc5;
+}
+
+.dynamic-registration-page .dynamic-field input:focus,
+.dynamic-registration-page .dynamic-field select:focus,
+.dynamic-registration-page .dynamic-field textarea:focus {
+  border-color: #37a99c;
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, .11);
+}
+
+.dynamic-registration-page .dynamic-form > .primary-button {
+  min-height: 48px;
+  margin: 24px 30px 30px;
+  border-radius: 10px;
+  background: #0d827a;
+  box-shadow: 0 7px 16px rgba(13, 130, 122, .18);
+  font-weight: 700;
+  transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.dynamic-registration-page .dynamic-form > .primary-button:hover {
+  background: #0a716a;
+  box-shadow: 0 10px 20px rgba(13, 130, 122, .22);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 560px) {
+  .dynamic-registration-shell > .registration-back-link {
+    margin-bottom: -7px;
+  }
+
+  .dynamic-registration-shell > .event-flow-progress {
+    gap: 8px;
+  }
+
+  .dynamic-registration-page .dynamic-form > .dynamic-form-heading {
+    align-items: flex-start;
+    padding: 20px 22px;
+  }
+
+  .dynamic-registration-page .dynamic-form-heading h2 {
+    font-size: 1.18rem;
+  }
+
+  .dynamic-registration-page .dynamic-form-heading > span {
+    display: none;
+  }
+
+  .dynamic-registration-page .dynamic-form > .primary-button {
+    width: calc(100% - 44px);
+  }
+}

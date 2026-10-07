@@ -81,7 +81,7 @@ const lastSavedLabel = computed(() => {
   return `Last saved: ${Math.floor(seconds / 60)}m ago`
 })
 const statusLabel = computed(() => ({ draft: 'Draft', published: 'Published', open: 'Published', closed: 'Closed', archived: 'Archived', cancelled: 'Cancelled' }[eventStatus.value] || eventStatus.value))
-const registrationLink = computed(() => publishedLink.value || `${window.location.origin}/events/${eventId}/register`)
+const registrationLink = computed(() => publishedLink.value || `${window.location.origin}/events/${eventId}`)
 const widthLabel = (field) => FIELD_WIDTHS.find((entry) => entry.value === String(field.settings?.width || '100'))?.label || 'Full'
 
 /* ---------------- History (undo/redo) ---------------- */
@@ -379,7 +379,7 @@ const openPublishModal = async () => { await saveNow(); publishModal.value = tru
 const confirmPublish = async () => {
   try {
     const { data } = await api.patch(`/admin/events/${eventId}/form-builder/publish`)
-    publishedLink.value = data.data.registration_link || `${window.location.origin}/events/${eventId}/register`
+    publishedLink.value = data.data.registration_link || `${window.location.origin}/events/${eventId}`
     eventStatus.value = 'published'
     settings.status = 'published'
     publishModal.value = false

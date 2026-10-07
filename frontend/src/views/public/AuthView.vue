@@ -26,7 +26,7 @@ const login = async () => {
     if (rememberMe.value) localStorage.setItem('event_remembered_email', loginForm.email)
     else localStorage.removeItem('event_remembered_email')
     const requestedPath = redirectPath.value
-    router.push(auth.canAccessAdmin ? (requestedPath.startsWith('/admin') ? requestedPath : '/admin') : (requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/events'))
+    router.push(auth.canAccessAdmin ? (requestedPath.startsWith('/admin') ? requestedPath : '/admin') : (requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/me'))
   } catch { /* displayed in the form */ }
 }
 const signup = async () => {
@@ -34,7 +34,7 @@ const signup = async () => {
   try {
     await auth.registerAccount({ ...signupForm, name: signupForm.name || signupForm.email.split('@')[0] })
     const requestedPath = redirectPath.value
-    router.push(requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/events')
+    router.push(requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/me')
   } catch { /* displayed in the form */ }
 }
 </script>

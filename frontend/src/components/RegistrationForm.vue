@@ -55,6 +55,11 @@ load()
   <section class="dynamic-registration-page">
       <div v-if="loading" class="dynamic-loading">Loading event registration form…</div>
       <div v-else-if="event" class="dynamic-registration-shell">
+        <RouterLink class="registration-back-link" :to="`/events/${event.id}`">← Back to event agenda</RouterLink>
+        <ol class="event-flow-progress is-registration-step" aria-label="Event registration steps">
+          <li class="is-complete"><span>✓</span><div><strong>Review agenda</strong><small>Event overview</small></div></li>
+          <li class="is-current" aria-current="step"><span>2</span><div><strong>Register</strong><small>Your information</small></div></li>
+        </ol>
         <header class="dynamic-event-hero"><img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" alt="Event banner" /><div class="dynamic-event-hero-copy"><span class="event-category">{{ event.category || 'Event registration' }}</span><h1>{{ event.name }}</h1><p>{{ event.description || 'Complete the form below to reserve your place.' }}</p><div class="dynamic-event-meta"><span>📅 {{ eventDate }}</span><span>🕐 {{ event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : event.start_time || 'Time pending' }}</span><span>📍 {{ event.location || 'Location pending' }}</span></div></div></header>
         <div class="dynamic-registration-body">
           <div class="dynamic-progress"><span :class="{ active: step === 1, complete: step > 1 }">1</span><i></i><span :class="{ active: step === 2 }">2</span><small>{{ step === 1 ? 'Your information' : 'Review details' }}</small></div>
