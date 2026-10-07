@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
 import FormRenderer from '../../components/FormRenderer.vue'
+import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { buildSubmission, normalizeStoredValue } from '../../utils/formValidation'
 
@@ -129,13 +130,14 @@ load()
             <h1>{{ event.name }}</h1>
             <p>{{ event.description || 'Update your information for this event.' }}</p>
             <div class="edit-event-meta">
-              <span>📅 {{ eventDateLabel }}</span>
-              <span>🕐 {{ eventTimeLabel }}</span>
-              <span>📍 {{ event.location || 'Location to be confirmed' }}</span>
+              <span><AppIcon name="calendar" :size="16" />{{ eventDateLabel }}</span>
+              <span><AppIcon name="clock" :size="16" />{{ eventTimeLabel }}</span>
+              <span><AppIcon name="pin" :size="16" />{{ event.location || 'Location to be confirmed' }}</span>
             </div>
           </div>
           <span class="edit-deadline" :class="{ closed: !registration.can_edit }">
-            {{ registration.can_edit ? `Editing until ${deadlineLabel}` : '🔒 Editing closed' }}
+            <AppIcon v-if="!registration.can_edit" name="lock" :size="14" />
+            {{ registration.can_edit ? `Editing until ${deadlineLabel}` : 'Editing closed' }}
           </span>
         </header>
 

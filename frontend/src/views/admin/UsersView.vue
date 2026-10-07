@@ -152,15 +152,26 @@ const filteredAttendees = computed(() => attendees.value.filter((user) => {
 const loadWorkspace = async () => {
   loading.value = true
   error.value = ''
-  const localEvents = JSON.parse(localStorage.getItem('event_list') || '[]').map(normalizeEvent)
+  let localEvents = []
+  try {
+    const cached = JSON.parse(localStorage.getItem('event_list') || '[]')
+    if (Array.isArray(cached)) localEvents = cached.map(normalizeEvent)
+  } catch {
+    localEvents = []
+  }
+  let eventLoadError = ''
   try {
     const eventsResponse = await api.get('/admin/events')
     events.value = (eventsResponse.data.data || eventsResponse.data).map(normalizeEvent)
   } catch {
     events.value = localEvents
+    eventLoadError = localEvents.length
+      ? 'Unable to refresh events. Showing the saved event list.'
+      : 'Unable to load events from the API.'
   }
   selectedEventId.value = events.value[0]?.id || null
   await loadAttendees()
+  if (eventLoadError) error.value = error.value ? `${eventLoadError} ${error.value}` : eventLoadError
   loading.value = false
 }
 
@@ -252,8 +263,8 @@ onMounted(loadWorkspace)
     <section class="attendance-workspace">
       <header class="attendance-workspace-heading">
         <h1>Attendance by Event</h1>
-        <p>View all checked-in attendances with full information for each event.</p>
       </header>
+      <p v-if="error" class="inline-error" role="alert"><span>{{ error }}</span><button type="button" :disabled="loading" @click="loadWorkspace">{{ loading ? 'Retrying…' : 'Retry' }}</button></p>
       <div class="attendance-workspace-grid">
         <aside class="attendance-event-list">
           <header class="attendance-events-heading"><div><h2>Events <small>{{ events.length }} Total</small></h2></div><RouterLink to="/admin/events/new">+ New</RouterLink></header>

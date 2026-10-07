@@ -11,7 +11,7 @@ const creating = ref(false)
 const showPassword = ref(false)
 const form = reactive({ name: '', email: '', password: '', role: 'event_admin' })
 
-const roleLabel = (role) => (role === 'admin' ? 'Admin' : 'Event Admin')
+const roleLabel = (role) => ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[role] || role)
 const initials = (name = '') =>
   name
     .trim()
@@ -77,7 +77,7 @@ onMounted(load)
         <div>
           <p class="admin-eyebrow">Administration</p>
           <h1>Admin Accounts</h1>
-          <p>Create and manage Admin and Event Admin access.</p>
+          <p>Create staff accounts and assign authority levels.</p>
         </div>
         <span v-if="!loading" class="aa-count-chip">
           {{ accounts.length }} {{ accounts.length === 1 ? 'account' : 'accounts' }}
@@ -150,13 +150,18 @@ onMounted(load)
               <div class="aa-select-wrap">
                 <select id="aa-role" v-model="form.role">
                   <option value="event_admin">Event Admin</option>
-                  <option value="admin">Admin</option>
+                  <option value="manager">Manager</option>
+                  <option value="officer_3">Officer Level 3</option>
+                  <option value="officer_2">Officer Level 2</option>
+                  <option value="officer_1">Officer Level 1</option>
+                  <option value="officer_0">Officer Level 0</option>
+                  <option value="admin">Master Admin</option>
                 </select>
                 <svg class="aa-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
-              <small>Admins manage everything · Event Admins manage assigned events.</small>
+              <small>Authority levels are ready for the approval workflow.</small>
             </div>
 
             <button class="aa-submit" type="submit" :disabled="creating">

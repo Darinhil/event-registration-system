@@ -49,6 +49,32 @@ class AdminReportsTest extends TestCase
         $this->getJson('/api/admin/reports')->assertForbidden();
     }
 
+    public function test_dashboard_counts_unique_attendees_separately_from_registrations(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $firstEvent = $this->event();
+        $secondEvent = $this->event(['name' => 'Community Design Workshop']);
+        $returningAttendee = User::factory()->create();
+        $newAttendee = User::factory()->create();
+
+        $firstRegistration = $this->register($returningAttendee, $firstEvent);
+        $this->register($returningAttendee, $secondEvent);
+        $this->register($newAttendee, $firstEvent);
+        \App\Models\CheckIn::create([
+            'registration_id' => $firstRegistration->id,
+            'checked_in_at' => now(),
+            'checked_in_by' => null,
+        ]);
+
+        $this->getJson('/api/admin/dashboard')
+            ->assertOk()
+            ->assertJson([
+                'users' => 2,
+                'registrations' => 3,
+                'check_ins' => 1,
+            ]);
+    }
+
     public function test_reports_return_per_event_registration_and_check_in_counts(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'admin']));

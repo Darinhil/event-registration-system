@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import UserLayout from '../../layouts/UserLayout.vue'
+import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 
 const events = ref([])
@@ -32,7 +33,7 @@ load()
       <div v-else-if="filteredEvents.length" class="user-events-grid">
         <RouterLink v-for="event in filteredEvents" :key="event.id" class="user-event-card" :to="`/events/${event.id}`">
           <div class="user-event-image"><img v-if="event.branding?.image" :src="event.branding.image" :alt="`${event.name} banner`" loading="lazy" /><div v-else class="user-event-image-fallback">{{ event.name?.slice(0, 1) }}</div><span>{{ event.category || 'Event' }}</span></div>
-          <div class="user-event-card-body"><div class="user-event-date">{{ dateLabel(event) }}</div><h2>{{ event.name }}</h2><p>{{ event.description || 'Join us for an upcoming event.' }}</p><div class="user-event-meta"><span>📍 {{ event.location }}</span><span>⌛ {{ Math.max(0, event.capacity - event.registrations_count) }} seats left</span></div><div class="user-event-footer"><b>Registration open</b><span>View details →</span></div></div>
+          <div class="user-event-card-body"><div class="user-event-date">{{ dateLabel(event) }}</div><h2>{{ event.name }}</h2><p>{{ event.description || 'Join us for an upcoming event.' }}</p><div class="user-event-meta"><span><AppIcon name="pin" :size="15" />{{ event.location || 'Location to be confirmed' }}</span><span><AppIcon name="users" :size="15" />{{ Math.max(0, event.capacity - event.registrations_count) }} seats left</span></div><div class="user-event-footer"><b>Registration open</b><span>View details <AppIcon name="arrow-right" :size="14" /></span></div></div>
         </RouterLink>
       </div>
       <div v-else class="user-events-state user-events-empty"><strong>{{ search || category !== 'all' ? 'No matching events' : 'No events are available right now' }}</strong><span>{{ search || category !== 'all' ? 'Try another search or category.' : 'Published events will appear here as soon as they are available.' }}</span></div>

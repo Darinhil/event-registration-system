@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import UserLayout from '../../layouts/UserLayout.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import AppIcon from '../../components/AppIcon.vue'
@@ -7,7 +7,20 @@ import { useAuthStore } from '../../stores/auth'
 import { formatDate } from '../../utils/formatDate'
 
 const auth = useAuthStore()
-onMounted(() => auth.fetchMe())
+const profileLoading = ref(false)
+const profileError = ref('')
+const loadProfile = async () => {
+  profileLoading.value = true
+  profileError.value = ''
+  try {
+    await auth.fetchMe()
+  } catch {
+    profileError.value = 'Unable to refresh your profile and registrations.'
+  } finally {
+    profileLoading.value = false
+  }
+}
+onMounted(loadProfile)
 
 const initials = computed(() => (auth.user?.name || 'U')
   .trim()
@@ -41,6 +54,14 @@ const formatDeadline = (value) => {
           <p>Manage your profile and keep track of every event you have joined.</p>
         </div>
       </header>
+
+      <div v-if="profileLoading" class="dynamic-loading" role="status">
+        {{ auth.user ? 'Refreshing your profile…' : 'Loading your profile…' }}
+      </div>
+      <div v-if="profileError" class="inline-error" role="alert">
+        <span>{{ profileError }}<template v-if="auth.user"> Your saved profile is still shown.</template></span>
+        <button type="button" @click="loadProfile">Retry</button>
+      </div>
 
       <!-- Identity card -->
       <div v-if="auth.user" class="mi-profile-card">
@@ -77,12 +98,12 @@ const formatDeadline = (value) => {
       </div>
 
       <!-- Registrations -->
-      <div class="mi-section-heading">
+      <div v-if="auth.user" class="mi-section-heading">
         <h3>My registrations</h3>
         <span class="mi-section-count">{{ total }} total</span>
       </div>
 
-      <div v-if="total" class="mi-registrations">
+      <div v-if="auth.user && total" class="mi-registrations">
         <article
           v-for="registration in registrations"
           :key="registration.id"
@@ -114,11 +135,11 @@ const formatDeadline = (value) => {
         </article>
       </div>
 
-      <div v-else class="mi-empty">
+      <div v-else-if="auth.user && !profileLoading" class="mi-empty">
         <span class="mi-empty-icon"><AppIcon name="inbox" :size="26" /></span>
         <strong>No registrations yet</strong>
         <p>Browse available events and secure your spot in a few clicks.</p>
-        <RouterLink to="/register">Register for an event</RouterLink>
+        <RouterLink to="/events">Browse events</RouterLink>
       </div>
     </section>
   </UserLayout>

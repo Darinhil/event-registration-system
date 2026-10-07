@@ -297,6 +297,65 @@ button:focus:not(:focus-visible),
   font-weight: 500;
 }
 
+.dashboard-data-summary {
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  min-height: 223px;
+  padding: 20px 22px;
+}
+
+.dashboard-data-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-data-count {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ad-line);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.dashboard-data-count > span {
+  color: var(--ad-body);
+  font-size: .75rem;
+  font-weight: 650;
+}
+
+.dashboard-data-count strong {
+  color: var(--ad-ink);
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.dashboard-data-count small {
+  color: var(--ad-muted);
+  font-size: .7rem;
+  line-height: 1.4;
+}
+
+.dashboard-data-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  color: var(--ad-blue);
+  font-size: .8rem;
+  font-weight: 700;
+}
+
+.dashboard-data-link:hover {
+  color: var(--ad-blue-dark);
+}
+
 /* ---------- Donut panel ---------- */
 .donut-wrap {
   gap: 24px;
@@ -338,6 +397,16 @@ button:focus:not(:focus-visible),
 
 .legend-orange-dot {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
+}
+
+@media (max-width: 540px) {
+  .dashboard-data-summary {
+    padding: 16px;
+  }
+
+  .dashboard-data-counts {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- Recent activity ---------- */

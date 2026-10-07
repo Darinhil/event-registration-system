@@ -2,12 +2,14 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
+import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 
 const route = useRoute()
 const event = ref(null)
 const loading = ref(true)
 const error = ref('')
+const notFound = ref(false)
 
 const image = computed(() => event.value?.branding?.image || event.value?.image || '')
 const dateLabel = computed(() => event.value?.starts_at
@@ -19,11 +21,16 @@ const timeLabel = computed(() => event.value?.starts_at
 const isOpen = computed(() => event.value?.status === 'published' || event.value?.status === 'open')
 
 const load = async () => {
+  loading.value = true
+  error.value = ''
+  notFound.value = false
+  event.value = null
   try {
     const { data } = await api.get(`/events/${route.params.eventId}`)
     event.value = { ...data.data, remaining: data.remaining }
   } catch (requestError) {
-    error.value = requestError.response?.status === 404 ? 'This event is no longer available.' : 'The event could not be loaded.'
+    notFound.value = requestError.response?.status === 404
+    error.value = notFound.value ? 'This event is no longer available.' : 'The event could not be loaded.'
   } finally {
     loading.value = false
   }
@@ -55,10 +62,10 @@ load()
         <div class="public-event-content">
           <main>
             <div class="public-event-meta">
-              <div><span>📅</span><strong>{{ dateLabel }}</strong><small>Event date</small></div>
-              <div><span>🕐</span><strong>{{ timeLabel }}</strong><small>Event time</small></div>
-              <div><span>📍</span><strong>{{ event.location || 'Location to be confirmed' }}</strong><small>Location</small></div>
-              <div><span>👤</span><strong>{{ event.creator?.name || 'Event organizer' }}</strong><small>Organizer</small></div>
+              <div><span><AppIcon name="calendar" :size="18" /></span><strong>{{ dateLabel }}</strong><small>Event date</small></div>
+              <div><span><AppIcon name="clock" :size="18" /></span><strong>{{ timeLabel }}</strong><small>Event time</small></div>
+              <div><span><AppIcon name="pin" :size="18" /></span><strong>{{ event.location || 'Location to be confirmed' }}</strong><small>Location</small></div>
+              <div><span><AppIcon name="user" :size="18" /></span><strong>{{ event.creator?.name || 'Event organizer' }}</strong><small>Organizer</small></div>
             </div>
 
             <section class="public-event-about">
@@ -80,6 +87,7 @@ load()
       </div>
       <div v-else class="public-event-empty">
         <h2>{{ error || 'Event not found' }}</h2>
+        <button v-if="error && !notFound" type="button" class="secondary-button" @click="load">Try again</button>
         <RouterLink to="/">Return home</RouterLink>
       </div>
     </section>
