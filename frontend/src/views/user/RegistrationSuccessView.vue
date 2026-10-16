@@ -61,15 +61,6 @@ const downloadQr = () => {
   anchor.click()
 }
 
-const addToCalendar = () => {
-  if (!registration.value) return
-  const start = registration.value.event_date ? new Date(registration.value.event_date) : new Date()
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
-  const format = (value) => value.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(registration.value.event_name || 'Event')}&dates=${format(start)}/${format(end)}&location=${encodeURIComponent(registration.value.event_location || '')}`
-  window.open(url, '_blank', 'noopener')
-}
-
 watch(() => route.query.id, loadRegistration, { immediate: true })
 </script>
 
@@ -104,6 +95,10 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
         <article v-if="qrValue" class="confirmation-pass">
           <p class="field-label">Participant pass</p>
           <div class="confirmation-qr"><QRCodeDisplay :value="qrValue" /></div>
+          <div class="confirmation-registration-id">
+            <span>Registration ID</span>
+            <strong>{{ registration.registration_code || registration.id }}</strong>
+          </div>
           <p>Present this QR code at check-in.</p>
           <button type="button" class="button" @click="downloadQr">Download QR code</button>
         </article>
@@ -115,7 +110,6 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
 
       <footer v-if="registration" class="confirmation-actions">
         <RouterLink class="button" to="/me">My registrations</RouterLink>
-        <button type="button" class="link-button" @click="addToCalendar">Add to calendar</button>
       </footer>
     </section>
   </UserLayout>

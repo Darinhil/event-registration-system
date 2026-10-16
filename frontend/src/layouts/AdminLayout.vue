@@ -25,7 +25,6 @@ const logout = async () => { await auth.logout(); router.push('/login') }
   <div class="admin-app-shell"><a class="skip-link" href="#main-content">Skip to content</a><aside class="admin-sidebar">
     <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="Live &amp; Learn Cambodia" decoding="async" /></RouterLink>
     <nav class="admin-nav" :class="{ 'has-open-submenu': eventMenuOpen }" aria-label="Admin navigation">
-      <RouterLink to="/admin" exact-active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</RouterLink>
       <div class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">
         <div class="admin-nav-group-heading">
           <RouterLink to="/admin/events" class="admin-nav-group-link" :class="{ 'is-active': route.path === '/admin/events' || route.path.startsWith('/admin/events/') }">
@@ -41,6 +40,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
           <RouterLink to="/admin/reports" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-4m4 4V8m4 8v-6"/></svg></span>Reports</RouterLink>
         </div>
       </div>
+      <RouterLink to="/admin" exact-active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</RouterLink>
       <RouterLink to="/admin/personnel-profile" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M19 8h3m-1.5-1.5v3"/></svg></span>Personnel Profile</RouterLink>
       <RouterLink v-if="isAdmin" to="/admin/admin-accounts" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m5-9v6m3-3h-6"/></svg></span>Admin Accounts</RouterLink>
       <RouterLink v-if="isAdmin" to="/admin/settings" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v2m0 14v2M3 12h2m14 0h2m-3.4-6.6-1.4 1.4M7.8 17.8l-1.4 1.4m0-14.4 1.4 1.4m9.4 9.4 1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg></span>Settings</RouterLink>

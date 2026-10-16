@@ -28,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/registrations', [RegistrationController::class, 'store']);
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
+    Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
     Route::get('/check-ins/lookup', [CheckInController::class, 'lookup']);
     Route::post('/check-ins', [CheckInController::class, 'store']);
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);

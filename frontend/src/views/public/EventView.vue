@@ -12,9 +12,16 @@ const error = ref('')
 const notFound = ref(false)
 
 const image = computed(() => event.value?.branding?.image || event.value?.image || '')
-const dateLabel = computed(() => event.value?.starts_at
-  ? new Date(event.value.starts_at).toLocaleDateString(undefined, { dateStyle: 'full' })
-  : 'Date to be confirmed')
+const dateLabel = computed(() => {
+  if (!event.value?.starts_at) return 'Date to be confirmed'
+  const start = new Date(event.value.starts_at)
+  const end = event.value.ends_at ? new Date(event.value.ends_at) : null
+  const format = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  if (!end || Number.isNaN(end.getTime()) || start.toDateString() === end.toDateString()) return format(start)
+  const sameYear = start.getFullYear() === end.getFullYear()
+  const endLabel = sameYear ? end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: undefined }) : format(end)
+  return `${format(start)} – ${endLabel}`
+})
 const timeLabel = computed(() => event.value?.starts_at
   ? `${new Date(event.value.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${new Date(event.value.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   : 'Time to be confirmed')
@@ -83,7 +90,6 @@ load()
             </div>
 
             <section v-if="agendaDays.length" class="public-agenda">
-              <p class="public-event-label">Program</p>
               <h2>Agenda &amp; Program</h2>
               <div v-if="agendaDays.length > 1" class="public-agenda-day-tabs" role="tablist" aria-label="Choose an agenda day">
                 <button

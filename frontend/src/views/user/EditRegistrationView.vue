@@ -23,16 +23,27 @@ const step = ref(0)
 const fields = computed(() => {
   const list = formConfig.value?.fields || []
   const hasGenderChoice = list.some((field) => { const label = String(field.label || '').trim().toLowerCase(); return (label === 'gender' || label.includes('ភេទ')) && field.type === 'radio' })
-  return list.filter((field) => { const label = String(field.label || '').trim().toLowerCase(); return !(hasGenderChoice && (label === 'gender' || label.includes('ភេទ')) && field.type === 'text') })
+  return list.filter((field) => {
+    const label = String(field.label || '').trim().toLowerCase()
+    if (label.includes('business entity') || label.includes('អង្គភាពអាជីវកម្ម')) return false
+    return !(hasGenderChoice && (label === 'gender' || label.includes('ភេទ')) && field.type === 'text')
+  })
 })
 const steps = computed(() => formConfig.value?.steps || [])
 const settings = computed(() => formConfig.value?.settings || {})
 const deadlineLabel = computed(() => registration.value?.registration_deadline
   ? new Date(registration.value.registration_deadline).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
   : 'No deadline set')
-const eventDateLabel = computed(() => event.value?.starts_at
-  ? new Date(event.value.starts_at).toLocaleDateString(undefined, { dateStyle: 'full' })
-  : event.value?.start_date || 'Date to be confirmed')
+const eventDateLabel = computed(() => {
+  if (!event.value?.starts_at) return event.value?.start_date || 'Date to be confirmed'
+  const start = new Date(event.value.starts_at)
+  const end = event.value.ends_at ? new Date(event.value.ends_at) : null
+  const format = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  if (!end || Number.isNaN(end.getTime()) || start.toDateString() === end.toDateString()) return format(start)
+  const sameYear = start.getFullYear() === end.getFullYear()
+  const endLabel = sameYear ? end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: undefined }) : format(end)
+  return `${format(start)} – ${endLabel}`
+})
 const eventTimeLabel = computed(() => event.value?.starts_at
   ? new Date(event.value.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   : event.value?.start_time || 'Time to be confirmed')
@@ -59,15 +70,32 @@ const load = async () => {
       phone: registration.value.phone,
       gender: registration.value.gender,
       age: registration.value.age,
+      'age group': registration.value.age_group,
+      disability: registration.value.disability_type,
+      'disability type': registration.value.disability_type,
       organization: registration.value.organization,
+      institution: registration.value.organization,
       position: registration.value.position,
       address: registration.value.address,
+      telephone: registration.value.telephone,
+      'business entity': registration.value.business_entity,
+      'emergency contact name': registration.value.emergency_contact_name,
+      'emergency contact phone': registration.value.emergency_contact_phone,
+      'photo consent': registration.value.photo_consent,
+      signature: registration.value.signature,
     }
     const normalizedLabel = (label) => String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ')
+    const normalizedLabeled = Object.entries(labeled).reduce((result, [label, value]) => {
+      result[normalizedLabel(label)] = value
+      return result
+    }, {})
     const values = {}
     for (const field of fields.value) {
       const hasStored = Object.prototype.hasOwnProperty.call(stored, field.id) || Object.prototype.hasOwnProperty.call(stored, String(field.id))
-      const storedValue = hasStored ? stored[field.id] : labeled[field.label] ?? profileValues[normalizedLabel(field.label)]
+      const fieldLabel = normalizedLabel(field.label)
+      const storedValue = hasStored
+        ? stored[field.id]
+        : normalizedLabeled[fieldLabel] ?? profileValues[fieldLabel]
       values[field.id] = normalizeStoredValue(field, storedValue)
     }
     initialValues.value = values

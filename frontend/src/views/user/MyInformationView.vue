@@ -5,6 +5,7 @@ import StatusBadge from '../../components/StatusBadge.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import { useAuthStore } from '../../stores/auth'
 import { formatDate } from '../../utils/formatDate'
+import { deleteRegistration } from '../../services/registrationService'
 
 const auth = useAuthStore()
 const profileLoading = ref(false)
@@ -37,6 +38,24 @@ const confirmed = computed(() =>
 const isConfirmed = (status) => ['confirmed', 'registered', 'checked'].includes((status || '').toLowerCase())
 const isCancelled = (status) => (status || '').toLowerCase() === 'cancelled'
 const isPending = (status) => ['pending', 'draft'].includes((status || '').toLowerCase())
+const deletingRegistrationId = ref(null)
+const deleteError = ref('')
+
+const removeRegistration = async (registration) => {
+  if (!window.confirm(`Delete your registration for ${registration.event_name}? This cannot be undone.`)) return
+
+  deletingRegistrationId.value = registration.id
+  deleteError.value = ''
+  try {
+    await deleteRegistration(registration.id)
+    auth.user.registrations = registrations.value.filter((item) => item.id !== registration.id)
+    localStorage.setItem('event_user', JSON.stringify(auth.user))
+  } catch (error) {
+    deleteError.value = error.response?.data?.message || 'Unable to delete this registration. Please try again.'
+  } finally {
+    deletingRegistrationId.value = null
+  }
+}
 
 const formatDeadline = (value) => {
   if (!value) return ''
@@ -62,6 +81,7 @@ const formatDeadline = (value) => {
         <span>{{ profileError }}<template v-if="auth.user"> Your saved profile is still shown.</template></span>
         <button type="button" @click="loadProfile">Retry</button>
       </div>
+      <div v-if="deleteError" class="inline-error" role="alert">{{ deleteError }}</div>
 
       <!-- Identity card -->
       <div v-if="auth.user" class="mi-profile-card">
@@ -129,8 +149,24 @@ const formatDeadline = (value) => {
 
           <div class="mi-reg-actions">
             <RouterLink class="mi-view-pass" :to="`/registration/success?id=${registration.id}`"><AppIcon name="ticket" :size="14" />View pass</RouterLink>
-            <RouterLink v-if="registration.can_edit" class="mi-edit-btn" :to="`/registration/${registration.id}/edit`"><AppIcon name="pen" :size="14" />Edit registration</RouterLink>
+            <RouterLink
+              v-if="registration.can_edit"
+              class="mi-edit-btn"
+              :to="`/registration/${registration.id}/edit`"
+              aria-label="Edit registration"
+              title="Edit registration"
+            ><AppIcon name="pen" :size="16" /></RouterLink>
             <span v-else class="mi-edit-closed"><AppIcon name="lock" :size="13" />Editing closed</span>
+            <button
+              class="mi-delete-btn"
+              type="button"
+              :disabled="deletingRegistrationId === registration.id"
+              :aria-label="deletingRegistrationId === registration.id ? 'Deleting registration' : 'Delete registration'"
+              :title="deletingRegistrationId === registration.id ? 'Deleting registration' : 'Delete registration'"
+              @click="removeRegistration(registration)"
+            >
+              <AppIcon name="trash" :size="16" />
+            </button>
           </div>
         </article>
       </div>

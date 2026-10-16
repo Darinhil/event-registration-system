@@ -7,6 +7,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FormRenderer from './FormRenderer.vue'
+import AppIcon from './AppIcon.vue'
 import { useAuthStore } from '../stores/auth'
 import { useRegistrationStore } from '../stores/registration'
 import api from '../services/api'
@@ -47,7 +48,16 @@ const fileAccept = (field) => (field.settings?.allowed_types || []).map((extensi
 const validate = () => { const missing = fields.value.find(isMissing); if (missing) { error.value = `${missing.label} is required.`; return false } error.value = ''; return true }
 const continueForm = () => { if (validate()) step.value = 2 }
 const submit = async () => { if (!validate()) return; const formData = {}; fields.value.forEach((field) => { formData[field.id] = fieldValue(field) }); try { await store.register({ event_id: Number(route.params.eventId), form_data: formData }); router.push('/registration/success') } catch { error.value = store.error || 'Registration could not be submitted.' } }
-const eventDate = computed(() => event.value?.starts_at ? new Date(event.value.starts_at).toLocaleDateString(undefined, { dateStyle: 'full' }) : event.value?.start_date || 'Date to be confirmed')
+const eventDate = computed(() => {
+  if (!event.value?.starts_at) return event.value?.start_date || 'Date to be confirmed'
+  const start = new Date(event.value.starts_at)
+  const end = event.value.ends_at ? new Date(event.value.ends_at) : null
+  const format = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  if (!end || Number.isNaN(end.getTime()) || start.toDateString() === end.toDateString()) return format(start)
+  const sameYear = start.getFullYear() === end.getFullYear()
+  const endLabel = sameYear ? end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: undefined }) : format(end)
+  return `${format(start)} – ${endLabel}`
+})
 load()
 </script>
 
@@ -60,14 +70,13 @@ load()
           <li class="is-complete"><span>✓</span><div><strong>Review agenda</strong><small>Event overview</small></div></li>
           <li class="is-current" aria-current="step"><span>2</span><div><strong>Register</strong><small>Your information</small></div></li>
         </ol>
-        <header class="dynamic-event-hero"><img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" alt="Event banner" /><div class="dynamic-event-hero-copy"><span class="event-category">{{ event.category || 'Event registration' }}</span><h1>{{ event.name }}</h1><p>{{ event.description || 'Complete the form below to reserve your place.' }}</p><div class="dynamic-event-meta"><span>📅 {{ eventDate }}</span><span>🕐 {{ event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : event.start_time || 'Time pending' }}</span><span>📍 {{ event.location || 'Location pending' }}</span></div></div></header>
+        <header class="dynamic-event-hero"><img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" alt="Event banner" /><div class="dynamic-event-hero-copy"><span class="event-category">{{ event.category || 'Event registration' }}</span><h1>{{ event.name }}</h1><p>{{ event.description || 'Complete the form below to reserve your place.' }}</p><div class="dynamic-event-meta"><span><AppIcon name="calendar" :size="18" />{{ eventDate }}</span><span><AppIcon name="clock" :size="18" />{{ event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : event.start_time || 'Time pending' }}</span><span><AppIcon name="pin" :size="18" />{{ event.location || 'Location pending' }}</span></div></div></header>
         <div class="dynamic-registration-body">
           <div class="dynamic-progress"><span :class="{ active: step === 1, complete: step > 1 }">1</span><i></i><span :class="{ active: step === 2 }">2</span><small>{{ step === 1 ? 'Your information' : 'Review details' }}</small></div>
           <form v-if="step === 1" class="dynamic-form" @submit.prevent="continueForm">
-            <div class="dynamic-form-heading"><div><p class="admin-eyebrow">Registration form</p><h2>Register for {{ event.name }}</h2><p>Fields marked with * are required.</p></div><span>{{ fields.length }} fields</span></div>
             <div class="dynamic-fields">
               <label v-for="field in fields" :key="field.id" class="dynamic-field">
-                <span>{{ field.label }} <em v-if="isRequired(field)">*</em></span>
+                <span :class="{ 'dynamic-field-label--email': normalizeType(field) === 'email' }">{{ field.label }} <em v-if="isRequired(field)">*</em></span>
                 <select v-if="normalizeType(field) === 'select'" :value="fieldValue(field)" @change="updateValue(field, $event.target.value)"><option value="">Select {{ field.label.toLowerCase() }}</option><option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</option></select>
                 <div v-else-if="normalizeType(field) === 'radio'" class="dynamic-radio-group"><label v-for="option in field.options || []" :key="option"><input type="radio" :name="`field-${field.id}`" :value="option" :checked="fieldValue(field) === option" @change="updateValue(field, option)" /> {{ option }}</label></div>
                 <div v-else-if="normalizeType(field) === 'yesno'" class="dynamic-radio-group" role="radiogroup" :aria-label="field.label"><label v-for="option in ['Yes', 'No']" :key="option"><input type="radio" :name="`field-${field.id}`" :value="option" :checked="fieldValue(field) === option" :required="isRequired(field)" @change="updateValue(field, option)" /> {{ option }}</label></div>

@@ -23,10 +23,12 @@ const logout = async () => {
       <nav aria-label="Main navigation">
         <template v-if="auth.isAuthenticated">
           <RouterLink to="/me" class="nav-link">My information</RouterLink>
-          <RouterLink to="/check-in" class="nav-link">Check-in</RouterLink>
-          <RouterLink to="/profile" class="nav-user-chip" :title="auth.user?.email" aria-label="Edit profile">
-            <span class="nav-avatar"><img v-if="auth.profilePhotoPreview || auth.user?.profile_photo" :src="auth.profilePhotoPreview || auth.user?.profile_photo" alt="" /><span v-else>{{ (auth.user?.name || 'U').trim().charAt(0).toUpperCase() }}</span></span>
-            <span class="nav-user-name">{{ auth.user?.name || 'Account' }}</span>
+          <RouterLink to="/profile" class="nav-user-chip" :title="'Edit profile'" aria-label="Edit profile">
+            <span class="nav-avatar">
+              <img v-if="auth.profilePhotoPreview || auth.user?.profile_photo" :src="auth.profilePhotoPreview || auth.user?.profile_photo" alt="" />
+              <svg v-else viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="24" r="10" fill="#fff"/><path d="M17 49c1.3-9.2 7.2-14 15-14s13.7 4.8 15 14" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="6"/></svg>
+            </span>
+            <span class="nav-user-name">User</span>
           </RouterLink>
           <button class="logout-button" type="button" @click="logout">Logout</button>
         </template>
@@ -60,9 +62,11 @@ const logout = async () => {
 
   .topbar nav .nav-user-chip {
     display: inline-flex;
-    min-width: 36px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     justify-content: center;
-    padding-inline: 6px;
+    padding: 0;
   }
 
   .topbar nav .nav-user-name { display: none; }

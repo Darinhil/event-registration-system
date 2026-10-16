@@ -82,6 +82,13 @@
   padding: 36px 28px 72px;
 }
 
+/* Khmer-first typography for the public registration form. Noto Sans Khmer
+   also has a clean Latin fallback so bilingual labels stay balanced. */
+.dynamic-registration-page .dynamic-form,
+.dynamic-registration-page .dynamic-review {
+  font-family: 'Noto Sans Khmer', 'Space Grotesk', sans-serif;
+}
+
 .dynamic-registration-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -136,6 +143,9 @@
 }
 
 .dynamic-event-meta > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 12px 0;
   border-top: 1px solid rgba(226, 245, 240, .18);
   line-height: 1.45;
@@ -534,6 +544,83 @@
   .dynamic-review-actions { flex-direction: column-reverse; }
   .dynamic-review-actions > button { width: 100%; }
   .preview-frame-wrap { padding: 8px; }
+}
+
+.dynamic-event-meta > span svg {
+  flex: 0 0 auto;
+  color: var(--attendee-mint);
+  stroke-width: 1.9;
+}
+
+/* Larger, clearer form typography for Khmer and bilingual labels. */
+.dynamic-registration-page .dynamic-field > span {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.8;
+}
+
+.dynamic-registration-page .dynamic-field-label--email {
+  font-size: 1.65rem;
+  line-height: 1.85;
+}
+
+.dynamic-registration-page .dynamic-field input,
+.dynamic-registration-page .dynamic-field select,
+.dynamic-registration-page .dynamic-field textarea {
+  min-height: 54px;
+  font-family: 'Noto Sans Khmer', 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.dynamic-registration-page .dynamic-radio-group label,
+.dynamic-registration-page .dynamic-check-group label,
+.dynamic-registration-page .dynamic-single-check {
+  font-size: .98rem;
+  line-height: 1.55;
+}
+
+.dynamic-registration-page .dynamic-field em {
+  font-size: .95rem;
+}
+
+/* Readability pass: keep the full registration experience comfortably legible. */
+.dynamic-registration-page .dynamic-form-heading .admin-eyebrow,
+.dynamic-registration-page .dynamic-form-heading > span {
+  font-size: .8rem;
+}
+
+.dynamic-registration-page .dynamic-form-heading h2 {
+  font-size: 1.65rem;
+  line-height: 1.35;
+}
+
+.dynamic-registration-page .dynamic-form-heading p:not(.admin-eyebrow) {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.dynamic-registration-page .dynamic-fields {
+  gap: 26px;
+}
+
+.dynamic-registration-page .dynamic-form > .primary-button,
+.dynamic-registration-page .dynamic-review-actions > button {
+  font-size: 1rem;
+}
+
+.dynamic-registration-page .dynamic-review h2 {
+  font-size: 1.55rem;
+  line-height: 1.4;
+}
+
+.dynamic-registration-page .dynamic-review-list span {
+  font-size: .9rem;
+}
+
+.dynamic-registration-page .dynamic-review-list strong {
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .dynamic-radio-group input[type='radio'],

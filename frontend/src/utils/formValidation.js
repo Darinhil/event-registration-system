@@ -76,6 +76,21 @@ export const validateFields = (fields, values) => {
 /** Normalise a stored form_data value for prefilling (edit flow). */
 export const normalizeStoredValue = (field, stored) => {
   const s = field.settings || {}
+  const isMultiple = (field.type === 'checkbox' || field.type === 'select') && Boolean(s.multiple)
+
+  // Form values are displayed as comma-separated text by some API responses.
+  // Convert them back to arrays for multi-choice controls before submitting.
+  if (isMultiple) {
+    if (Array.isArray(stored)) return [...stored]
+    if (stored === null || stored === undefined || stored === '') return []
+    const parts = String(stored).split(',').map((value) => value.trim()).filter(Boolean)
+    return parts.map((part) => {
+      const exact = (field.options || []).find((option) => String(option).trim().toLowerCase() === part.toLowerCase())
+      if (exact) return exact
+      const matchingOption = (field.options || []).find((option) => String(option).split(':').slice(0, 1)[0].trim().toLowerCase() === part.toLowerCase())
+      return matchingOption || part
+    })
+  }
   if (field.type === 'checkbox' && !s.multiple) {
     return stored === true || stored === 'true' || (Array.isArray(stored) && stored[0] === true)
   }

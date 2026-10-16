@@ -82,6 +82,7 @@ onMounted(loadCheckIns)
       <header class="checkin-heading">
         <div>
           <h1>Check-in participants</h1>
+          <p>Search an attendee by code, name, or email, then confirm their check-in.</p>
         </div>
         <span class="live-indicator"><i></i> Live check-in desk</span>
       </header>
@@ -154,6 +155,11 @@ onMounted(loadCheckIns)
           <p class="admin-eyebrow">Event workspace</p>
           <h2>Attendance by event</h2>
           <p class="checkin-summary-copy">Review an event’s roster and attendance totals from its workspace.</p>
+          <div class="checkin-summary-stats">
+            <div><small>Recent scans</small><strong>{{ checkIns.length }}</strong></div>
+            <div><small>Scanner</small><strong>Ready</strong></div>
+            <div><small>Mode</small><strong>Live</strong></div>
+          </div>
           <RouterLink to="/admin/events" class="text-link">Open events <span aria-hidden="true">→</span></RouterLink>
         </aside>
       </div>

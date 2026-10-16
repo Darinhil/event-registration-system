@@ -184,11 +184,6 @@ const actionGroups = computed(() => [
                   <strong>{{ checkedIn }}</strong>
                   <span>attendees</span>
                 </div>
-                <div class="ews-stat">
-                  <small>Completion rate</small>
-                  <strong :class="{ 'ews-stat-muted': !checkInPercent }">{{ completionLabel }}</strong>
-                  <span>{{ checkInPercent ? 'of registered attendees' : 'once check-ins begin' }}</span>
-                </div>
               </div>
               <div class="ews-progress-list">
                 <div class="ews-progress">
@@ -237,10 +232,6 @@ const actionGroups = computed(() => [
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                   Share event
                 </button>
-              </div>
-              <div class="ews-link-box">
-                <small>Registration link</small>
-                <strong>{{ link }}</strong>
               </div>
             </section>
           </aside>

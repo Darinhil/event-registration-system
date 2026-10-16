@@ -17,5 +17,6 @@ import './assets/styles/home-hero.css'
 import './assets/styles/event-page.css'
 import './assets/styles/auth-refresh.css'
 import './assets/styles/ui-refresh.css'
+import './assets/styles/auth-production.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')
