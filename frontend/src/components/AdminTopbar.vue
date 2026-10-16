@@ -10,6 +10,7 @@ const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
 const profilePhotoBroken = ref(false)
 const profilePhotoSrc = ref(auth.profilePhotoPreview || '')
+const profileLoadError = ref('')
 const searchInput = ref(null)
 let profilePhotoRequest = 0
 
@@ -52,7 +53,14 @@ const onDocumentClick = (event) => {
 onMounted(async () => {
   document.addEventListener('keydown', onGlobalKeydown)
   document.addEventListener('click', onDocumentClick)
-  try { await auth.fetchMe() } finally { await loadProfilePhoto() }
+  try {
+    await auth.fetchMe()
+    profileLoadError.value = ''
+  } catch (requestError) {
+    profileLoadError.value = requestError.response?.data?.message || 'Unable to refresh your profile.'
+  } finally {
+    await loadProfilePhoto()
+  }
 })
 watch(() => auth.user?.profile_photo, loadProfilePhoto)
 onBeforeUnmount(() => {
@@ -78,7 +86,7 @@ onBeforeUnmount(() => {
     <div class="admin-top-actions">
       <div class="admin-action-wrap">
         <button type="button" class="admin-notification" aria-label="Notifications" :aria-expanded="notificationOpen" @click="togglePanel('notifications')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8.5 12h5" /></svg><b>3</b>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8.5 12h5" /></svg>
         </button>
         <div v-if="notificationOpen" class="admin-popover"><strong>Notifications</strong><p>No new notifications.</p></div>
       </div>
@@ -89,12 +97,12 @@ onBeforeUnmount(() => {
             <img v-if="profilePhotoSrc && !profilePhotoBroken" :key="profilePhotoSrc" :src="profilePhotoSrc" alt="" @error="profilePhotoBroken = true" />
             <span v-else class="admin-avatar-fallback">{{ (auth.user?.name || 'AD').slice(0, 2).toUpperCase() }}</span>
           </span>
-          <span class="admin-profile-copy"><strong>{{ auth.user?.name || 'Event Admin' }}</strong><small>Administrator</small></span>
+          <span class="admin-profile-copy"><strong>{{ auth.user?.name || 'Event Admin' }}</strong><small>{{ auth.roleLabel }}</small></span>
           <span class="admin-chevron" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
           </span>
         </button>
-        <div v-if="profileMenuOpen" class="profile-menu-panel"><RouterLink to="/admin/profile" @click="profileMenuOpen = false">Profile settings</RouterLink><button type="button" @click="logout">Sign out</button></div>
+        <div v-if="profileMenuOpen" class="profile-menu-panel"><p v-if="profileLoadError" class="profile-alert profile-alert-error" role="alert">{{ profileLoadError }}</p><RouterLink to="/admin/profile" @click="profileMenuOpen = false">Profile settings</RouterLink><button type="button" @click="logout">Sign out</button></div>
       </div>
     </div>
   </header>

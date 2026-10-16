@@ -170,7 +170,7 @@ class FormBuilderController extends Controller
             ?: request()->header('origin')
             ?: rtrim(config('app.url'), '/');
 
-        return rtrim($origin, '/')."/events/{$event->id}/register";
+        return rtrim($origin, '/')."/events/{$event->id}";
     }
 
     private function defaultConfig(): array

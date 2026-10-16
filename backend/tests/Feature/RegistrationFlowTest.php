@@ -40,6 +40,22 @@ class RegistrationFlowTest extends TestCase
         $this->postJson('/api/registrations', $this->payload($event, 'sokha@gmail.com'))->assertStatus(422)->assertJsonValidationErrors('email');
     }
 
+    public function test_event_link_includes_its_agenda_without_exposing_a_global_agenda_list(): void
+    {
+        $agenda = [
+            ['day' => 1, 'start_time' => '09:00', 'end_time' => '10:00', 'title' => 'Opening session'],
+        ];
+        $event = $this->event();
+        $event->update(['form_config' => ['agenda' => $agenda]]);
+
+        $this->getJson("/api/events/{$event->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $event->id)
+            ->assertJsonPath('data.form_config.agenda', $agenda);
+
+        $this->getJson('/api/agendas')->assertNotFound();
+    }
+
     public function test_event_capacity_is_enforced(): void
     {
         $event = $this->event(1); Sanctum::actingAs(User::factory()->create());

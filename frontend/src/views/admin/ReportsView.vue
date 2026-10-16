@@ -193,16 +193,14 @@ onMounted(loadReports)
     <section class="reports-page">
       <header class="reports-heading dashboard-page-heading">
         <div>
-          <p class="admin-eyebrow">Insights · all events</p>
           <h1>Reports</h1>
-          <p>Compare registrations, check-ins, and no-shows across every event — then drill into attendees.</p>
         </div>
         <button type="button" class="secondary-button" :disabled="loading || !filteredReports.length" @click="exportCsv">↓ Export Excel</button>
       </header>
 
       <p v-if="error" class="inline-error" role="alert">{{ error }} <button type="button" @click="loadReports">Retry</button></p>
 
-      <div class="reports-metrics">
+      <div v-if="!loading && !error" class="reports-metrics">
         <article class="metric-card metric-blue">
           <span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg></span>
           <div><small>Events</small><strong>{{ totals.events.toLocaleString() }}</strong></div>
@@ -240,6 +238,11 @@ onMounted(loadReports)
 
         <div v-if="loading" class="dynamic-loading">Loading reports…</div>
 
+        <div v-else-if="error" class="event-empty-state">
+          <h3>Reports unavailable</h3>
+          <p>Retry to load the latest event report data.</p>
+        </div>
+
         <div v-else-if="filteredReports.length" class="reports-table-wrap">
           <table>
             <thead>
@@ -255,7 +258,7 @@ onMounted(loadReports)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in filteredReports" :key="row.id" class="reports-row" :class="{ 'is-selected': selectedEvent?.id === row.id }" @click="selectEvent(row)">
+              <tr v-for="row in filteredReports" :key="row.id" class="reports-row" :class="{ 'is-selected': selectedEvent?.id === row.id }" tabindex="0" @click="selectEvent(row)" @keydown.enter="selectEvent(row)" @keydown.space.prevent="selectEvent(row)">
                 <td>
                   <strong>{{ row.name }}</strong>
                   <small>{{ row.location || 'Location pending' }}</small>

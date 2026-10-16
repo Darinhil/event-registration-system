@@ -152,15 +152,26 @@ const filteredAttendees = computed(() => attendees.value.filter((user) => {
 const loadWorkspace = async () => {
   loading.value = true
   error.value = ''
-  const localEvents = JSON.parse(localStorage.getItem('event_list') || '[]').map(normalizeEvent)
+  let localEvents = []
+  try {
+    const cached = JSON.parse(localStorage.getItem('event_list') || '[]')
+    if (Array.isArray(cached)) localEvents = cached.map(normalizeEvent)
+  } catch {
+    localEvents = []
+  }
+  let eventLoadError = ''
   try {
     const eventsResponse = await api.get('/admin/events')
     events.value = (eventsResponse.data.data || eventsResponse.data).map(normalizeEvent)
   } catch {
     events.value = localEvents
+    eventLoadError = localEvents.length
+      ? 'Unable to refresh events. Showing the saved event list.'
+      : 'Unable to load events from the API.'
   }
   selectedEventId.value = events.value[0]?.id || null
   await loadAttendees()
+  if (eventLoadError) error.value = error.value ? `${eventLoadError} ${error.value}` : eventLoadError
   loading.value = false
 }
 
@@ -252,8 +263,8 @@ onMounted(loadWorkspace)
     <section class="attendance-workspace">
       <header class="attendance-workspace-heading">
         <h1>Attendance by Event</h1>
-        <p>View all checked-in attendances with full information for each event.</p>
       </header>
+      <p v-if="error" class="inline-error" role="alert"><span>{{ error }}</span><button type="button" :disabled="loading" @click="loadWorkspace">{{ loading ? 'Retrying…' : 'Retry' }}</button></p>
       <div class="attendance-workspace-grid">
         <aside class="attendance-event-list">
           <header class="attendance-events-heading"><div><h2>Events <small>{{ events.length }} Total</small></h2></div><RouterLink to="/admin/events/new">+ New</RouterLink></header>
@@ -271,7 +282,7 @@ onMounted(loadWorkspace)
           <template v-else-if="selectedEvent">
             <section class="attendance-summary-card">
               <header class="attendance-event-header"><span class="attendance-event-image attendance-event-image-large"><img v-if="eventImage(selectedEvent)" :src="eventImage(selectedEvent)" alt="" /><b v-else>{{ selectedEvent.name.slice(0, 2).toUpperCase() }}</b></span><div><h2>{{ selectedEvent.name }}</h2><p>Calendar {{ dateLabel(selectedEvent) }} · {{ timeLabel(selectedEvent) }}</p><p>Location {{ selectedEvent.location || 'Location pending' }}</p></div><span class="attendance-live-status">● {{ selectedEvent.status === 'open' ? 'Open' : selectedEvent.status }}</span><div class="attendance-header-actions"><button type="button" class="excel-action" @click="exportFilteredExcel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8l3 4-3 4m5-8h3m-3 4h3m-3 4h3" /></svg><span>Export to Excel</span></button><button type="button" class="primary" @click="openCheckIn">Check In Attendance</button></div></header>
-              <div class="attendance-summary-tabs"><button type="button" :class="{ active: activeTab === 'attendees' }" @click="activeTab = 'attendees'">Attendances <b>{{ eventAttendeeCount }}</b></button><button type="button" :class="{ active: activeTab === 'not-checked-in' }" @click="activeTab = 'not-checked-in'">Not Checked In <b>{{ pendingCount }}</b></button><button type="button">VIP &amp; Speakers <b>0</b></button></div>
+              <div class="attendance-summary-tabs"><button type="button" :class="{ active: activeTab === 'attendees' }" @click="activeTab = 'attendees'">Attendances <b>{{ eventAttendeeCount }}</b></button><button type="button">VIP &amp; Speakers <b>0</b></button></div>
             </section>
             <section class="attendance-table-card">
               <div class="attendance-table-toolbar"><label class="attendance-table-search"><span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></span><input v-model="search" type="search" placeholder="Search by name, ID, email, or phone..." /></label><select v-model="ageFilter" :class="{ 'is-active': ageFilter !== 'all' }" aria-label="Filter by age"><option value="all">Age</option><option v-for="option in ageOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="genderFilter" :class="{ 'is-active': genderFilter !== 'all' }" aria-label="Filter by gender"><option value="all">Gender</option><option v-for="option in genderOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="ethnicityFilter" :class="{ 'is-active': ethnicityFilter !== 'all' }" aria-label="Filter by ethnicity"><option value="all">Ethnicity</option><option v-for="option in ethnicityOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="disabilityFilter" :class="{ 'is-active': disabilityFilter !== 'all' }" aria-label="Filter by disability"><option value="all">Disability</option><option v-for="option in disabilityOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="status" :class="{ 'is-active': status !== 'all' }" aria-label="Filter attendee status"><option value="all">All Status</option><option value="registered">Registered</option><option value="pending">Pending</option></select><button v-if="activeFilterCount || search" type="button" class="attendance-clear-filters" @click="clearFilters">Clear</button></div>

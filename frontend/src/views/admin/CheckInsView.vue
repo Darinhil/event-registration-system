@@ -13,11 +13,15 @@ const credential = ref('')
 const store = useCheckInStore()
 const checkIns = ref([])
 const logLoading = ref(false)
+const logError = ref('')
 
 const loadCheckIns = async () => {
   logLoading.value = true
+  logError.value = ''
   try {
     checkIns.value = (await getCheckIns()).data.data || []
+  } catch {
+    logError.value = 'Unable to load recent check-ins.'
   } finally {
     logLoading.value = false
   }
@@ -77,9 +81,8 @@ onMounted(loadCheckIns)
     <section class="checkin-workspace">
       <header class="checkin-heading">
         <div>
-          <p class="admin-eyebrow">Live desk · today</p>
           <h1>Check-in participants</h1>
-          <p>Scan a participant QR code or enter their attendee code.</p>
+          <p>Search an attendee by code, name, or email, then confirm their check-in.</p>
         </div>
         <span class="live-indicator"><i></i> Live check-in desk</span>
       </header>
@@ -116,7 +119,7 @@ onMounted(loadCheckIns)
             <button type="button" class="primary-button" @click="scanning = true">Start scanner</button>
           </div>
 
-          <div v-if="scannerError" class="error">{{ scannerError }}</div>
+          <div v-if="scannerError" class="error" role="alert">{{ scannerError }}</div>
 
           <section v-if="store.attendee" class="attendee-preview" aria-live="polite">
             <div class="attendee-preview-heading">
@@ -144,22 +147,28 @@ onMounted(loadCheckIns)
             </div>
           </section>
 
-          <div v-if="scanMessage" class="scan-success">✓ {{ scanMessage }}</div>
+          <div v-if="scanMessage" class="scan-success" role="status">✓ {{ scanMessage }}</div>
           <div v-if="store.error" class="error">{{ store.error }}</div>
         </article>
 
         <aside class="checkin-summary">
-          <p class="admin-eyebrow">Event summary</p>
-          <h2>Community Tech Summit</h2>
-          <div class="checkin-progress"><div><span>Checked in</span><strong>0 / 0</strong></div><div class="progress-bar"><span></span></div></div>
-          <div class="checkin-stats"><div><small>Expected</small><strong>0</strong></div><div><small>Checked in</small><strong>0</strong></div><div><small>Remaining</small><strong>0</strong></div></div>
-          <RouterLink to="/admin/events" class="text-link">Change event →</RouterLink>
+          <p class="admin-eyebrow">Event workspace</p>
+          <h2>Attendance by event</h2>
+          <p class="checkin-summary-copy">Review an event’s roster and attendance totals from its workspace.</p>
+          <div class="checkin-summary-stats">
+            <div><small>Recent scans</small><strong>{{ checkIns.length }}</strong></div>
+            <div><small>Scanner</small><strong>Ready</strong></div>
+            <div><small>Mode</small><strong>Live</strong></div>
+          </div>
+          <RouterLink to="/admin/events" class="text-link">Open events <span aria-hidden="true">→</span></RouterLink>
         </aside>
       </div>
 
       <section class="checkin-table-panel">
         <header><div><p class="admin-eyebrow">Attendance log</p><h2>Recent check-ins</h2></div><button type="button" class="export-log-button" :disabled="logLoading || !checkIns.length" @click="exportLog">{{ logLoading ? 'Loading...' : 'Export log' }}</button></header>
-        <div v-if="!checkIns.length" class="recent-empty"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
+        <div v-if="logError" class="inline-error" role="alert"><span>{{ logError }}</span><button type="button" class="secondary-button" @click="loadCheckIns">Try again</button></div>
+        <div v-else-if="logLoading" class="dynamic-loading" role="status">Loading recent check-ins…</div>
+        <div v-else-if="!checkIns.length" class="recent-empty"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
         <div v-else class="checkin-log-list"><div v-for="item in checkIns" :key="item.id" class="checkin-log-row"><div><strong>{{ item.registration?.full_name || 'Unnamed attendee' }}</strong><small>{{ item.registration?.registration_code }}</small></div><time>{{ item.checked_in_at ? new Date(item.checked_in_at).toLocaleString() : 'Just now' }}</time></div></div>
       </section>
     </section>

@@ -1,6 +1,9 @@
 <script setup>
 import UserLayout from '../../layouts/UserLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import { useAuthStore } from '../../stores/auth'
+
+const auth = useAuthStore()
 </script>
 
 <template>
@@ -13,8 +16,8 @@ import AppIcon from '../../components/AppIcon.vue'
       </p>
 
       <div class="home-hero-actions">
-        <RouterLink class="home-cta" to="/events">
-          Browse events
+        <RouterLink class="home-cta" :to="auth.isAuthenticated ? '/me' : '/login'">
+          {{ auth.isAuthenticated ? 'My information' : 'Sign in' }}
           <AppIcon name="arrow-right" :size="18" />
         </RouterLink>
         <RouterLink class="home-ghost" to="/check-in">

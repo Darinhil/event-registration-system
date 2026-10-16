@@ -26,8 +26,8 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => Boolean(state.token),
     isAdmin: (state) => state.user?.role === 'admin',
     isEventAdmin: (state) => state.user?.role === 'event_admin',
-    canAccessAdmin: (state) => ['admin', 'event_admin'].includes(state.user?.role),
-    roleLabel: (state) => state.user?.role === 'admin' ? 'Admin' : state.user?.role === 'event_admin' ? 'Event Admin' : 'Attendee',
+    canAccessAdmin: (state) => ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'].includes(state.user?.role),
+    roleLabel: (state) => ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[state.user?.role] || 'Attendee'),
   },
   actions: {
     setProfilePhotoPreview(blob) {

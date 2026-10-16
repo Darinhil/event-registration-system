@@ -7,11 +7,9 @@ const lazy = (path) => () => import(path)
 const HomeView = lazy('../views/public/HomeView.vue')
 const RegistrationView = lazy('../views/public/RegistrationView.vue')
 const EventView = lazy('../views/public/EventView.vue')
-const UserEventsView = lazy('../views/public/EventsView.vue')
 const RegistrationSuccessView = lazy('../views/user/RegistrationSuccessView.vue')
 const MyInformationView = lazy('../views/user/MyInformationView.vue')
 const EditRegistrationView = lazy('../views/user/EditRegistrationView.vue')
-const CheckInView = lazy('../views/user/CheckInView.vue')
 const DashboardView = lazy('../views/admin/DashboardView.vue')
 const UsersView = lazy('../views/admin/UsersView.vue')
 const UserDetailView = lazy('../views/admin/UserDetailView.vue')
@@ -23,18 +21,20 @@ const EventsView = lazy('../views/admin/EventsView.vue')
 const EventDetailsView = lazy('../views/admin/EventDetailsView.vue')
 const EventRegistrantsView = lazy('../views/admin/EventRegistrantsView.vue')
 const AdminProfileView = lazy('../views/admin/AdminProfileView.vue')
+const PersonnelProfileView = lazy('../views/admin/PersonnelProfileView.vue')
 const ReportsView = lazy('../views/admin/ReportsView.vue')
 const AdminAccountsView = lazy('../views/admin/AdminAccountsView.vue')
 const SystemSettingsView = lazy('../views/admin/SystemSettingsView.vue')
 
 const router = createRouter({ history: createWebHistory(), routes: [
-  { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView }, { path: '/events', component: UserEventsView, meta: { auth: true } },
-  { path: '/register', component: RegistrationView, meta: { auth: true } }, { path: '/events/:eventId', component: EventView }, { path: '/events/:eventId/register', component: RegistrationView, meta: { auth: true } },
+  { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView }, { path: '/events', redirect: '/me', meta: { auth: true } },
+  { path: '/register', redirect: '/me' }, { path: '/events/:eventId', component: EventView }, { path: '/events/:eventId/register', component: RegistrationView, meta: { auth: true } },
   { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } }, { path: '/me', component: MyInformationView, meta: { auth: true } }, { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
   { path: '/profile', component: AdminProfileView, meta: { auth: true } },
-  { path: '/check-in', component: CheckInView, meta: { auth: true } }, { path: '/admin', component: DashboardView, meta: { auth: true, staff: true } }, { path: '/admin/events', component: EventsView, meta: { auth: true, staff: true } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, staff: true } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, staff: true } },
+  { path: '/admin', component: DashboardView, meta: { auth: true, staff: true } }, { path: '/admin/events', component: EventsView, meta: { auth: true, staff: true } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, staff: true } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, staff: true } },
   { path: '/admin/users', component: UsersView, meta: { auth: true, staff: true } }, { path: '/admin/users/:id', component: UserDetailView, meta: { auth: true, staff: true } },
   { path: '/admin/check-ins', component: CheckInsView, meta: { auth: true, staff: true } },
+  { path: '/admin/personnel-profile', component: PersonnelProfileView, meta: { auth: true, staff: true } },
   { path: '/admin/reports', component: ReportsView, meta: { auth: true, staff: true } },
   { path: '/admin/admin-accounts', component: AdminAccountsView, meta: { auth: true, staff: true, adminOnly: true } },
   { path: '/admin/settings', component: SystemSettingsView, meta: { auth: true, staff: true, adminOnly: true } },

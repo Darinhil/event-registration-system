@@ -31,6 +31,9 @@ defineProps({
     <template v-else-if="name === 'pen'">
       <path d="m4 16.5-.8 4.3 4.3-.8L19 8.5a2.8 2.8 0 0 0-4-4L4 16.5Z" /><path d="m13.5 6.5 4 4M3.5 20.5l3.8-.7" />
     </template>
+    <template v-else-if="name === 'trash'">
+      <path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 13h11l1-13M9 7V4h6v3" />
+    </template>
     <template v-else-if="name === 'info'">
       <circle cx="12" cy="12" r="9" /><path d="M12 10.8v5M12 7.5h.01" />
     </template>

@@ -79,9 +79,10 @@ const loadEvents = async () => {
     saveCachedEvents(events.value)
   } catch (requestError) {
     if (!events.value.length) events.value = cached
-    error.value = requestError.code === 'ECONNABORTED'
+    const message = requestError.code === 'ECONNABORTED'
       ? 'The events service is taking too long to respond.'
-      : requestError.response?.data?.message || (events.value.length ? '' : 'Unable to load events from the API.')
+      : requestError.response?.data?.message || 'Unable to load events from the API.'
+    error.value = events.value.length ? `${message} Showing saved data; retry to refresh.` : message
   } finally {
     loading.value = false
   }
@@ -111,10 +112,10 @@ onMounted(loadEvents)
   <AdminLayout>
     <section class="event-dashboard-page">
       <header class="dashboard-page-heading">
-        <div><h1>Events</h1><p>Plan, publish, and manage every registration experience from one place.</p></div>
+        <div><h1>Events</h1></div>
         <RouterLink class="primary-button dashboard-create" to="/admin/events/new">+ Create event</RouterLink>
       </header>
-      <p v-if="error" class="inline-error" role="alert">{{ error }}</p>
+      <p v-if="error" class="inline-error" role="alert"><span>{{ error }}</span><button type="button" :disabled="loading" @click="loadEvents">{{ loading ? 'Retrying…' : 'Retry' }}</button></p>
       <div class="event-overview-stats">
         <div><span class="stat-mark blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5v7A2.5 2.5 0 0 1 18.5 18h-13A2.5 2.5 0 0 1 3 15.5z"/><path d="M3 9.5h18"/></svg></span><div><small>Total events</small><strong>{{ count('all') }}</strong></div></div>
         <div><span class="stat-mark green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><small>Published</small><strong>{{ count('open') }}</strong></div></div>

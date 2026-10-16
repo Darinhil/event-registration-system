@@ -7,7 +7,7 @@ import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import api from '../../services/api'
 
 const route = useRoute(); const router = useRouter(); const copied = ref(false); const actionMessage = ref(''); const actionError = ref(false); const loading = ref(true); const event = ref(null)
-const link = computed(() => event.value?.registration_link || `${window.location.origin}/events/${route.params.id}/register`)
+const link = computed(() => event.value?.registration_link || `${window.location.origin}/events/${route.params.id}`)
 const copyLink = async () => { await navigator.clipboard?.writeText(link.value); copied.value = true; setTimeout(() => { copied.value = false }, 1800) }
 const downloadQr = () => { const canvas = document.querySelector('.ews-qr canvas'); if (!canvas) return; const anchor = document.createElement('a'); anchor.download = `${event.value?.name || 'event'}-qr.png`; anchor.href = canvas.toDataURL('image/png'); anchor.click() }
 const dateLabel = computed(() => event.value?.start_date ? new Date(`${event.value.start_date}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date to be confirmed')
@@ -15,7 +15,7 @@ const timeLabel = computed(() => `${event.value?.start_time || 'Time pending'} â
 const shareEvent = async () => { if (navigator.share) await navigator.share({ title: event.value?.name, url: link.value }); else await copyLink() }
 const updateEventStatus = async (action, message) => { if (action === 'cancel' && !window.confirm('Cancel this event? It will remain in the database but will no longer be active.')) return; actionError.value = false; try { await api.patch(`/admin/events/${event.value.id}/${action}`); event.value = { ...event.value, status: action === 'close' ? 'closed' : 'cancelled' }; const list = JSON.parse(localStorage.getItem('event_list') || '[]'); const item = list.find((entry) => String(entry.id) === String(event.value.id)); if (item) item.status = event.value.status; localStorage.setItem('event_list', JSON.stringify(list)); actionMessage.value = message } catch (requestError) { actionError.value = true; actionMessage.value = requestError.response?.data?.message || `Unable to ${action} this event. Check your admin session and API connection.` } setTimeout(() => { actionMessage.value = ''; actionError.value = false }, 3000) }
 const exportRegistrants = () => router.push(`/admin/events/${event.value.id}/registrants`)
-const normalizeEvent = (item, registered = 0) => ({ ...item, status: item.status === 'published' ? 'open' : item.status, registered: item.registered ?? registered, maximum_participants: item.maximum_participants ?? item.capacity, start_date: item.start_date || item.starts_at?.slice(0, 10), start_time: item.start_time || item.starts_at?.slice(11, 16), end_time: item.end_time || item.ends_at?.slice(11, 16), registration_link: item.registration_link || `${window.location.origin}/events/${item.id}/register` })
+const normalizeEvent = (item, registered = 0) => ({ ...item, status: item.status === 'published' ? 'open' : item.status, registered: item.registered ?? registered, maximum_participants: item.maximum_participants ?? item.capacity, start_date: item.start_date || item.starts_at?.slice(0, 10), start_time: item.start_time || item.starts_at?.slice(11, 16), end_time: item.end_time || item.ends_at?.slice(11, 16), registration_link: item.registration_link || `${window.location.origin}/events/${item.id}` })
 const loadEvent = async () => { try { const { data } = await api.get(`/events/${route.params.id}`); event.value = normalizeEvent(data.data, data.registered) } catch { const local = JSON.parse(localStorage.getItem('event_list') || '[]').find((item) => String(item.id) === String(route.params.id)); event.value = local || null } finally { loading.value = false } }
 onMounted(loadEvent)
 
@@ -184,11 +184,6 @@ const actionGroups = computed(() => [
                   <strong>{{ checkedIn }}</strong>
                   <span>attendees</span>
                 </div>
-                <div class="ews-stat">
-                  <small>Completion rate</small>
-                  <strong :class="{ 'ews-stat-muted': !checkInPercent }">{{ completionLabel }}</strong>
-                  <span>{{ checkInPercent ? 'of registered attendees' : 'once check-ins begin' }}</span>
-                </div>
               </div>
               <div class="ews-progress-list">
                 <div class="ews-progress">
@@ -237,10 +232,6 @@ const actionGroups = computed(() => [
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                   Share event
                 </button>
-              </div>
-              <div class="ews-link-box">
-                <small>Registration link</small>
-                <strong>{{ link }}</strong>
               </div>
             </section>
           </aside>
