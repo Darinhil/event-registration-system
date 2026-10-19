@@ -55,9 +55,9 @@ class CheckInController extends Controller
         $event = Event::findOrFail($data['event_id']);
         abort_unless($request->user()->role === 'admin' || $event->created_by === $request->user()->id, 403);
         $query = trim($data['query']);
-        $matches = $event->registrations()->where(fn ($q) => $q->where('registration_code', 'like', "%{$query}%")->orWhere('full_name', 'like', "%{$query}%")->orWhere('email', 'like', "%{$query}%"))->with('event')->limit(10)->get();
+        $matches = $event->registrations()->where(fn ($q) => $q->where('registration_code', 'like', "%{$query}%")->orWhere('full_name', 'like', "%{$query}%")->orWhere('email', 'like', "%{$query}%"))->with(['event', 'checkIn'])->limit(10)->get();
         if ($matches->count() === 1) { $registration = $matches->first()->append_form_values(); return response()->json(['data' => ['registration' => (new RegistrationResource($registration))->resolve(), 'suggestions' => []]]); }
-        if ($matches->count() > 1) return response()->json(['data' => ['registration' => null, 'suggestions' => $matches->map(fn ($item) => ['id' => $item->id, 'full_name' => $item->full_name, 'registration_code' => $item->registration_code])]]);
+        if ($matches->count() > 1) return response()->json(['data' => ['registration' => null, 'suggestions' => $matches->map(fn ($item) => ['id' => $item->id, 'full_name' => $item->full_name, 'registration_code' => $item->registration_code, 'email' => $item->email, 'checked_in_at' => $item->checkIn?->checked_in_at?->toIso8601String()])]]);
         throw ValidationException::withMessages(['query' => 'No registration found for that search.']);
     }
 }

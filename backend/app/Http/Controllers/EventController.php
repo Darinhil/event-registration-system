@@ -38,7 +38,11 @@ class EventController extends Controller
         if ($staff) abort_unless($request->user()->can('view', $event), 403);
         else abort_unless($event->status === 'published' && $event->ends_at?->isFuture(), 404);
         $registered = $event->registrations()->count();
-        return response()->json(['data' => $event->load('creator:id,name')->only(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'creator']), 'registered' => $registered, 'remaining' => max(0, $event->capacity - $registered)]);
+        $data = $event->load('creator:id,name')->only(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'creator']);
+        if ($staff) {
+            $data['check_in_qr_token'] = $event->check_in_qr_token;
+        }
+        return response()->json(['data' => $data, 'registered' => $registered, 'remaining' => max(0, $event->capacity - $registered)]);
     }
     /** Full public form config — the exact fields/steps/settings the admin built. */
     public function form(Request $request, Event $event)
