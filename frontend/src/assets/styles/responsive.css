@@ -1,0 +1,351 @@
+/* Shared responsive layer. Page styles remain responsible for their visual identity;
+   this file only constrains layout, sizing, and overflow at viewport boundaries. */
+html, body, #app { max-width: 100%; min-width: 320px; overflow-x: hidden; }
+img, svg, video, canvas { max-width: 100%; }
+button, input, select, textarea { max-width: 100%; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+
+/* Public navigation */
+.mobile-menu-toggle, .mobile-menu-backdrop { display: none; }
+.topbar { min-width: 0; }
+.topbar .brand { min-width: 0; }
+.topbar .brand img { display: block; width: min(150px, 38vw); height: auto; max-height: 52px; object-fit: contain; }
+.topbar nav { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Admin shell */
+.admin-app-shell, .admin-main-shell, .admin-main-shell main { min-width: 0; max-width: 100%; }
+.admin-main-shell main { overflow-x: hidden; }
+.admin-sidebar { overflow-y: auto; overscroll-behavior: contain; }
+.admin-brand-logo { display: block; width: 100%; max-width: 176px; height: auto; max-height: 48px; object-fit: contain; }
+.admin-mobile-menu-toggle { display: none; }
+
+/* Shared page width and control safety */
+.event-dashboard-page, .reference-dashboard, .reports-page, .event-flow-page,
+.event-published-page, .event-registrants-page, .attendance-workspace,
+.personnel-portal-page, .profile-settings-page, .ews, .mi-page,
+.edit-registration-page, .confirmation-page, .public-event-page,
+.dynamic-registration-page { width: 100%; max-width: 1280px; min-width: 0; }
+.dashboard-page-heading, .reports-heading, .registrants-heading,
+.ews-header, .mi-heading, .profile-settings-header { min-width: 0; flex-wrap: wrap; }
+.dashboard-page-heading > *, .reports-heading > *, .registrants-heading > *,
+.ews-header > *, .mi-heading > *, .profile-settings-header > * { min-width: 0; }
+.dashboard-page-heading h1, .reports-heading h1, .registrants-heading h1,
+.ews-title-row h1, .mi-heading h1, .profile-settings-header h1 { overflow-wrap: anywhere; }
+
+.managed-events-table, .reports-table-wrap, .aa-table-wrap,
+.attendance-table-wrap, .registrants-panel .managed-events-table,
+.public-agenda-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { max-width: 100%; }
+
+/* Tablet and compact laptop */
+@media (max-width: 1100px) {
+  .admin-main-shell main { padding-inline: 22px; }
+  .metric-grid, .reports-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-panels > :first-child { grid-column: 1 / -1; }
+  .event-dashboard-page, .reference-dashboard, .reports-page, .event-flow-page,
+  .event-published-page, .event-registrants-page, .attendance-workspace,
+  .personnel-portal-page, .profile-settings-page, .ews, .mi-page,
+  .edit-registration-page, .confirmation-page { max-width: none; }
+  .event-published-page .published-share-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .admin-mobile-menu-toggle { position: fixed; z-index: 110; top: 14px; left: 14px; display: grid; width: 42px; height: 42px; place-content: center; gap: 4px; padding: 0; border: 1px solid #d5e2ef; border-radius: 10px; background: #fff; color: #173b64; box-shadow: 0 8px 20px rgba(23, 59, 100, .14); }
+  .admin-mobile-menu-toggle span { display: block; width: 19px; height: 2px; border-radius: 2px; background: currentColor; }
+  .admin-mobile-menu-backdrop, .mobile-menu-backdrop { position: fixed; z-index: 90; inset: 0; display: block; border: 0; margin: 0; padding: 0; background: rgba(15, 31, 52, .42); }
+  .admin-sidebar { z-index: 100; width: min(290px, 86vw); transform: translateX(-105%); transition: transform .22s ease; box-shadow: 18px 0 45px rgba(9, 27, 50, .25); }
+  .mobile-menu-open .admin-sidebar { transform: translateX(0); }
+  .admin-main-shell { width: 100%; margin-left: 0; }
+  .admin-topbar { min-height: 69px; padding: 0 18px 0 72px; }
+  .admin-search { width: min(460px, 62%); }
+  .admin-profile-copy { max-width: 150px; }
+  .event-flow-page, .event-published-page, .event-registrants-page, .reports-page, .ews, .mi-page, .personnel-portal-page, .profile-settings-page { padding-inline: 0; }
+  .form-grid, .profile-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reports-heading, .registrants-heading { align-items: flex-start; }
+  .reports-tools { width: 100%; justify-content: flex-start; }
+  .reports-search { flex: 1 1 220px; }
+}
+
+@media (max-width: 760px) {
+  .topbar { position: relative; z-index: 30; padding: 10px 14px; }
+  .topbar .brand img { width: 116px; max-height: 42px; }
+  .mobile-menu-toggle { position: relative; z-index: 110; display: grid; flex: 0 0 auto; width: 42px; height: 42px; place-content: center; gap: 4px; margin: 0; padding: 0; border: 1px solid rgba(255,255,255,.45); border-radius: 9px; background: rgba(24,37,34,.08); color: currentColor; }
+  .mobile-menu-toggle span { display: block; width: 19px; height: 2px; border-radius: 2px; background: currentColor; }
+  .topbar > nav { position: fixed; z-index: 100; top: 0; right: 0; bottom: 0; display: flex; width: min(280px, 84vw); align-items: stretch; justify-content: flex-start; flex-direction: column; gap: 6px; padding: 78px 18px 24px; transform: translateX(105%); transition: transform .22s ease; background: #fff; box-shadow: -18px 0 45px rgba(15, 31, 52, .2); }
+  .topbar > nav.is-open { transform: translateX(0); }
+  .topbar > nav .nav-link, .topbar > nav .nav-user-chip, .topbar > nav .logout-button, .topbar > nav .cta-button { width: 100%; min-height: 46px; justify-content: flex-start; margin: 0; padding: 12px 14px; border-radius: 9px; font-size: .9rem; }
+  .topbar > nav .nav-user-chip { gap: 10px; }
+  .topbar > nav .nav-user-name { display: inline; }
+  .topbar > nav .logout-button { text-align: left; }
+  main { padding-inline: 14px; }
+  .admin-main-shell main { padding-inline: 14px; }
+  .admin-topbar { padding-right: 12px; }
+  .admin-search { width: auto; min-width: 0; flex: 1 1 auto; }
+  .admin-profile-copy { display: none; }
+  .admin-top-actions { gap: 5px; }
+  .metric-grid, .reports-metrics, .dashboard-panels, .reference-stats { grid-template-columns: 1fr; }
+  .dashboard-panels > :first-child { grid-column: auto; }
+  .dashboard-page-heading, .reports-heading, .registrants-heading, .ews-header, .mi-heading, .profile-settings-header { flex-direction: column; align-items: stretch; gap: 14px; }
+  .dashboard-page-heading > *, .reports-heading > *, .registrants-heading > *, .ews-header > * { width: 100%; }
+  .dashboard-page-heading button, .reports-heading button, .registrants-heading button { width: 100%; justify-content: center; }
+  .form-grid, .profile-form-grid, .agenda-edit-grid, .aa-grid { grid-template-columns: 1fr; }
+  .form-grid > *, .profile-form-grid > *, .agenda-edit-grid > *, .aa-grid > * { grid-column: auto !important; grid-row: auto !important; }
+  .choice-grid { grid-template-columns: 1fr; }
+  .step-actions { align-items: stretch; }
+  .step-actions button, .profile-card-actions button { flex: 1 1 0; min-width: 0; }
+  .event-published-page .published-share-grid { grid-template-columns: 1fr; }
+  .published-actions, .published-qr-actions, .profile-card-actions { flex-wrap: wrap; }
+  .published-actions > *, .published-qr-actions > * { flex: 1 1 160px; min-width: 0; }
+  .ews-action-grid, .ews-action-grid--two, .ews-progress-list, .ews-details { grid-template-columns: 1fr; }
+  .ews-header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ews-header-actions .ews-btn { width: 100%; }
+  .ews-details { padding-inline: 16px; }
+  .fb-header-row { flex-wrap: wrap; }
+  .fb-header-title, .fb-header-actions { flex: 1 1 100%; }
+  .fb-header-actions { justify-content: flex-start; }
+  .fb-page-foot { flex-direction: column; align-items: stretch; }
+  .fb-page-foot > * { width: 100%; }
+  .fb-modal, .fb-modal--wide, .field-modal--builder, .agenda-edit-modal { width: calc(100% - 24px); max-height: calc(100dvh - 24px); border-radius: 14px; }
+  .field-modal--builder .field-modal-header, .field-modal--builder .field-modal-body, .field-modal--builder .field-modal-footer, .agenda-edit-modal > header, .agenda-edit-body, .agenda-edit-modal > footer { padding-inline: 18px; }
+  .field-modal--builder .field-modal-footer, .agenda-edit-modal > footer { flex-wrap: wrap; }
+  .field-modal--builder .field-modal-footer > *, .agenda-edit-modal > footer > * { flex: 1 1 130px; min-width: 0; }
+  .mi-profile-card, .mi-identity, .mi-quickstats { grid-template-columns: 1fr; }
+  .mi-reg-card { grid-template-columns: auto minmax(0, 1fr); }
+  .mi-reg-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .edit-event-hero, .edit-event-hero.has-image { grid-template-columns: 1fr; }
+  .edit-registration-header { flex-direction: column; }
+  .edit-registration-header > * { width: 100%; }
+  .edit-registration-page .fr-nav { flex-wrap: wrap; }
+  .edit-registration-page .fr-nav > * { flex: 1 1 140px; }
+}
+
+@media (max-width: 480px) {
+  .topbar .brand img { width: 96px; }
+  .topbar { gap: 6px; padding-inline: 10px; }
+  .admin-topbar { min-height: 62px; padding-left: 66px; }
+  .admin-topbar { gap: 6px; }
+  .admin-search { padding-inline: 10px; }
+  .admin-search input { font-size: .72rem; }
+  .admin-notification { padding-inline: 8px; }
+  .reference-stat, .metric-card { min-width: 0; }
+  .event-card-registration { grid-template-columns: auto 1fr; }
+  .event-card-registration > small { grid-column: 1 / -1; }
+  .event-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .event-card-actions > * { width: 100%; justify-content: center; text-align: center; }
+  .reports-tools, .attendee-toolbar, .table-toolbar { align-items: stretch; flex-direction: column; }
+  .reports-tools > *, .reports-search, .reports-search input { width: 100%; }
+  .reports-tools .secondary-button { justify-content: center; }
+  .dynamic-event-meta { grid-template-columns: 1fr; }
+  .dynamic-form > .primary-button { width: 100%; margin-inline: 0; }
+  .dynamic-review-actions { flex-direction: column; }
+  .dynamic-review-actions > button { width: 100%; }
+  .public-event-hero h1, .edit-event-hero-copy h1 { font-size: clamp(1.8rem, 10vw, 2.6rem); }
+  .public-agenda { padding: 16px; }
+  .public-agenda-list > li { grid-template-columns: 1fr; gap: 6px; }
+  .create-stepper button { min-width: 124px; }
+  .step-card { padding-inline: 14px; }
+  .step-actions { flex-direction: column; }
+  .step-actions button { width: 100%; }
+  .fb-palette, .fb-settings { width: min(310px, 92vw); }
+  .fb-field-card, .fb-field-card.is-w25, .fb-field-card.is-w33, .fb-field-card.is-w50 { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .fb-field-card .fb-field-meta { grid-column: 2 / -1; }
+  .ews-header-actions { grid-template-columns: 1fr; }
+  .ews-qr-frame { padding: 12px; }
+  .ews-qr-frame canvas, .ews-qr-frame img { width: min(100%, 230px) !important; height: auto !important; }
+  .auth-page { padding-inline: 10px; }
+  .auth-card-login .auth-form-panel, .auth-card-signup .auth-form-panel { padding-inline: 16px !important; }
+  .checkin-heading { gap: 10px; }
+  .scanner-panel-heading { align-items: stretch; flex-direction: column; }
+  .scanner-panel-heading .secondary-button { width: 100%; }
+  .checkin-code-form > div { display: grid; gap: 8px; }
+  .checkin-code-form > div > * { width: 100%; }
+  .checkin-summary-stats { grid-template-columns: 1fr; }
+  .checkin-table-panel > header { align-items: stretch; flex-direction: column; gap: 10px; }
+  .checkin-table-panel > header > * { width: 100%; }
+}
+
+/* The agenda is a five-column desktop table. On phones, present each session
+   as a compact card so titles, tracks, and speakers remain readable without
+   forcing the page into a clipped horizontal viewport. */
+.public-agenda-mobile-list { display: none; }
+@media (max-width: 560px) {
+  .public-event-main .public-event-meta { grid-template-columns: 1fr; gap: 10px; overflow: visible; top: -10px; }
+  .public-event-main .public-event-meta div { min-height: 0; grid-template-columns: 36px minmax(0, 1fr); column-gap: 11px; align-items: center; padding: 13px 14px; }
+  .public-event-main .public-event-meta div > span { grid-row: span 2; }
+  .public-event-main .public-event-meta strong, .public-event-main .public-event-meta small { min-width: 0; }
+  .public-event-main .public-event-meta strong { font-size: .76rem; }
+  .public-event-main .public-event-meta small { font-size: .61rem; }
+  .public-agenda { padding: 18px 14px 14px; border-color: #d9e7f4; background: linear-gradient(180deg, #fbfdff 0%, #fff 42%); box-shadow: 0 12px 28px rgba(28, 63, 100, .07); }
+  .public-agenda > h2 { margin-bottom: 15px; color: #163f6b; font-size: 1.28rem; }
+  .public-agenda-day-tabs { margin-inline: -2px; padding-bottom: 7px; }
+  .public-agenda-day-tabs button { border-radius: 10px; box-shadow: 0 2px 6px rgba(28, 63, 100, .04); }
+  .public-agenda-day-tabs button.active { box-shadow: 0 5px 12px rgba(37, 99, 235, .12); }
+  .public-agenda-table-scroll { overflow: visible; border: 0; }
+  .public-agenda-mobile-list { display: grid; gap: 12px; }
+  .public-agenda-mobile-card { position: relative; display: grid; gap: 9px; padding: 15px 15px 14px 17px; border: 1px solid #dce8f3; border-left: 3px solid #4f8ff7; border-radius: 13px; background: #fff; box-shadow: 0 7px 18px rgba(28, 63, 100, .065); }
+  .public-agenda-mobile-card-head { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
+  .public-agenda-mobile-time { min-width: 0; padding: 6px 8px; border: 1px solid #d7e6f5; border-radius: 7px; background: #f4f8fd; color: #2e5f91; font-size: .64rem; font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; }
+  .public-agenda-mobile-type { max-width: 52%; min-width: 0; padding: 5px 8px; border-radius: 999px; background: #eaf3ff; color: #2c6ac0; font-size: .59rem; font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; text-align: center; }
+  .public-agenda-mobile-card h4 { margin: 2px 0 0; color: #204f7d; font-size: .92rem; line-height: 1.35; overflow-wrap: anywhere; }
+  .public-agenda-mobile-card > p { margin: 0; color: #71869e; font-size: .73rem; line-height: 1.55; overflow-wrap: anywhere; }
+  .public-agenda-mobile-meta { display: grid; gap: 8px; margin: 2px 0 0; padding-top: 10px; border-top: 1px solid #edf2f7; }
+  .public-agenda-mobile-meta div { display: grid; gap: 3px; min-width: 0; }
+  .public-agenda-mobile-meta dt { color: #8a9caf; font-size: .55rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+  .public-agenda-mobile-meta dd { margin: 0; overflow-wrap: anywhere; color: #4d6884; font-size: .71rem; line-height: 1.45; }
+  .public-agenda-mobile-list + .public-agenda-table-scroll { display: none; }
+  .public-agenda-table { display: block; width: 100%; min-width: 0 !important; }
+  .public-agenda-table thead { display: none; }
+  .public-agenda-table tbody { display: grid; gap: 12px; }
+  .public-agenda-table tbody tr { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 13px 14px 12px 16px; border: 1px solid #dce8f3; border-left: 3px solid #4f8ff7; border-radius: 13px; background: #fff; box-shadow: 0 6px 16px rgba(28, 63, 100, .06); }
+  .public-agenda-table tbody tr:nth-child(even), .public-agenda-table tbody tr:hover { background: #fff; }
+  .public-agenda-table td, .public-agenda-table td + td { display: block; min-width: 0; padding: 5px 0; border: 0; }
+  .public-agenda-table td::before { display: block; margin-bottom: 5px; color: #8a9caf; font-size: .56rem; font-weight: 800; letter-spacing: .07em; line-height: 1.2; text-transform: uppercase; }
+  .public-agenda-table td:nth-child(1)::before { content: 'Time'; }
+  .public-agenda-table td:nth-child(2)::before { content: 'Session type'; }
+  .public-agenda-table td:nth-child(1), .public-agenda-table td:nth-child(2) { padding-bottom: 11px; }
+  .public-agenda-table td:nth-child(3) { grid-column: 1 / -1; padding: 12px 0 11px; border-top: 1px solid #edf2f7; }
+  .public-agenda-table td:nth-child(3)::before { content: 'Title & focus'; }
+  .public-agenda-table td:nth-child(4) { padding: 10px 10px 4px 0; border-top: 1px solid #edf2f7; }
+  .public-agenda-table td:nth-child(4)::before { content: 'Track'; }
+  .public-agenda-table td:nth-child(5) { grid-column: 1 / -1; padding: 10px 0 2px; border-top: 1px solid #edf2f7; }
+  .public-agenda-table td:nth-child(5)::before { content: 'Speakers / organization'; }
+  .public-agenda-table td:not(:nth-child(1)):not(:nth-child(2)) { overflow-wrap: anywhere; color: #4d6884; font-size: .72rem; line-height: 1.48; }
+  .public-agenda-table .public-agenda-session h4 { color: #204f7d; font-size: .88rem; line-height: 1.35; }
+  .public-agenda-table .public-agenda-session p { margin-top: 6px; color: #71869e; font-size: .72rem; line-height: 1.5; }
+  .public-agenda-table .public-agenda-time { padding: 6px 8px; border-color: #d7e6f5; border-radius: 7px; background: #f4f8fd; color: #2e5f91; font-size: .64rem; font-weight: 750; }
+  .public-agenda-table .public-agenda-type { margin: 0; padding: 5px 8px; border-radius: 999px; background: #eaf3ff; color: #2c6ac0; font-size: .59rem; font-weight: 750; }
+}
+
+@media (max-width: 360px) {
+  .admin-top-actions .admin-notification { display: none; }
+  .topbar .brand img { width: 84px; }
+  .topbar > nav { width: min(260px, 88vw); }
+  .step-actions button, .published-actions > *, .published-qr-actions > * { flex-basis: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar, .topbar > nav { transition: none; }
+}
+
+ .nav-account-actions { display: contents; }
+
+@media (max-width: 900px) {
+
+  .shell > .topbar > nav {
+    top: 66px;
+    right: 12px;
+    bottom: auto;
+    width: min(170px, calc(100vw - 24px));
+    max-height: calc(100dvh - 82px);
+    padding: 12px;
+    overflow-y: auto;
+    border: 1px solid #dce6f0;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 18px 42px rgba(15, 31, 52, .2);
+  }
+
+  .shell > .mobile-menu-backdrop {
+    background: rgba(15, 31, 52, .16);
+  }
+
+  .shell > .topbar > nav .nav-link,
+  .shell > .topbar > nav .cta-button {
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .shell > .topbar > nav > .nav-link {
+    width: auto;
+    align-self: flex-start;
+  }
+
+  .shell > .topbar > nav .nav-account-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .shell > .topbar > nav .nav-account-actions .nav-user-chip {
+    display: inline-flex;
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    justify-content: center;
+    padding: 5px;
+  }
+
+  .shell > .topbar > nav .nav-account-actions .nav-user-name {
+    display: none;
+  }
+
+  .shell > .topbar > nav .nav-account-actions .logout-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+}
+
+/* Final visual polish shared by every page family. */
+fieldset, legend, form, article, section, aside, header, footer { min-width: 0; }
+textarea { resize: vertical; }
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .admin-main-shell main { padding-inline: 24px; }
+  .event-dashboard-page, .reports-page, .event-flow-page, .event-registrants-page,
+  .attendance-workspace, .personnel-portal-page, .profile-settings-page, .ews, .mi-page { padding-top: 24px; }
+  .event-dashboard-heading, .dashboard-page-heading, .flow-heading, .reports-heading,
+  .registrants-heading, .checkin-heading, .ews-header, .mi-heading, .profile-settings-header { margin-bottom: 20px; }
+  .event-dashboard-heading h1, .dashboard-page-heading h1, .flow-heading h1,
+  .reports-heading h1, .registrants-heading h1, .checkin-heading h1 { font-size: clamp(1.8rem, 3.4vw, 2.35rem); }
+}
+
+@media (max-width: 760px) {
+  .event-dashboard-page, .reports-page, .event-flow-page, .event-registrants-page,
+  .attendance-workspace, .personnel-portal-page, .profile-settings-page, .ews, .mi-page,
+  .edit-registration-page, .confirmation-page, .dynamic-registration-page { padding-top: 18px; padding-bottom: 36px; }
+  .event-dashboard-heading h1, .dashboard-page-heading h1, .flow-heading h1,
+  .reports-heading h1, .registrants-heading h1, .checkin-heading h1,
+  .ews-title-row h1, .mi-heading h1, .profile-settings-header h1 { font-size: clamp(1.65rem, 7vw, 2.25rem); line-height: 1.1; }
+  .dashboard-page-heading p:not(.admin-eyebrow), .reports-heading p:not(.admin-eyebrow),
+  .registrants-heading p:not(.admin-eyebrow), .checkin-heading p { font-size: .78rem; line-height: 1.5; }
+  .primary-button, .secondary-button, .button, .workflow-primary,
+  .dashboard-create, .dashboard-page-heading button, .reports-heading button,
+  .registrants-heading button { min-height: 44px; }
+  .home-hero-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .home-hero-actions > * { width: 100%; justify-content: center; }
+  .dynamic-form, .dynamic-review { padding: 18px 16px; }
+  .dynamic-form-heading h2, .dynamic-review h2 { font-size: 1.2rem; }
+  .profile-settings-card, .profile-account-card, .aa-card, .personnel-portal-content { border-radius: 14px; }
+  .profile-settings-card, .profile-account-card { padding: 20px 16px; }
+  .profile-card-heading, .profile-card-actions { gap: 12px; }
+  .public-event-next-step { margin-top: 16px; }
+  .public-event-next-step h2 { font-size: 1rem; line-height: 1.35; }
+  .public-event-next-step p:not(.public-event-label) { font-size: .74rem; }
+  .event-empty-state, .dynamic-empty, .dynamic-loading { padding: 54px 16px; }
+}
+
+@media (max-width: 425px) {
+  .admin-main-shell main { padding-inline: 12px; }
+  .admin-mobile-menu-toggle { top: 10px; left: 10px; width: 40px; height: 40px; }
+  .admin-topbar { padding-left: 60px; }
+  .admin-top-actions { flex: 0 0 auto; }
+  .admin-top-avatar { width: 34px; height: 34px; }
+  .event-list-toolbar, .reports-toolbar, .checkin-table-panel > header { padding-inline: 14px; }
+  .event-card-grid { padding-inline: 12px; }
+  .managed-event-card { border-radius: 13px; }
+  .public-event-page { padding-inline: 0; }
+  .public-event-hero { padding: 24px 18px; }
+  .public-event-content { padding-inline: 12px; }
+  .public-agenda { width: calc(100% + 24px); margin-inline: -12px; }
+  .auth-card-login, .auth-card-signup { border-radius: 16px !important; }
+  .auth-tabs-row { gap: 6px; }
+  .auth-tab { min-width: 0; flex: 1 1 0; padding-inline: 8px; }
+  .fb-shell { padding-inline: 10px; }
+  .fb-header-actions .fb-btn, .fb-page-foot .fb-btn { width: 100%; justify-content: center; }
+  .agenda-edit-modal > footer button, .field-modal--builder .field-modal-footer button { min-height: 44px; }
+}

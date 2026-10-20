@@ -25,11 +25,21 @@ const dateLabel = computed(() => {
 const timeLabel = computed(() => event.value?.starts_at
   ? `${new Date(event.value.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${new Date(event.value.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   : 'Time to be confirmed')
-const agendaDays = computed(() => [...new Set((event.value?.form_config?.agenda || []).map((session) => Number(session.day)))].sort((a, b) => a - b))
+const agendaDays = computed(() => {
+  const agenda = event.value?.form_config?.agenda || []
+  const start = event.value?.starts_at ? new Date(event.value.starts_at) : null
+  const end = event.value?.ends_at ? new Date(event.value.ends_at) : null
+  if (start && end && !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end >= start) {
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+    const duration = Math.floor((endDay - startDay) / 86400000) + 1
+    return Array.from({ length: duration }, (_, index) => index + 1)
+  }
+  return [...new Set(agenda.map((session) => Number(session.day)))].filter((day) => day > 0).sort((a, b) => a - b)
+})
 const selectedAgendaDay = ref(null)
 const visibleAgendaDay = computed(() => agendaDays.value.includes(selectedAgendaDay.value) ? selectedAgendaDay.value : agendaDays.value[0])
 const agendaSessionsForDay = (day) => (event.value?.form_config?.agenda || []).filter((session) => Number(session.day) === day)
-const agendaDaySessionCount = (day) => agendaSessionsForDay(day).length
 const agendaDayLabel = (day) => {
   if (!event.value?.starts_at) return `Day ${day}`
   const date = new Date(event.value.starts_at)
@@ -103,12 +113,25 @@ load()
                   @click="selectedAgendaDay = day"
                 >
                   <span>{{ agendaDayLabel(day) }}</span>
-                  <small>{{ agendaDaySessionCount(day) }} {{ agendaDaySessionCount(day) === 1 ? 'session' : 'sessions' }}</small>
                 </button>
               </div>
-              <div v-if="visibleAgendaDay" :id="`agenda-day-panel-${visibleAgendaDay}`" class="public-agenda-day" role="tabpanel" :aria-label="agendaDayLabel(visibleAgendaDay)">
-                <h3 v-if="agendaDays.length === 1">{{ agendaDayLabel(visibleAgendaDay) }}</h3>
-                <div class="public-agenda-table-scroll" role="region" aria-label="Agenda sessions" tabindex="0">
+                <div v-if="visibleAgendaDay" :id="`agenda-day-panel-${visibleAgendaDay}`" class="public-agenda-day" role="tabpanel" :aria-label="agendaDayLabel(visibleAgendaDay)">
+                  <h3 v-if="agendaDays.length === 1">{{ agendaDayLabel(visibleAgendaDay) }}</h3>
+                  <div class="public-agenda-mobile-list" aria-label="Agenda sessions">
+                    <article v-for="(session, index) in agendaSessionsForDay(visibleAgendaDay)" :key="`mobile-${session.id || `${visibleAgendaDay}-${index}`}`" class="public-agenda-mobile-card">
+                      <div class="public-agenda-mobile-card-head">
+                        <span class="public-agenda-mobile-time">{{ session.start_time || 'Time TBC' }}<template v-if="session.end_time"> – {{ session.end_time }}</template></span>
+                        <span class="public-agenda-mobile-type">{{ session.session_type || '—' }}</span>
+                      </div>
+                      <h4>{{ session.title }}</h4>
+                      <p v-if="session.description">{{ session.description }}</p>
+                      <dl class="public-agenda-mobile-meta">
+                        <div><dt>Track</dt><dd>{{ session.track || '—' }}</dd></div>
+                        <div><dt>Speakers / organization</dt><dd>{{ session.speakers || '—' }}</dd></div>
+                      </dl>
+                    </article>
+                  </div>
+                  <div class="public-agenda-table-scroll" role="region" aria-label="Agenda sessions" tabindex="0">
                   <table class="public-agenda-table">
                     <thead>
                       <tr>

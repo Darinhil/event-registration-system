@@ -16,6 +16,7 @@
   align-items: center;
   gap: clamp(28px, 4vw, 60px);
   width: 100vw;
+  box-sizing: border-box;
   max-width: none;
   margin: -76px calc(50% - 50vw) 0;
   padding: calc(clamp(52px, 7vw, 96px) + 76px) max(clamp(24px, 5vw, 72px), calc((100vw - 1180px) / 2)) clamp(52px, 6vw, 88px);
@@ -32,6 +33,7 @@
 /* Left column content */
 .home-hero > :not(.home-visual) {
   grid-column: 1;
+  min-width: 0;
 }
 
 .home-visual {
@@ -257,6 +259,8 @@
 
 .home-hero h1 {
   max-width: 760px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 0 0 20px;
   font-size: clamp(2.6rem, 5.6vw, 4.6rem);
   font-weight: 700;
@@ -347,6 +351,7 @@
 .home-stats > div {
   display: grid;
   gap: 3px;
+  min-width: 0;
 }
 
 .home-stats strong {
@@ -360,6 +365,7 @@
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 /* ---------------- Feature cards ---------------- */
@@ -460,10 +466,13 @@
 @media (max-width: 640px) {
   .home-hero {
     margin-top: -76px;
+    grid-template-columns: minmax(0, calc(100vw - 44px));
     padding: calc(44px + 76px) 22px 48px;
   }
   .home-hero h1 { font-size: clamp(2.2rem, 9vw, 3rem); }
-  .home-lede { font-size: .98rem; }
+  .home-hero h1, .home-lede, .home-hero-actions, .home-stats { width: min(100%, calc(100vw - 44px)); max-width: calc(100vw - 44px); }
+  .home-hero h1 { white-space: normal; word-break: break-word; }
+  .home-lede { font-size: .98rem; overflow-wrap: anywhere; }
   .home-hero-actions > * { flex: 1; justify-content: center; }
-  .home-stats { gap: 12px 22px; }
+  .home-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 }

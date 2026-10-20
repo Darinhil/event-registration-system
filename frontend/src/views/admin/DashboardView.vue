@@ -38,18 +38,18 @@ const statusTotalsFor = (list) => {
 }
 const statusTotals = computed(() => statusTotalsFor(events.value))
 const statusRows = computed(() => [
-  { label: 'Completed', value: statusTotals.value.completed, color: '#0d9488' },
+  { label: 'Completed', value: statusTotals.value.completed, color: '#0eb584' },
   { label: 'Ongoing', value: statusTotals.value.ongoing, color: '#3b82f6' },
   { label: 'Upcoming', value: statusTotals.value.upcoming, color: '#f59e0b' },
-  { label: 'Cancelled', value: statusTotals.value.cancelled, color: '#cbd5e1' },
+  { label: 'Cancelled', value: statusTotals.value.cancelled, color: '#dbe1e8' },
 ])
 const statusDonutStyle = computed(() => {
-  if (!events.value.length) return { background: '#eef2f6' }
+  if (!events.value.length) return { background: '#eef8f5' }
   const total = events.value.length
   const completed = statusTotals.value.completed / total * 100
   const ongoing = statusTotals.value.ongoing / total * 100
   const upcoming = statusTotals.value.upcoming / total * 100
-  return { background: `conic-gradient(#0d9488 0 ${completed}%, #3b82f6 ${completed}% ${completed + ongoing}%, #f59e0b ${completed + ongoing}% ${completed + ongoing + upcoming}%, #cbd5e1 ${completed + ongoing + upcoming}% 100%)` }
+  return { background: `conic-gradient(#0eb584 0 ${completed}%, #3b82f6 ${completed}% ${completed + ongoing}%, #f59e0b ${completed + ongoing}% ${completed + ongoing + upcoming}%, #dbe1e8 ${completed + ongoing + upcoming}% 100%)` }
 })
 
 const typeRows = computed(() => {
@@ -109,12 +109,12 @@ onMounted(loadDashboard)
               <article class="reference-stat stat-purple"><span class="reference-stat__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg></span><span>Checked In</span><strong>{{ number(stats.check_ins) }}</strong></article>
           </section>
 
-          <article class="reference-card reference-status"><header><h2>Event Status</h2><RouterLink to="/admin/events">View all →</RouterLink></header><div class="reference-status__body"><div class="reference-donut" :style="statusDonutStyle"><div><strong>{{ number(events.length) }}</strong><small>Total Events</small></div></div><div class="reference-legend"><p v-for="row in statusRows" :key="row.label"><i :style="{ background: row.color }"></i><span>{{ row.label }}</span><b>{{ row.value }}</b><small>{{ events.length ? Math.round(row.value / events.length * 1000) / 10 : 0 }}%</small></p></div></div></article>
+          <article class="reference-card reference-status"><header><h2>Event Status</h2><RouterLink to="/admin/events">View all →</RouterLink></header><div class="reference-status__body"><div class="reference-donut" :style="statusDonutStyle"><div><strong>{{ number(events.length) }}</strong><small>Total Events</small></div></div><div class="reference-legend"><p v-for="row in statusRows" :key="row.label"><i :style="{ background: row.color, '--dot': row.color }"></i><span>{{ row.label }}</span><b>{{ row.value }}</b><small>{{ events.length ? Math.round(row.value / events.length * 1000) / 10 : 0 }}%</small></p></div></div></article>
           <article class="reference-card reference-years"><header><div><h2>Total Events by Year</h2><p>Events scheduled in your workspace</p></div><RouterLink to="/admin/events">View all →</RouterLink></header><div v-if="yearRows.length" class="reference-year-bars"><div v-for="row in yearRows" :key="row.year" class="reference-year-bar"><span><i :style="{ height: `${Math.max(row.value / yearMax * 100, 8)}%` }"></i></span><b>{{ number(row.value) }}</b><small>{{ row.year }}</small></div></div><div v-else class="reference-empty">Event totals by year will appear after events are created.</div></article>
 
           <article class="reference-card reference-upcoming"><header><h2>Upcoming Events</h2><RouterLink to="/admin/events">View all →</RouterLink></header><div v-if="upcomingEvents.length" class="reference-event-list"><RouterLink v-for="event in upcomingEvents" :key="event.id" :to="`/admin/events/${event.id}`" class="reference-event"><div class="reference-event__thumb"><img v-if="event.branding?.image" :src="event.branding.image" alt="" /><span v-else>{{ initials(event.name) }}</span></div><div class="reference-event__body"><div class="reference-event__top"><strong>{{ event.name }}</strong><em :class="`status-${event.status}`">{{ statusLabel(event.status) }}</em></div><small class="reference-event__date">{{ dateLabel(event.starts_at) }} · {{ timeLabel(event.starts_at) }}</small><small class="reference-event__place">{{ event.location || 'Location pending' }}</small></div></RouterLink></div><div v-else class="reference-empty">No upcoming events yet.</div></article>
 
-          <article class="reference-card reference-actions"><h2>Quick Actions</h2><div><RouterLink to="/admin/events/new"><span>＋</span>Create Event <b>→</b></RouterLink><RouterLink to="/admin/users"><span>♙</span>View Participant <b>→</b></RouterLink><RouterLink to="/admin/check-ins"><span>⌗</span>Check-in Event <b>→</b></RouterLink><RouterLink to="/admin/reports"><span>▤</span>View Reports <b>→</b></RouterLink></div></article>
+          <article class="reference-card reference-actions"><h2>Quick Actions</h2><div><RouterLink to="/admin/events/new" class="qa-teal"><span class="reference-stat__icon qa-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Create Event <b>→</b></RouterLink><RouterLink to="/admin/users" class="qa-blue"><span class="reference-stat__icon qa-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/></svg></span>View Participant <b>→</b></RouterLink><RouterLink to="/admin/check-ins" class="qa-amber"><span class="reference-stat__icon qa-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 12 4 4L15 8"/><path d="M21 5v9a4 4 0 0 1-4 4h-5"/></svg></span>Check-in Event <b>→</b></RouterLink><RouterLink to="/admin/reports" class="qa-purple"><span class="reference-stat__icon qa-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-6M13 17V8M18 17v-9"/></svg></span>View Reports <b>→</b></RouterLink></div></article>
         </div>
       </template>
     </section>

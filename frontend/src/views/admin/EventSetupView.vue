@@ -6,6 +6,7 @@ import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { addNonBinaryGenderOption, isLegacyStarterForm, starterFields } from '../../utils/formFieldTypes'
+import { copyText } from '../../utils/clipboard'
 
 const route = useRoute(); const router = useRouter()
 const editingId = route.params.id || null
@@ -48,6 +49,21 @@ const eventDuration = computed(() => {
   if (end < start) return 'Check dates'
   const days = Math.floor((end - start) / 86400000) + 1
   return `${days} ${days === 1 ? 'day' : 'days'}`
+})
+const agendaDayNumbers = computed(() => {
+  if (event.start_date && event.end_date) {
+    const [startYear, startMonth, startDay] = event.start_date.split('-').map(Number)
+    const [endYear, endMonth, endDay] = event.end_date.split('-').map(Number)
+    const start = Date.UTC(startYear, startMonth - 1, startDay)
+    const end = Date.UTC(endYear, endMonth - 1, endDay)
+    if (end >= start) {
+      const dateDays = Math.floor((end - start) / 86400000) + 1
+      return Array.from({ length: dateDays }, (_, index) => index + 1)
+    }
+  }
+  const agendaDays = agenda.value.map((session) => Number(session.day)).filter((day) => Number.isInteger(day) && day > 0)
+  const lastAgendaDay = agendaDays.length ? Math.max(...agendaDays) : 1
+  return Array.from({ length: lastAgendaDay }, (_, index) => index + 1)
 })
 const agendaSessionTypes = ['Registration', 'Plenary', 'Group Photos', 'Networking', 'Keynote Panel', 'Research Showcase', 'Break', 'Parallel Sessions', 'Recap & Energizer', 'Policy Dialogue', 'Marketplace', 'Outcome Adoption', 'Closing Plenary', 'Session']
 const agenda = ref([
@@ -105,7 +121,14 @@ const validateStep = () => {
   error.value = ''
   if (activeStep.value === 1 && !event.name.trim()) error.value = 'Add an event name to continue.'
   if (activeStep.value === 1 && (!event.start_date || !event.end_date || !event.start_time || !event.end_time || !event.location.trim())) error.value = 'Complete the date, time, and location fields.'
-  if (activeStep.value === 1 && event.end_date && event.start_date && event.end_date < event.start_date) error.value = 'End date must be after the start date.'
+  if (activeStep.value === 1 && event.end_date && event.start_date && event.end_date < event.start_date) error.value = 'End date must be the same as or after the start date.'
+  if (activeStep.value === 1 && event.start_date && event.end_date && event.start_time && event.end_time) {
+    const startDateTime = new Date(`${event.start_date}T${event.start_time}`)
+    const endDateTime = new Date(`${event.end_date}T${event.end_time}`)
+    if (!Number.isNaN(startDateTime.getTime()) && !Number.isNaN(endDateTime.getTime()) && endDateTime <= startDateTime) {
+      error.value = 'End date and time must be after the start date and time.'
+    }
+  }
   if (activeStep.value === 1 && !event.deadline) error.value = 'Choose a registration deadline.'
   return !error.value
 }
@@ -141,15 +164,16 @@ const loadEvent = async () => {
     const { data } = await api.get(`/events/${editingId}`)
     const item = data.data
     const start = splitDateTime(item.starts_at); const end = splitDateTime(item.ends_at)
-    Object.assign(event, { name: item.name || '', description: item.description || '', category: item.category || 'Conference', image: item.branding?.image || '', start_date: start.date, start_time: start.time, end_date: end.date, end_time: end.time, location: item.location || '', maximum_participants: item.capacity || 200 })
+    const registrationSettings = item.form_config?.settings || {}
+    Object.assign(event, { name: item.name || '', description: item.description || '', category: item.category || 'Conference', image: item.branding?.image || '', start_date: start.date, start_time: start.time, end_date: end.date, end_time: end.time, location: item.location || '', maximum_participants: item.capacity || 200, registration_start: registrationSettings.registration_start?.slice(0, 10) || '', deadline: registrationSettings.registration_end?.slice(0, 10) || '' })
     agenda.value = Array.isArray(item.form_config?.agenda) ? item.form_config.agenda : []
     imagePreview.value = event.image
     if (Array.isArray(item.enabled_fields) && item.enabled_fields.length) fields.value = item.enabled_fields.map((field, index) => ({ id: field.id || index + 1, label: field.label, type: field.type, required: Boolean(field.required), options: field.options || [], settings: field.settings || {} }))
     else {
       const { data: formData } = await api.get(`/events/${editingId}/form`)
-      const registrationSettings = formData.data?.settings || formData.data?.config?.settings || {}
-      event.registration_start = registrationSettings.registration_start?.slice(0, 10) || ''
-      event.deadline = registrationSettings.registration_end?.slice(0, 10) || ''
+      const formRegistrationSettings = formData.data?.settings || formData.data?.config?.settings || {}
+      event.registration_start = formRegistrationSettings.registration_start?.slice(0, 10) || ''
+      event.deadline = formRegistrationSettings.registration_end?.slice(0, 10) || ''
       const formFields = formData.data?.fields || formData.data || []
       if (Array.isArray(formFields) && formFields.length) fields.value = formFields.map((field) => ({ id: field.id, label: field.label, type: String(field.type).toLowerCase() === 'select/dropdown' ? 'Select' : setupFieldType(String(field.type).toLowerCase()), required: Boolean(field.required), options: field.options || [], settings: field.settings || {} }))
     }
@@ -160,7 +184,15 @@ const loadEvent = async () => {
 loadEvent()
 const publishEvent = async () => { if (!validateStep()) return; error.value = ''; const payload = { name: event.name, category: event.category, description: event.description, starts_at: new Date(`${event.start_date}T${event.start_time}`).toISOString(), ends_at: new Date(`${event.end_date}T${event.end_time}`).toISOString(), location: event.location, capacity: event.maximum_participants, branding: event.image ? { image: event.image } : null, enabled_fields: fields.value, form_config: { settings: { registration_start: event.registration_start || null, registration_end: event.deadline || null, allow_user_edit: true }, agenda: agenda.value }, form_fields: fields.value.map((field) => ({ label: field.label, type: field.type.toLowerCase().replaceAll(' ', ''), required: field.required, options: field.options || [], settings: field.settings || {} })) }; try { const { data } = editingId ? await api.put(`/admin/events/${editingId}`, payload) : await api.post('/admin/events', payload); publishedEvent.value = persistEvent(data.id, 'open'); if (!editingId) localStorage.removeItem('event_draft') } catch (requestError) { error.value = requestError.response?.data?.message || 'Unable to save event. Make sure the API is running and try again.' } }
 const publishedLink = computed(() => publishedEvent.value?.registration_link || '')
-const copyPublishedLink = async () => { await navigator.clipboard?.writeText(publishedLink.value); saved.value = true; setTimeout(() => { saved.value = false }, 1800) }
+const copyPublishedLink = async () => {
+  error.value = ''
+  if (await copyText(publishedLink.value)) {
+    saved.value = true
+    setTimeout(() => { saved.value = false }, 1800)
+  } else {
+    error.value = 'Copy failed. Please select the registration link and copy it manually.'
+  }
+}
 const downloadPublishedQr = () => { const canvas = document.querySelector('.published-qr canvas'); if (!canvas) return; const anchor = document.createElement('a'); anchor.download = `${publishedEvent.value?.name || 'event'}-registration-qr.png`; anchor.href = canvas.toDataURL('image/png'); anchor.click() }
 const printPublishedQr = () => { const canvas = document.querySelector('.published-qr canvas'); if (!canvas) return; const popup = window.open('', '_blank', 'width=600,height=700'); popup?.document.write(`<title>${publishedEvent.value?.name || 'Event'} QR Code</title><img style="width:420px;display:block;margin:60px auto" src="${canvas.toDataURL('image/png')}" onload="window.print()">`) }
 const showPreviewNotice = () => { previewNotice.value = true; setTimeout(() => { previewNotice.value = false }, 2600) }
@@ -209,9 +241,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleEditorKeydown)
         </div>
         <div v-else-if="activeStep === 2" class="step-content agenda-step">
           <div class="agenda-toolbar">
-            <div class="agenda-day-tabs" role="group" aria-label="Agenda day">
-              <button v-for="day in [1, 2]" :key="day" type="button" :aria-pressed="activeAgendaDay === day" :class="{ active: activeAgendaDay === day }" @click="activeAgendaDay = day">
-                <span>{{ agendaDayLabel(day) }}</span><small>{{ agenda.filter((session) => session.day === day).length }} sessions</small>
+            <div v-if="agendaDayNumbers.length > 1" class="agenda-day-tabs" role="group" aria-label="Agenda day">
+              <button v-for="day in agendaDayNumbers" :key="day" type="button" :aria-pressed="activeAgendaDay === day" :class="{ active: activeAgendaDay === day }" @click="activeAgendaDay = day">
+                <span>{{ agendaDayLabel(day) }}</span>
               </button>
             </div>
             <button type="button" class="outline-button agenda-add-session" @click="addAgendaSession">＋ Add session</button>

@@ -9,6 +9,7 @@ import {
   FIELD_CATEGORIES, TYPE_META, FIELD_ICONS, FIELD_WIDTHS, OPTION_TYPES,
   addNonBinaryGenderOption, createField, createSteps, isLegacyStarterForm, starterFields, slugify, baseFieldSettings,
 } from '../../utils/formFieldTypes'
+import { copyText } from '../../utils/clipboard'
 
 const route = useRoute()
 const router = useRouter()
@@ -401,7 +402,12 @@ const closeRegistration = async () => {
 /* ---------------- Copy / QR ---------------- */
 const copyLink = async (link) => {
   const value = link || registrationLink.value
-  try { await navigator.clipboard?.writeText(value); copied.value = true; setTimeout(() => { copied.value = false }, 1800) } catch { showToast('Copy failed — select the link manually.', 'error') }
+  if (await copyText(value)) {
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 1800)
+  } else {
+    showToast('Copy failed — select the link manually.', 'error')
+  }
 }
 const downloadQr = () => {
   const canvas = document.querySelector('.fb-qr-frame canvas, .fb-qr-frame img')

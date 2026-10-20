@@ -5,10 +5,21 @@ import { useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import api from '../../services/api'
+import { copyText } from '../../utils/clipboard'
 
 const route = useRoute(); const router = useRouter(); const copied = ref(false); const actionMessage = ref(''); const actionError = ref(false); const loading = ref(true); const event = ref(null)
 const link = computed(() => event.value?.registration_link || `${window.location.origin}/events/${route.params.id}`)
-const copyLink = async () => { await navigator.clipboard?.writeText(link.value); copied.value = true; setTimeout(() => { copied.value = false }, 1800) }
+const copyLink = async () => {
+  if (await copyText(link.value)) {
+    copied.value = true
+    actionError.value = false
+    actionMessage.value = 'Registration link copied.'
+  } else {
+    actionError.value = true
+    actionMessage.value = 'Copy failed. Please select the registration link and copy it manually.'
+  }
+  setTimeout(() => { copied.value = false; actionMessage.value = ''; actionError.value = false }, 1800)
+}
 const downloadQr = () => { const canvas = document.querySelector('.ews-qr canvas'); if (!canvas) return; const anchor = document.createElement('a'); anchor.download = `${event.value?.name || 'event'}-qr.png`; anchor.href = canvas.toDataURL('image/png'); anchor.click() }
 const dateLabel = computed(() => event.value?.start_date ? new Date(`${event.value.start_date}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date to be confirmed')
 const timeLabel = computed(() => `${event.value?.start_time || 'Time pending'} – ${event.value?.end_time || '—'}`)
@@ -44,7 +55,7 @@ const actionGroups = computed(() => [
   {
     key: 'event', label: 'Event',
     actions: [
-      { key: 'preview', label: 'Preview', description: 'See attendee view', icon: 'eye', href: link.value, external: true, primary: true },
+      { key: 'preview', label: 'Form preview', icon: 'eye', href: link.value, external: true, primary: true },
       { key: 'edit', label: 'Edit event', description: 'Update event details', icon: 'pencil', to: `/admin/events/${event.value?.id}/edit`, primary: true },
     ],
   },
@@ -132,16 +143,16 @@ const actionGroups = computed(() => [
                 <div class="ews-action-grid" :class="{ 'ews-action-grid--two': group.actions.length === 3 }">
                   <template v-for="action in group.actions" :key="action.key">
                     <a v-if="action.href" class="ews-action" :class="{ 'ews-action--primary': action.primary, 'ews-action--disabled': action.disabled }" :href="action.disabled ? undefined : action.href" :target="action.external ? '_blank' : undefined" :rel="action.external ? 'noreferrer' : undefined" :aria-disabled="action.disabled || undefined">
-                      <span class="ews-action-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path :d="icons[action.icon]" /></svg></span>
-                      <span class="ews-action-copy"><strong>{{ action.label }}</strong><small>{{ action.description }}</small></span>
+                      <span class="ews-action-icon" :data-icon="action.icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path :d="icons[action.icon]" /></svg></span>
+                      <span class="ews-action-copy"><strong>{{ action.label }}</strong><small v-if="action.description">{{ action.description }}</small></span>
                     </a>
                     <RouterLink v-else-if="action.to && !action.disabled" class="ews-action" :class="{ 'ews-action--primary': action.primary }" :to="action.to">
-                      <span class="ews-action-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path :d="icons[action.icon]" /></svg></span>
-                      <span class="ews-action-copy"><strong>{{ action.label }}</strong><small>{{ action.description }}</small></span>
+                      <span class="ews-action-icon" :data-icon="action.icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path :d="icons[action.icon]" /></svg></span>
+                      <span class="ews-action-copy"><strong>{{ action.label }}</strong><small v-if="action.description">{{ action.description }}</small></span>
                     </RouterLink>
                     <button v-else type="button" class="ews-action" :class="{ 'ews-action--primary': action.primary, 'ews-action--disabled': action.disabled }" :disabled="action.disabled" @click="action.handler()">
-                      <span class="ews-action-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path :d="icons[action.icon]" /></svg></span>
-                      <span class="ews-action-copy"><strong>{{ action.label }}</strong><small>{{ action.description }}</small></span>
+                      <span class="ews-action-icon" :data-icon="action.icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path :d="icons[action.icon]" /></svg></span>
+                      <span class="ews-action-copy"><strong>{{ action.label }}</strong><small v-if="action.description">{{ action.description }}</small></span>
                     </button>
                   </template>
                 </div>
