@@ -21,7 +21,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define('manage-events', fn (User $user): bool => in_array($user->role, ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'], true));
-        Gate::define('manage-admin-accounts', fn (User $user): bool => $user->role === 'admin');
+        Gate::define('manage-events', fn (User $user): bool => $user->hasAnyPermission(['users.create', 'users.manage', 'roles.manage', 'workflows.manage', 'events.view', 'events.manage', 'forms.create', 'forms.review', 'forms.verify', 'forms.approve', 'reports.view', 'checkins.manage']));
+        Gate::define('manage-admin-accounts', fn (User $user): bool => $user->isMasterAdmin());
+        Gate::define('manage-users', fn (User $user): bool => $user->hasAnyPermission(['users.create', 'users.manage']));
+        Gate::define('create-users', fn (User $user): bool => $user->hasPermission('users.create'));
+        Gate::define('manage-access-control', fn (User $user): bool => $user->hasAnyPermission(['users.manage', 'roles.manage', 'workflows.manage']));
+        foreach (['users.create', 'users.manage', 'roles.manage', 'workflows.manage', 'events.view', 'events.manage', 'forms.create', 'forms.review', 'forms.verify', 'forms.approve', 'reports.view', 'checkins.manage'] as $permission) {
+            Gate::define($permission, fn (User $user): bool => $user->hasPermission($permission));
+        }
     }
 }

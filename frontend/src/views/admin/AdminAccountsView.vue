@@ -2,16 +2,18 @@
 import { onMounted, reactive, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 const accounts = ref([])
+const auth = useAuthStore()
 const loading = ref(true)
 const error = ref('')
 const success = ref('')
 const creating = ref(false)
 const showPassword = ref(false)
-const form = reactive({ name: '', email: '', password: '', role: 'event_admin' })
+const form = reactive({ name: '', email: '', password: '', role: 'maker' })
 
-const roleLabel = (role) => ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[role] || role)
+const roleLabel = (role) => ({ admin: 'Master Admin', master_admin: 'Master Admin', maker: 'Maker', checker: 'Checker', reviewer: 'Reviewer', verifier: 'Verifier', approver: 'Approver', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[role] || role)
 const initials = (name = '') =>
   name
     .trim()
@@ -43,7 +45,7 @@ const create = async () => {
   try {
     const { data } = await api.post('/admin/admin-accounts', form)
     accounts.value.unshift(data.data)
-    Object.assign(form, { name: '', email: '', password: '', role: 'event_admin' })
+    Object.assign(form, { name: '', email: '', password: '', role: 'maker' })
     showPassword.value = false
     flashSuccess(`Account for ${data.data.name} created successfully.`)
   } catch (e) {
@@ -149,13 +151,12 @@ onMounted(load)
               <label for="aa-role">Role</label>
               <div class="aa-select-wrap">
                 <select id="aa-role" v-model="form.role">
-                  <option value="event_admin">Event Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="officer_3">Officer Level 3</option>
-                  <option value="officer_2">Officer Level 2</option>
-                  <option value="officer_1">Officer Level 1</option>
-                  <option value="officer_0">Officer Level 0</option>
-                  <option value="admin">Master Admin</option>
+                  <option value="maker">Maker</option>
+                  <option value="checker">Checker</option>
+                  <option value="reviewer">Reviewer</option>
+                  <option value="verifier">Verifier</option>
+                  <option value="approver">Approver</option>
+                  <option v-if="auth.isAdmin" value="admin">Master Admin</option>
                 </select>
                 <svg class="aa-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <polyline points="6 9 12 15 18 9" />
@@ -234,7 +235,7 @@ onMounted(load)
                     </span>
                   </td>
                   <td class="aa-actions">
-                    <button class="aa-delete" type="button" :title="`Delete ${account.name}'s account`" @click="remove(account)">
+                    <button v-if="auth.canManageAccounts" class="aa-delete" type="button" :title="`Delete ${account.name}'s account`" @click="remove(account)">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
                       </svg>

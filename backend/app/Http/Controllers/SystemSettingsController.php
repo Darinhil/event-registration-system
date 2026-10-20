@@ -17,8 +17,24 @@ class SystemSettingsController extends Controller
     public function show(): JsonResponse
     {
         $settings = self::DEFAULTS;
-        SystemSetting::query()->get()->each(fn (SystemSetting $setting) => $settings[$setting->key] = $setting->value['value'] ?? $setting->value);
+        foreach (SystemSetting::query()->get() as $setting) {
+            $settings[$setting->key] = $setting->value['value'] ?? $setting->value;
+        }
         return response()->json(['data' => $settings]);
+    }
+
+    public function publicShow(): JsonResponse
+    {
+        $settings = self::DEFAULTS;
+        foreach (SystemSetting::query()->get() as $setting) {
+            $settings[$setting->key] = $setting->value['value'] ?? $setting->value;
+        }
+
+        return response()->json(['data' => [
+            'site_name' => $settings['site_name'],
+            'registration_notice' => $settings['registration_notice'],
+            'maintenance_mode' => filter_var($settings['maintenance_mode'], FILTER_VALIDATE_BOOLEAN),
+        ]]);
     }
 
     public function update(Request $request): JsonResponse

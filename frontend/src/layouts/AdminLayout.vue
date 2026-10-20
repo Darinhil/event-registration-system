@@ -17,7 +17,12 @@ watch(() => route.path, (path) => {
 }, { immediate: true })
 const profilePhotoSrc = ref(auth.profilePhotoPreview || ''); let profilePhotoRequest = 0
 const loadProfilePhoto = async () => { const id = ++profilePhotoRequest; if (!auth.user?.profile_photo) { profilePhotoSrc.value = ''; return } try { const { data } = await api.get('/me/profile-photo', { params: { photo: auth.user.profile_photo }, responseType: 'blob' }); if (id === profilePhotoRequest) profilePhotoSrc.value = auth.setProfilePhotoPreview(data) } catch { if (id === profilePhotoRequest) profilePhotoSrc.value = '' } }
-onMounted(loadProfilePhoto); watch(() => auth.user?.profile_photo, loadProfilePhoto)
+onMounted(() => {
+  loadProfilePhoto()
+  api.get('/public-settings').then(({ data }) => {
+    if (data?.data?.site_name) document.title = data.data.site_name
+  }).catch(() => {})
+}); watch(() => auth.user?.profile_photo, loadProfilePhoto)
 const logout = async () => { await auth.logout(); router.push('/login') }
 </script>
 
@@ -25,7 +30,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
   <div class="admin-app-shell"><a class="skip-link" href="#main-content">Skip to content</a><aside class="admin-sidebar">
     <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="Live &amp; Learn Cambodia" decoding="async" /></RouterLink>
     <nav class="admin-nav" :class="{ 'has-open-submenu': eventMenuOpen }" aria-label="Admin navigation">
-      <div class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">
+      <div v-if="auth.canViewEvents" class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">
         <div class="admin-nav-group-heading">
           <RouterLink to="/admin/events" class="admin-nav-group-link" :class="{ 'is-active': route.path === '/admin/events' || route.path.startsWith('/admin/events/') }">
             <span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 9h18"/></svg></span>{{ isAdmin ? 'All Events' : 'My Events' }}
@@ -36,14 +41,14 @@ const logout = async () => { await auth.logout(); router.push('/login') }
         </div>
         <div v-if="eventMenuOpen" id="admin-event-subnav" class="admin-nav-submenu">
           <RouterLink to="/admin/users" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m2-9a3 3 0 1 1 0 6m0-6a5 5 0 0 1 4 8"/></svg></span>Attendance</RouterLink>
-          <RouterLink to="/admin/check-ins" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/></svg></span>Check-in</RouterLink>
-          <RouterLink to="/admin/reports" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-4m4 4V8m4 8v-6"/></svg></span>Reports</RouterLink>
+          <RouterLink v-if="auth.canManageCheckins" to="/admin/check-ins" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/></svg></span>Check-in</RouterLink>
+          <RouterLink v-if="auth.canViewReports" to="/admin/reports" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-4m4 4V8m4 8v-6"/></svg></span>Reports</RouterLink>
         </div>
       </div>
-      <RouterLink to="/admin" exact-active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</RouterLink>
+      <RouterLink v-if="auth.canViewEvents" to="/admin" exact-active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</RouterLink>
       <RouterLink to="/admin/personnel-profile" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M19 8h3m-1.5-1.5v3"/></svg></span>Personnel Profile</RouterLink>
-      <RouterLink v-if="isAdmin" to="/admin/admin-accounts" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m5-9v6m3-3h-6"/></svg></span>Admin Accounts</RouterLink>
-      <RouterLink v-if="isAdmin" to="/admin/settings" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v2m0 14v2M3 12h2m14 0h2m-3.4-6.6-1.4 1.4M7.8 17.8l-1.4 1.4m0-14.4 1.4 1.4m9.4 9.4 1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg></span>Settings</RouterLink>
+      <RouterLink v-if="auth.canManageUsers" to="/admin/admin-accounts" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m5-9v6m3-3h-6"/></svg></span>Admin Accounts</RouterLink>
+      <RouterLink v-if="auth.canAccessSettings" to="/admin/settings" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v2m0 14v2M3 12h2m14 0h2m-3.4-6.6-1.4 1.4M7.8 17.8l-1.4 1.4m0-14.4 1.4 1.4m9.4 9.4 1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg></span>Settings</RouterLink>
       <RouterLink v-else to="/admin/profile" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span>Profile</RouterLink>
     </nav>
     <div class="admin-event-card"><div class="admin-event-thumb">LW</div><div><strong>Live workspace</strong><small>{{ roleLabel }} access</small></div><b>Ready</b></div>

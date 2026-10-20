@@ -20,6 +20,9 @@ class UserResource extends JsonResource
                 ? $request->getSchemeAndHttpHost() . Storage::disk('public')->url($this->profile_photo)
                 : null,
             'role' => $this->role,
+            'role_id' => $this->role_id,
+            'permissions' => $this->permissionKeys(),
+            'account_status' => $this->account_status ?? 'active',
             'created_at' => $this->created_at,
             'token' => $this->when(isset($this->token), $this->token),
             'registrations' => RegistrationResource::collection($this->whenLoaded('registrations')),

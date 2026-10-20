@@ -23,7 +23,7 @@ class CheckInService
             ->when(! $token, fn ($query) => $query->where('registration_code', $registrationCode))
             ->first();
 
-        if (! $registration || ($staff && in_array($staff->role, ['admin', 'event_admin'], true) && $staff->role !== 'admin' && $registration->event->created_by !== $staff->id)) { throw ValidationException::withMessages(['credential' => 'Registration not found. Check the QR code or attendee code.']); }
+        if (! $registration || ($staff && $staff->isStaff() && ! $staff->isMasterAdmin() && $registration->event->created_by !== $staff->id)) { throw ValidationException::withMessages(['credential' => 'Registration not found. Check the QR code or attendee code.']); }
 
         return $registration;
     }

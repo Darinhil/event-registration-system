@@ -44,7 +44,7 @@ class CheckInController extends Controller
             if ($request->filled('event_id') && ! $user->registrations()->where('event_id', $request->integer('event_id'))->exists()) abort(404);
             throw ValidationException::withMessages(['qr_token' => 'Registration not found.']);
         }
-        if ($user->role !== 'admin' && $registration->user_id !== $user->id) abort(403);
+        if (! $user->isMasterAdmin() && $registration->user_id !== $user->id) abort(403);
         $registration->load('event')->append_form_values();
         return new RegistrationResource($registration);
     }
@@ -53,7 +53,7 @@ class CheckInController extends Controller
     {
         $data = $request->validate(['event_id' => ['required', 'integer', 'exists:events,id'], 'query' => ['required', 'string', 'max:100']]);
         $event = Event::findOrFail($data['event_id']);
-        abort_unless($request->user()->role === 'admin' || $event->created_by === $request->user()->id, 403);
+        abort_unless($request->user()->isMasterAdmin() || $event->created_by === $request->user()->id, 403);
         $query = trim($data['query']);
         $matches = $event->registrations()->where(fn ($q) => $q->where('registration_code', 'like', "%{$query}%")->orWhere('full_name', 'like', "%{$query}%")->orWhere('email', 'like', "%{$query}%"))->with(['event', 'checkIn'])->limit(10)->get();
         if ($matches->count() === 1) { $registration = $matches->first()->append_form_values(); return response()->json(['data' => ['registration' => (new RegistrationResource($registration))->resolve(), 'suggestions' => []]]); }

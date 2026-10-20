@@ -18,7 +18,7 @@ class RegistrationController extends Controller
     public function store(RegistrationRequest $request): JsonResponse { return response()->json(['data' => new RegistrationResource($this->registrations->create($request->user(), $request->validated()))], 201); }
     public function show(Request $request, Registration $registration): RegistrationResource
     {
-        abort_unless($request->user()->id === $registration->user_id || $request->user()->role === 'admin', 403);
+        abort_unless($request->user()->id === $registration->user_id || $request->user()->isMasterAdmin(), 403);
 
         $registration->load('checkIn', 'event');
         $registration->append_form_values();

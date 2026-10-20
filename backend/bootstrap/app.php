@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(append: [\App\Http\Middleware\EnforceSystemMaintenance::class]);
+        $middleware->alias(['active-account' => \App\Http\Middleware\EnsureActiveAccount::class]);
         // This is an API-only backend (the login page lives in the Vue SPA).
         // Laravel's default redirects unauthenticated guests to route("login"),
         // which does not exist here and crashes with "Route [login] not

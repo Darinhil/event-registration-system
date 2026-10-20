@@ -34,7 +34,7 @@ class EventController extends Controller
     }
     public function show(Request $request, Event $event)
     {
-        $staff = in_array($request->user()?->role, ['admin', 'event_admin'], true);
+        $staff = $request->user()?->isStaff() ?? false;
         if ($staff) abort_unless($request->user()->can('view', $event), 403);
         else abort_unless($event->status === 'published' && $event->ends_at?->isFuture(), 404);
         $registered = $event->registrations()->count();
@@ -47,7 +47,7 @@ class EventController extends Controller
     /** Full public form config — the exact fields/steps/settings the admin built. */
     public function form(Request $request, Event $event)
     {
-        $staff = in_array($request->user()?->role, ['admin', 'event_admin'], true);
+        $staff = $request->user()?->isStaff() ?? false;
         if ($staff) abort_unless($request->user()->can('view', $event), 403);
         else abort_unless($event->status === 'published' && $event->ends_at?->isFuture(), 404);
         $payload = app(FormBuilderController::class)->publicPayload($event);

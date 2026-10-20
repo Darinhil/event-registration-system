@@ -33,13 +33,13 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } }, { path: '/me', component: MyInformationView, meta: { auth: true } }, { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
   { path: '/check-in', component: CheckInView, meta: { auth: true } },
   { path: '/profile', component: AdminProfileView, meta: { auth: true } },
-  { path: '/admin', component: DashboardView, meta: { auth: true, staff: true } }, { path: '/admin/events', component: EventsView, meta: { auth: true, staff: true } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, staff: true } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, staff: true } },
-  { path: '/admin/users', component: UsersView, meta: { auth: true, staff: true } }, { path: '/admin/users/:id', component: UserDetailView, meta: { auth: true, staff: true } },
-  { path: '/admin/check-ins', component: CheckInsView, meta: { auth: true, staff: true } },
+  { path: '/admin', component: DashboardView, meta: { auth: true, staff: true, permission: 'events.view' } }, { path: '/admin/events', component: EventsView, meta: { auth: true, staff: true, permission: 'events.view' } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, staff: true, permission: 'events.manage' } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, staff: true, permission: 'events.manage' } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, staff: true, permission: 'events.view' } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, staff: true, permission: 'forms.create' } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, staff: true, permission: 'events.view' } },
+  { path: '/admin/users', component: UsersView, meta: { auth: true, staff: true, permission: 'users.manage' } }, { path: '/admin/users/:id', component: UserDetailView, meta: { auth: true, staff: true, permission: 'users.manage' } },
+  { path: '/admin/check-ins', component: CheckInsView, meta: { auth: true, staff: true, permission: 'checkins.manage' } },
   { path: '/admin/personnel-profile', component: PersonnelProfileView, meta: { auth: true, staff: true } },
-  { path: '/admin/reports', component: ReportsView, meta: { auth: true, staff: true } },
-  { path: '/admin/admin-accounts', component: AdminAccountsView, meta: { auth: true, staff: true, adminOnly: true } },
-  { path: '/admin/settings', component: SystemSettingsView, meta: { auth: true, staff: true, adminOnly: true } },
+  { path: '/admin/reports', component: ReportsView, meta: { auth: true, staff: true, permission: 'reports.view' } },
+  { path: '/admin/admin-accounts', component: AdminAccountsView, meta: { auth: true, staff: true, userManager: true } },
+  { path: '/admin/settings', component: SystemSettingsView, meta: { auth: true, staff: true, settingsAccess: true } },
   { path: '/admin/profile', component: AdminProfileView, meta: { auth: true, staff: true } },
 ] })
 
@@ -47,6 +47,9 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   if (to.meta.staff && !auth.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
   if (to.meta.staff && !auth.canAccessAdmin) return '/'
+  if (to.meta.userManager && !auth.canManageUsers) return '/admin'
+  if (to.meta.settingsAccess && !auth.canAccessSettings) return '/admin'
+  if (to.meta.permission && !auth.hasPermission(to.meta.permission)) return auth.canManageUsers ? '/admin/admin-accounts' : '/'
   if (to.meta.adminOnly && !auth.isAdmin) return '/admin'
   if (to.meta.auth && !auth.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
   if (to.path === '/login' && auth.isAuthenticated) {

@@ -33,6 +33,8 @@ class AuthController extends Controller
         $identifier = trim($data['identifier']);
         $user = User::where('email', $identifier)->orWhere('phone', $identifier)->first();
         abort_unless($user && Hash::check($data['password'], $user->password), 422, 'Invalid credentials.');
+        abort_unless(($user->account_status ?? 'active') === 'active', 403, 'This account is suspended. Contact an administrator.');
+        abort_if($user->staffRecord()->where('employment_status', 'inactive')->exists(), 403, 'This staff account is inactive. Contact an administrator.');
         return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('web')->plainTextToken]);
     }
 
@@ -41,7 +43,8 @@ class AuthController extends Controller
         $data = $request->validate(['email' => ['required', 'email'], 'password' => ['required']]);
         $user = User::where('email', $data['email'])->first();
         abort_unless($user && Hash::check($data['password'], $user->password), 422, 'Invalid credentials.');
-        abort_unless($user->role === 'admin', 403, 'Admin access is required.');
+        abort_unless($user->isMasterAdmin(), 403, 'Admin access is required.');
+        abort_unless(($user->account_status ?? 'active') === 'active', 403, 'This account is suspended. Contact an administrator.');
         return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('admin-web')->plainTextToken]);
     }
 

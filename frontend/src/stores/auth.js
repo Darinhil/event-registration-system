@@ -24,10 +24,18 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.token),
-    isAdmin: (state) => state.user?.role === 'admin',
+    isAdmin: (state) => ['admin', 'master_admin'].includes(state.user?.role),
     isEventAdmin: (state) => state.user?.role === 'event_admin',
-    canAccessAdmin: (state) => ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'].includes(state.user?.role),
-    roleLabel: (state) => ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[state.user?.role] || 'Attendee'),
+    hasPermission: (state) => (permission) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).includes(permission),
+    canViewEvents: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).includes('events.view'),
+    canManageEvents: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).includes('events.manage'),
+    canViewReports: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).includes('reports.view'),
+    canManageCheckins: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).includes('checkins.manage'),
+    canAccessAdmin: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).some((permission) => ['users.create', 'users.manage', 'roles.manage', 'workflows.manage', 'events.view', 'events.manage', 'forms.create', 'forms.review', 'forms.verify', 'forms.approve', 'reports.view', 'checkins.manage'].includes(permission)),
+    canManageUsers: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).some((permission) => ['users.create', 'users.manage'].includes(permission)),
+    canManageAccounts: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).includes('users.manage'),
+    canAccessSettings: (state) => ['admin', 'master_admin'].includes(state.user?.role) || (state.user?.permissions || []).some((permission) => ['users.manage', 'roles.manage', 'workflows.manage'].includes(permission)),
+    roleLabel: (state) => ({ admin: 'Master Admin', master_admin: 'Master Admin', maker: 'Maker', checker: 'Checker', reviewer: 'Reviewer', verifier: 'Verifier', approver: 'Approver', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[state.user?.role] || 'Attendee'),
   },
   actions: {
     setProfilePhotoPreview(blob) {

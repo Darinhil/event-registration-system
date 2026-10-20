@@ -10,4 +10,17 @@ const api = axios.create({
   headers: { Accept: 'application/json' },
 })
 api.interceptors.request.use((config) => { const token = localStorage.getItem('event_token'); if (token) config.headers.Authorization = `Bearer ${token}`; return config })
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const isLoginRequest = /\/auth\/(?:login|admin\/login|register)(?:\?|$)/.test(error.config?.url || '')
+    if (error.response?.status === 401 && localStorage.getItem('event_token') && !isLoginRequest) {
+      localStorage.removeItem('event_token')
+      localStorage.removeItem('event_user')
+      const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      window.location.assign(`/login?session=expired&redirect=${encodeURIComponent(redirect)}`)
+    }
+    return Promise.reject(error)
+  }
+)
 export default api
