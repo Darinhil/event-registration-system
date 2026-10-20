@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { checkIn, lookupCheckIn, previewCheckIn, searchCheckIns } from '../services/checkInService'
+
 export const useCheckInStore = defineStore('checkIn', {
   state: () => ({
     result: null,
@@ -79,6 +80,10 @@ export const useCheckInStore = defineStore('checkIn', {
       this.result = null
       this.attendee = null
       this.registration = null
+      this.loading = false
+      this.checkingIn = false
+      this.lookupLoading = false
+      this.searchLoading = false
       this.error = null
       this.searchResult = null
       this.suggestions = []
