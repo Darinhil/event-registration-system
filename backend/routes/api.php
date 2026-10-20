@@ -31,14 +31,14 @@ Route::middleware(['auth:sanctum', 'active-account'])->group(function (): void {
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
     Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
-    Route::get('/check-ins/lookup', [CheckInController::class, 'lookup']);
     Route::post('/check-ins', [CheckInController::class, 'store']);
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
+        Route::get('/check-ins/lookup', [CheckInController::class, 'lookup'])->middleware('can:checkins.manage');
         Route::post('/check-ins/lookup', [CheckInController::class, 'lookup'])->middleware('can:checkins.manage');
         Route::post('/check-ins/search', [CheckInController::class, 'search'])->middleware('can:checkins.manage');
-        Route::get('/events', [EventController::class, 'adminIndex'])->middleware('can:events.view');
+        Route::get('/events', [EventController::class, 'adminIndex'])->middleware('can:view-events');
         Route::get('/events/{event}/banner', [EventController::class, 'banner'])->middleware('can:view,event');
         Route::post('/events', [EventController::class, 'store'])->middleware('can:events.manage');
         Route::put('/events/{event}', [EventController::class, 'update'])->middleware(['can:events.manage', 'can:update,event']);

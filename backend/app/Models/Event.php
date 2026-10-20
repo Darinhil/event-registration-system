@@ -23,7 +23,9 @@ class Event extends Model
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        return $user->isMasterAdmin() ? $query : $query->where('created_by', $user->id);
+        return $user->isMasterAdmin() || $user->hasPermission('checkins.manage')
+            ? $query
+            : $query->where('created_by', $user->id);
     }
     public function formFields(): HasMany { return $this->hasMany(FormField::class)->orderBy('sort_order'); }
 

@@ -4,61 +4,103 @@ import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRScanner from '../../components/QRScanner.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import { useCheckInStore } from '../../stores/checkIn'
-import { getCheckIns, getAdminEvents, getEvent, regenerateEventCheckInQr } from '../../services/adminService'
+import { getCheckIns, getAdminEvents, getEvent, getEventCheckInSummary, getEventRegistrants, regenerateEventCheckInQr } from '../../services/adminService'
 
-const scanning = ref(false)
+const scanning = ref(true)
 const scanMessage = ref('')
-const scannerError = ref('')
-const code = ref('')
 const credential = ref('')
 const store = useCheckInStore()
 const checkIns = ref([])
 const logLoading = ref(false)
+const exportLoading = ref(false)
 const logError = ref('')
 const events = ref([])
+const eventsLoading = ref(false)
+const eventsError = ref('')
 const selectedEventId = ref('')
 const selectedEvent = ref(null)
+const selectedSummary = ref(null)
+const eventLoading = ref(false)
+const eventError = ref('')
+const registrants = ref([])
+const registrantsLoading = ref(false)
+const registrantsError = ref('')
+const registrantsPage = ref({ current_page: 1, last_page: 1, total: 0 })
 const searchQuery = ref('')
-const activeMode = ref('code') // 'code', 'scan', 'qr'
 const eventQrLoading = ref(false)
 const eventQrError = ref('')
 const resultsList = ref([])
+const searchError = ref('')
+const searchCompleted = ref(false)
 
 const loadEvents = async () => {
+  eventsLoading.value = true
+  eventsError.value = ''
   try {
     const { data } = await getAdminEvents()
-    events.value = data.data || []
+    events.value = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])
     if (events.value.length > 0 && !selectedEventId.value) {
       selectedEventId.value = events.value[0].id
       await loadSelectedEvent()
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    eventsError.value = error.response?.data?.message || 'Unable to load events. Try again.'
+  } finally {
+    eventsLoading.value = false
   }
 }
 
 const loadSelectedEvent = async () => {
-  if (!selectedEventId.value) return
+  if (!selectedEventId.value) {
+    selectedEvent.value = null
+    selectedSummary.value = null
+    registrants.value = []
+    return
+  }
+  const eventId = selectedEventId.value
+  eventLoading.value = true
+  eventError.value = ''
+  selectedEvent.value = null
+  selectedSummary.value = null
+  registrants.value = []
+  registrantsPage.value = { current_page: 1, last_page: 1, total: 0 }
+  searchQuery.value = ''
+  resultsList.value = []
+  credential.value = ''
+  store.attendee = null
+  store.error = null
+  scanMessage.value = ''
   try {
-    const { data } = await getEvent(selectedEventId.value)
-    selectedEvent.value = data.data
-    await loadRegistrants()
-  } catch {
-    // ignore
+    const [{ data }, summaryResponse] = await Promise.all([getEvent(eventId), getEventCheckInSummary(eventId)])
+    if (eventId !== selectedEventId.value) return
+    const attendanceData = summaryResponse.data.data
+    selectedEvent.value = {
+      ...data.data,
+      check_in_qr_token: data.data.check_in_qr_token || attendanceData.event?.check_in_qr_token,
+    }
+    selectedSummary.value = attendanceData.summary
+    await loadRegistrants(1)
+  } catch (error) {
+    if (eventId === selectedEventId.value) eventError.value = error.response?.data?.message || 'Unable to load this event. Try again.'
+  } finally {
+    if (eventId === selectedEventId.value) eventLoading.value = false
   }
 }
 
-const loadRegistrants = async () => {
+const loadRegistrants = async (page = registrantsPage.value.current_page) => {
   if (!selectedEventId.value) return
+  const eventId = selectedEventId.value
   registrantsLoading.value = true
   registrantsError.value = ''
   try {
-    const { data } = await getEventRegistrants(selectedEventId.value)
+    const { data } = await getEventRegistrants(eventId, { page })
+    if (eventId !== selectedEventId.value) return
     registrants.value = data.data || []
-  } catch {
-    registrantsError.value = 'Failed to load attendees'
+    registrantsPage.value = data.meta || { current_page: 1, last_page: 1, total: registrants.value.length }
+  } catch (error) {
+    if (eventId === selectedEventId.value) registrantsError.value = error.response?.data?.message || 'Unable to load attendees.'
   } finally {
-    registrantsLoading.value = false
+    if (eventId === selectedEventId.value) registrantsLoading.value = false
   }
 }
 
@@ -72,17 +114,33 @@ const loadCheckIns = async () => {
   logLoading.value = true
   logError.value = ''
   try {
-    checkIns.value = (await getCheckIns()).data.data || []
-  } catch {
-    logError.value = 'Unable to load recent check-ins.'
+    checkIns.value = (await getCheckIns({ per_page: 100 })).data.data || []
+  } catch (error) {
+    logError.value = error.response?.data?.message || 'Unable to load recent check-ins.'
   } finally {
     logLoading.value = false
   }
 }
 
-const exportLog = () => {
+const exportLog = async () => {
+  exportLoading.value = true
+  logError.value = ''
+  let allCheckIns = []
+  try {
+    const firstPage = (await getCheckIns({ per_page: 100, page: 1 })).data
+    allCheckIns = [...(firstPage.data || [])]
+    const lastPage = firstPage.meta?.last_page || 1
+    for (let page = 2; page <= lastPage; page += 1) {
+      const { data } = await getCheckIns({ per_page: 100, page })
+      allCheckIns.push(...(data.data || []))
+    }
+  } catch (error) {
+    logError.value = error.response?.data?.message || 'Unable to export the complete check-in log.'
+    exportLoading.value = false
+    return
+  }
   const header = ['Attendee', 'Registration code', 'Email', 'Checked in at', 'Checked in by']
-  const rows = checkIns.value.map((item) => [
+  const rows = allCheckIns.map((item) => [
     item.registration?.full_name || '',
     item.registration?.registration_code || '',
     item.registration?.email || '',
@@ -96,21 +154,59 @@ const exportLog = () => {
   link.href = url
   link.download = `check-in-log-${new Date().toISOString().slice(0, 10)}.csv`
   link.click()
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  exportLoading.value = false
+}
+
+const normalizeCredential = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  try {
+    const payload = JSON.parse(raw)
+    if (payload?.qr_token || payload?.registration_code) return payload.qr_token || payload.registration_code
+  } catch { /* QR may contain a plain code or URL instead of JSON. */ }
+
+  try {
+    const url = new URL(raw)
+    const params = url.searchParams
+    const token = params.get('qr_token') || params.get('token') || params.get('credential') || params.get('code')
+    if (token) return token
+    if (params.has('e') || params.has('event') || params.has('entrance_token')) return ''
+  } catch { /* Treat non-URL content as the registration code. */ }
+
+  return raw
 }
 
 const lookupCredential = async (value) => {
-  const credentialText = String(value || '').trim()
-  if (!credentialText || store.lookupLoading || store.loading) return
+  const credentialText = normalizeCredential(value)
+  if (!credentialText || store.lookupLoading || store.loading) {
+    if (!credentialText && value) store.error = 'That is an event entrance QR. Scan the attendee?s personal registration QR instead.'
+    return
+  }
 
   try {
+    scanMessage.value = ''
+    searchError.value = ''
+    searchCompleted.value = false
+    resultsList.value = []
     credential.value = credentialText
     await store.lookup(credentialText)
     scanning.value = false
-    resultsList.value = store.attendee ? [store.attendee] : []
-  } catch {
+    const attendee = store.attendee
+    const attendeeEventId = attendee?.event_id
+    if (attendeeEventId && String(attendeeEventId) !== String(selectedEventId.value) && events.some((event) => String(event.id) === String(attendeeEventId))) {
+      selectedEventId.value = attendeeEventId
+      await loadSelectedEvent()
+    }
+    store.attendee = attendee
+    resultsList.value = attendee ? [attendee] : []
+  } catch (error) {
     scanMessage.value = ''
     resultsList.value = []
+    searchError.value = error.response?.data?.message || store.error || 'No attendee matched that QR or code.'
+  } finally {
+    scanning.value = false
   }
 }
 
@@ -121,7 +217,6 @@ const confirmCheckIn = async (cred = null) => {
   try {
     await store.submit(credToUse)
     scanMessage.value = store.result.message
-    code.value = ''
     credential.value = ''
     store.attendee = null
     // Update results list to reflect checked-in status
@@ -133,17 +228,36 @@ const confirmCheckIn = async (cred = null) => {
       return item
     })
     await loadCheckIns()
-    await loadRegistrants()
+    await Promise.all([loadRegistrants(), loadEventSummary()])
   } catch {}
 }
 
+const loadEventSummary = async () => {
+  if (!selectedEventId.value) return
+  const eventId = selectedEventId.value
+  try {
+    const { data } = await getEventCheckInSummary(eventId)
+    if (eventId === selectedEventId.value) selectedSummary.value = data.data.summary
+  } catch (error) {
+    if (eventId === selectedEventId.value) eventError.value = error.response?.data?.message || 'Unable to refresh event attendance.'
+  }
+}
+
 const handleScan = (value) => lookupCredential(value)
-const submitCode = () => lookupCredential(code.value)
+const toggleScanner = () => {
+  scanning.value = !scanning.value
+}
 
 const searchAttendees = async () => {
-  if (!selectedEventId.value || !searchQuery.value.trim()) return
+  if (!selectedEventId.value || !searchQuery.value.trim() || store.searchLoading) return
+  const eventId = selectedEventId.value
+  searchError.value = ''
+  searchCompleted.value = false
+  resultsList.value = []
+  store.attendee = null
   try {
-    const result = await store.search(selectedEventId.value, searchQuery.value)
+    const result = await store.search(eventId, searchQuery.value)
+    if (eventId !== selectedEventId.value) return
     if (result.registration) {
       resultsList.value = [result.registration]
     } else if (result.suggestions && result.suggestions.length > 0) {
@@ -151,13 +265,14 @@ const searchAttendees = async () => {
     } else {
       resultsList.value = []
     }
-  } catch {
-    resultsList.value = []
+    searchCompleted.value = true
+  } catch (error) {
+    if (eventId === selectedEventId.value) {
+      resultsList.value = []
+      searchCompleted.value = true
+      searchError.value = error.response?.data?.errors?.query?.[0] || error.response?.data?.message || store.error || 'No attendees matched that search.'
+    }
   }
-}
-
-const selectFromSuggestion = (suggestion) => {
-  resultsList.value = [suggestion]
 }
 
 const regenerateQr = async () => {
@@ -177,42 +292,38 @@ const regenerateQr = async () => {
 const getCredentialForResult = (item) => item.registration_code || item.qr_token || item.credential
 
 const checkedInCount = computed(() => {
-  if (selectedEvent.value?.registrations) {
-    return selectedEvent.value.registrations.filter(r => r.checkIn).length
-  }
-  return checkIns.value.filter(c => c.checked_in_at).length
+  return selectedSummary.value?.checked_in || 0
 })
 
 const totalRegistrations = computed(() => {
-  return selectedEvent.value?.registrations?.length || selectedEvent.value?.registered || checkIns.value.length || 0
+  return selectedSummary.value?.expected || 0
 })
 
-const isLocalhost = computed(() => {
-  if (typeof window === 'undefined') return false
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-})
+
 
 const copyQrLink = async () => {
   if (!eventCheckInQrValue.value) return
+  eventQrError.value = ''
   try {
     await navigator.clipboard.writeText(eventCheckInQrValue.value)
     scanMessage.value = 'Link copied'
     setTimeout(() => { scanMessage.value = '' }, 1500)
-  } catch {}
+  } catch { eventQrError.value = 'Unable to copy the link. You can copy it from the address bar.' }
 }
 
 const downloadQr = () => {
+  eventQrError.value = ''
   const canvas = document.querySelector('.qr-display canvas')
-  if (!canvas) return
+  if (!canvas) { eventQrError.value = 'The QR image is not ready yet.'; return }
   const anchor = document.createElement('a')
   anchor.download = `${selectedEvent.value?.name || 'event'}-checkin-qr.png`
   anchor.href = canvas.toDataURL('image/png')
   anchor.click()
+  scanMessage.value = 'QR downloaded'
 }
 
 onMounted(async () => {
-  await loadEvents()
-  await loadCheckIns()
+  await Promise.all([loadEvents(), loadCheckIns()])
 })
 </script>
 
@@ -223,7 +334,7 @@ onMounted(async () => {
         <div>
           <div class="eyebrow">LIVE DESK - TODAY</div>
           <h1>Check-in participants</h1>
-          <p>Search an attendee by code, name, or email to approve their check-in - or print the entrance QR for self check-in.</p>
+          <p>Find a registration, confirm attendance, or share the entrance QR so attendees can check themselves in.</p>
         </div>
         <span class="live-indicator"><i></i> Live check-in desk</span>
       </header>
@@ -232,7 +343,7 @@ onMounted(async () => {
         <article class="find-attendee-panel">
           <div class="panel-header">
             <h2>Find attendee</h2>
-            <p>Search by registration code, name, or email - then approve their check-in.</p>
+            <p>Search by registration code, attendee name, or email, then record their attendance.</p>
           </div>
 
           <div class="search-row">
@@ -242,32 +353,9 @@ onMounted(async () => {
             </button>
           </div>
 
-          <button type="button" class="toggle-scanner" @click="scanning = !scanning">
-            {{ scanning ? 'Hide QR scanner' : 'Show QR scanner' }}
-          </button>
-
-          <div class="qr-scanner-area">
-            <div v-if="scanning" class="scanner-video">
-              <QRScanner @scan="handleScan" @error="scannerError = $event" />
-            </div>
-            <div v-else class="scanner-placeholder-large">
-              <div class="camera-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </div>
-              <div class="camera-corners">
-                <span class="corner tl"></span>
-                <span class="corner tr"></span>
-                <span class="corner bl"></span>
-                <span class="corner br"></span>
-              </div>
-            </div>
-            <p class="scanner-instruction">Point your camera at the QR code</p>
-          </div>
-
-          <div class="code-input-row">
-            <input v-model="code" placeholder="...or paste the QR code / token" @keyup.enter="submitCode" />
-            <button type="button" class="black-button" :disabled="!code.trim()" @click="submitCode">Use code</button>
-          </div>
+          <div v-if="store.searchLoading" class="search-feedback" role="status">Searching attendees...</div>
+          <div v-else-if="searchError" class="search-feedback search-feedback--error" role="alert">{{ searchError }}</div>
+          <div v-else-if="searchCompleted && !resultsList.length" class="search-feedback" role="status">No attendees matched. Check the code and selected event, then try again.</div>
 
           <div v-if="resultsList.length" class="results-list">
             <p class="results-title">Attendees found</p>
@@ -287,6 +375,20 @@ onMounted(async () => {
               </button>
             </div>
           </div>
+
+          <button type="button" class="toggle-scanner" @click="toggleScanner">
+            {{ scanning ? 'Hide QR scanner' : 'Show QR scanner' }}
+          </button>
+
+          <div class="qr-scanner-area">
+            <div v-if="scanning" class="scanner-video">
+              <QRScanner @scan="handleScan" />
+            </div>
+            <div v-else class="scanner-off" role="status">Camera scanner is off. Select Show QR scanner to scan an attendee pass.</div>
+          </div>
+
+
+
 
           <div v-if="store.attendee && !resultsList.length" class="attendee-preview">
             <div class="attendee-preview-heading">
@@ -311,7 +413,6 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-if="scannerError" class="error">{{ scannerError }}</div>
           <div v-if="scanMessage" class="scan-success">✓ {{ scanMessage }}</div>
           <div v-if="store.error" class="error">{{ store.error }}</div>
         </article>
@@ -319,12 +420,17 @@ onMounted(async () => {
         <aside class="event-qr-panel">
           <section class="event-section">
             <div class="section-label">EVENT</div>
-            <select class="event-dropdown" v-model="selectedEventId" @change="loadSelectedEvent">
+            <div v-if="eventsLoading" class="event-state" role="status">Loading events…</div>
+            <div v-else-if="eventsError" class="event-state event-state--error" role="alert">{{ eventsError }} <button type="button" @click="loadEvents">Try again</button></div>
+            <div v-else-if="!events.length" class="event-state">No events are available for your account.</div>
+            <select v-else class="event-dropdown" v-model="selectedEventId" @change="loadSelectedEvent">
               <option value="" disabled>Select event</option>
               <option v-for="event in events" :key="event.id" :value="event.id">
                 {{ event.name }}
               </option>
             </select>
+            <div v-if="eventLoading" class="event-state" role="status">Loading event attendance…</div>
+            <div v-if="eventError" class="event-state event-state--error" role="alert">{{ eventError }} <button type="button" @click="loadSelectedEvent">Try again</button></div>
             <div class="event-meta">
               <span>Checked-in</span>
               <span>{{ checkedInCount }} / {{ totalRegistrations }}</span>
@@ -350,26 +456,24 @@ onMounted(async () => {
             <div class="section-label centered">ENTRANCE QR</div>
             <div class="qr-display">
               <QRCodeDisplay v-if="eventCheckInQrValue" :value="eventCheckInQrValue" :size="200" />
-              <div v-else class="qr-placeholder">No QR</div>
+              <div v-else class="qr-placeholder">Select an event to show its QR</div>
             </div>
             <p class="qr-desc">Attendees scan this at the door to enter. See details and confirm attendance themselves.</p>
-            <div v-if="isLocalhost" class="warning-callout">
-              <span class="warning-icon">▲</span>
-              <span>This QR points at localhost - phones cannot open it. Reopen this page via PC's network address (e.g. http://192.168.x.x:3713) before printing.</span>
-            </div>
+
             <div class="qr-actions">
-              <button type="button" class="secondary-button" @click="copyQrLink">Copy link</button>
-              <button type="button" class="secondary-button" @click="downloadQr">Download</button>
-              <button type="button" class="secondary-button" :disabled="eventQrLoading" @click="regenerateQr">
+              <button type="button" class="secondary-button" :disabled="!eventCheckInQrValue" @click="copyQrLink">Copy link</button>
+              <button type="button" class="secondary-button" :disabled="!eventCheckInQrValue" @click="downloadQr">Download</button>
+              <button type="button" class="secondary-button" :disabled="eventQrLoading || !selectedEventId" @click="regenerateQr">
                 {{ eventQrLoading ? 'Regenerating...' : 'Regenerate' }}
               </button>
             </div>
+            <p v-if="eventQrError" class="event-state event-state--error" role="alert">{{ eventQrError }}</p>
           </section>
         </aside>
       </div>
 
       <section class="checkin-table-panel">
-        <header><div><p class="admin-eyebrow">Attendance log</p><h2>Recent check-ins</h2></div><button type="button" class="export-log-button" :disabled="logLoading || !checkIns.length" @click="exportLog">{{ logLoading ? 'Loading...' : 'Export log' }}</button></header>
+        <header><div><p class="admin-eyebrow">Attendance log</p><h2>Recent check-ins</h2></div><button type="button" class="export-log-button" :disabled="exportLoading || !checkIns.length" @click="exportLog">{{ exportLoading ? 'Preparing export…' : 'Export full log' }}</button></header>
         <div v-if="logError" class="inline-error" role="alert"><span>{{ logError }}</span><button type="button" class="secondary-button" @click="loadCheckIns">Try again</button></div>
         <div v-else-if="logLoading" class="dynamic-loading" role="status">Loading recent check-ins…</div>
         <div v-else-if="!checkIns.length" class="recent-empty"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
@@ -377,7 +481,7 @@ onMounted(async () => {
       </section>
 
       <section v-if="selectedEventId" class="checkin-table-panel">
-        <header><div><p class="admin-eyebrow">Attendees</p><h2>All attendees for event</h2></div></header>
+        <header><div><p class="admin-eyebrow">Attendees</p><h2>Event attendee list <small v-if="registrantsPage.total">{{ registrantsPage.total }}</small></h2></div></header>
         <div v-if="registrantsLoading" class="dynamic-loading">Loading attendees…</div>
         <div v-else-if="registrantsError" class="inline-error"><span>{{ registrantsError }}</span><button type="button" class="secondary-button" @click="loadRegistrants">Try again</button></div>
         <div v-else-if="!registrants.length" class="recent-empty"><strong>No attendees found</strong></div>
@@ -393,6 +497,10 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+        <footer v-if="registrantsPage.last_page > 1" class="attendee-pagination">
+          <span>Page {{ registrantsPage.current_page }} of {{ registrantsPage.last_page }}</span>
+          <div><button type="button" class="secondary-button" :disabled="registrantsLoading || registrantsPage.current_page <= 1" @click="loadRegistrants(registrantsPage.current_page - 1)">Previous</button><button type="button" class="secondary-button" :disabled="registrantsLoading || registrantsPage.current_page >= registrantsPage.last_page" @click="loadRegistrants(registrantsPage.current_page + 1)">Next</button></div>
+        </footer>
       </section>
     </section>
   </AdminLayout>
@@ -554,6 +662,14 @@ onMounted(async () => {
 .secondary-button:hover:not(:disabled) {
   background: #e6edf3;
 }
+
+.search-feedback {
+  margin: -.25rem 0 1rem;
+  color: #64748b;
+  font-size: .875rem;
+}
+
+.search-feedback--error { color: #b42332; }
 
 .results-list {
   display: flex;
@@ -834,6 +950,11 @@ onMounted(async () => {
   margin-top: 0.25rem;
 }
 
+.checkin-table-panel h2 small { margin-left: 6px; color: #64748b; font-size: .75rem; font-weight: 500; }
+.attendee-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; color: #64748b; font-size: .8rem; }
+.attendee-pagination > div { display: flex; gap: 8px; }
+.attendee-pagination .secondary-button { padding: .5rem .75rem; }
+
 .export-log-button {
   padding: 0.5rem 1rem;
   background: #f1f5f9;
@@ -985,131 +1106,20 @@ onMounted(async () => {
 }
 
 .qr-scanner-area {
-  position: relative;
-  background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
-  border-radius: 0.75rem;
-  min-height: 320px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
-  overflow: hidden;
-  box-shadow: inset 0 2px 8px 0 rgba(0, 0, 0, 0.5);
-}
-
-.scanner-video {
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-}
-
-.scanner-placeholder-large {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 300px;
-}
-
-.camera-icon {
-  position: absolute;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #6b7280;
-  z-index: 1;
-}
-
-.camera-icon svg {
-  width: 48px;
-  height: 48px;
-}
-
-.camera-corners .corner {
-  position: absolute;
-  width: 40px;
-  height: 40px;
-  border: 2px solid #ffffff;
-}
-
-.corner.tl {
-  top: 40px;
-  left: 40px;
-  border-right: none;
-  border-bottom: none;
-}
-
-.corner.tr {
-  top: 40px;
-  right: 40px;
-  border-left: none;
-  border-bottom: none;
-}
-
-.corner.bl {
-  bottom: 40px;
-  left: 40px;
-  border-right: none;
-  border-top: none;
-}
-
-.corner.br {
-  bottom: 40px;
-  right: 40px;
-  border-left: none;
-  border-top: none;
-}
-
-.scanner-instruction {
-  position: absolute;
-  bottom: 20px;
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 0.375rem 1rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-}
-
-.code-input-row {
-  display: flex;
-  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
-.code-input-row input {
-  flex: 1;
-  padding: 0.875rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-}
+.scanner-video { width: 100%; }
 
-.code-input-row input:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.black-button {
-  padding: 0.75rem 1.5rem;
-  background: #1f2937;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.black-button:hover:not(:disabled) {
-  background: #111827;
-}
-
-.black-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.scanner-off {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 24px;
+  color: #64748b;
+  background: #f8fbff;
+  text-align: center;
+  font-size: .9rem;
 }
 
 .event-qr-panel {
@@ -1152,6 +1162,10 @@ onMounted(async () => {
   font-size: 0.875rem;
   color: #64748b;
 }
+
+.event-state { margin: 0 0 .75rem; color: #64748b; font-size: .8rem; line-height: 1.5; }
+.event-state--error { color: #a33d45; }
+.event-state button { margin-left: .4rem; border: 0; background: transparent; color: #2563eb; font: inherit; font-weight: 700; cursor: pointer; }
 
 .metric-cards {
   display: grid;
@@ -1204,23 +1218,7 @@ onMounted(async () => {
   margin-bottom: 1rem;
 }
 
-.warning-callout {
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  text-align: left;
-  font-size: 0.75rem;
-  color: #92400e;
-}
 
-.warning-icon {
-  font-size: 1rem;
-}
 
 .qr-actions {
   display: flex;

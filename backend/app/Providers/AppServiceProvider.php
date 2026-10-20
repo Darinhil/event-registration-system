@@ -22,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('manage-events', fn (User $user): bool => $user->hasAnyPermission(['users.create', 'users.manage', 'roles.manage', 'workflows.manage', 'events.view', 'events.manage', 'forms.create', 'forms.review', 'forms.verify', 'forms.approve', 'reports.view', 'checkins.manage']));
+        Gate::define('view-events', fn (User $user): bool => $user->hasAnyPermission(['events.view', 'checkins.manage']));
         Gate::define('manage-admin-accounts', fn (User $user): bool => $user->isMasterAdmin());
         Gate::define('manage-users', fn (User $user): bool => $user->hasAnyPermission(['users.create', 'users.manage']));
         Gate::define('create-users', fn (User $user): bool => $user->hasPermission('users.create'));

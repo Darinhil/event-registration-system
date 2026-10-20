@@ -16,7 +16,10 @@ class CheckInController extends Controller
     public function __construct(private CheckInService $checkIns) {}
     public function lookup(Request $request): RegistrationResource
     {
-        $data = $request->validate(['credential' => ['nullable', 'string', 'max:2048'], 'qr_token' => ['nullable', 'uuid']]);
+        $data = $request->validate([
+            'credential' => ['required_without:qr_token', 'nullable', 'string', 'max:2048'],
+            'qr_token' => ['required_without:credential', 'nullable', 'uuid'],
+        ]);
         $data['credential'] = ($data['credential'] ?? null) ?: ($data['qr_token'] ?? null);
         $registration = $this->checkIns->findRegistration($data['credential'], $request->user());
         $registration->append_form_values();
@@ -53,7 +56,7 @@ class CheckInController extends Controller
     {
         $data = $request->validate(['event_id' => ['required', 'integer', 'exists:events,id'], 'query' => ['required', 'string', 'max:100']]);
         $event = Event::findOrFail($data['event_id']);
-        abort_unless($request->user()->isMasterAdmin() || $event->created_by === $request->user()->id, 403);
+        abort_unless($request->user()->isMasterAdmin() || $request->user()->hasPermission('checkins.manage') || (int) $event->created_by === (int) $request->user()->id, 403);
         $query = trim($data['query']);
         $matches = $event->registrations()->where(fn ($q) => $q->where('registration_code', 'like', "%{$query}%")->orWhere('full_name', 'like', "%{$query}%")->orWhere('email', 'like', "%{$query}%"))->with(['event', 'checkIn'])->limit(10)->get();
         if ($matches->count() === 1) { $registration = $matches->first()->append_form_values(); return response()->json(['data' => ['registration' => (new RegistrationResource($registration))->resolve(), 'suggestions' => []]]); }

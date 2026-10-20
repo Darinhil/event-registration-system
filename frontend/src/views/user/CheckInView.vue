@@ -12,11 +12,12 @@ const route = useRoute()
 const auth = useAuthStore()
 const store = useCheckInStore()
 const registration = ref(null)
+const scannerKey = ref(0)
 
 const initials = computed(() => (registration.value?.full_name || auth.user?.name || 'A').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase())
 const formEntries = computed(() => Object.entries(registration.value?.form_values || {}))
-const alreadyIn = computed(() => Boolean(registration.value?.checked_in_at) || Boolean(store.result))
-const checkedInAt = computed(() => registration.value?.checked_in_at || store.result?.check_in?.checked_in_at)
+const alreadyIn = computed(() => Boolean(registration.value?.checked_in_at) || store.result?.check_in?.registration_id === registration.value?.id)
+const checkedInAt = computed(() => registration.value?.checked_in_at || (store.result?.check_in?.registration_id === registration.value?.id ? store.result.check_in.checked_in_at : null))
 
 /** Venue QRs may be a JSON payload, an /check-in?event=ID link, or /check-in?e=<entrance token>. */
 const eventFromScan = (value) => {
@@ -34,10 +35,18 @@ const eventFromScan = (value) => {
 }
 
 const resolveRegistration = async ({ eventId, entranceToken } = {}) => {
-  await auth.fetchMe()
-  await store.preview(entranceToken ? { entrance_token: entranceToken } : { event_id: eventId })
-  registration.value = store.registration
-  if (!store.registration) store.error = store.error || 'You are not registered for this event.'
+  try {
+    store.reset()
+    await auth.fetchMe()
+    await store.preview(entranceToken ? { entrance_token: entranceToken } : { event_id: eventId })
+    registration.value = store.registration
+    if (!store.registration) store.error = store.error || 'You are not registered for this event.'
+    return Boolean(store.registration)
+  } catch {
+    registration.value = null
+    store.error = store.error || 'Unable to load your registration. Please try again.'
+    return false
+  }
 }
 
 /** Deep link from a scanned entrance QR: /check-in?event=ID or ?e=<token>. */
@@ -49,8 +58,8 @@ onMounted(async () => {
 
 const onScan = async (value) => {
   const target = eventFromScan(value)
-  if (!target) { store.error = 'This QR code is not an event check-in code.'; return }
-  await resolveRegistration(target)
+  if (!target) { store.error = 'This QR code is not an event check-in code.'; scannerKey.value += 1; return }
+  if (!await resolveRegistration(target)) scannerKey.value += 1
 }
 
 const confirm = async () => {
@@ -69,7 +78,7 @@ const reset = () => { registration.value = null; store.reset() }
       <template v-if="!registration">
         <p v-if="store.error" class="error" role="alert">{{ store.error }}</p>
         <p v-if="store.loading" class="muted">Looking up your registration…</p>
-        <QRScanner @scan="onScan" />
+        <QRScanner :key="scannerKey" @scan="onScan" />
       </template>
 
       <template v-else>

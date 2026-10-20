@@ -40,7 +40,7 @@ class EventController extends Controller
         $registered = $event->registrations()->count();
         $data = $event->load('creator:id,name')->only(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'creator']);
         if ($staff) {
-            $data['check_in_qr_token'] = $event->check_in_qr_token;
+            $data['check_in_qr_token'] = $event->checkInQrToken();
         }
         return response()->json(['data' => $data, 'registered' => $registered, 'remaining' => max(0, $event->capacity - $registered)]);
     }

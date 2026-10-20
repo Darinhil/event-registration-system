@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Event;
 use App\Models\FormField;
 use App\Models\Registration;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -15,7 +17,7 @@ class CheckInFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function event(): Event
+    private function event(array $extra = []): Event
     {
         return Event::create([
             'name' => 'Community Tech Summit',
@@ -25,6 +27,7 @@ class CheckInFlowTest extends TestCase
             'capacity' => 50,
             'enabled_fields' => [],
             'status' => 'published',
+            ...$extra,
         ]);
     }
 
@@ -107,6 +110,28 @@ class CheckInFlowTest extends TestCase
         $this->assertArrayNotHasKey('form_data', $data);
     }
 
+    public function test_admin_lookup_accepts_the_attendee_pass_qr_and_json_qr_payload(): void
+    {
+        $event = $this->event();
+        $registration = $this->register(User::factory()->create(), $event, [
+            'full_name' => 'QR Attendee',
+            'registration_code' => 'QR-ATTENDEE-001',
+        ]);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        // The attendee pass renders qr_token directly as the QR value.
+        $this->getJson('/api/admin/check-ins/lookup?'.http_build_query(['credential' => $registration->qr_token]))
+            ->assertOk()
+            ->assertJsonPath('data.id', $registration->id)
+            ->assertJsonPath('data.registration_code', 'QR-ATTENDEE-001');
+
+        // Support QR payloads created by QRCodeService as well.
+        $payload = app(\App\Services\QRCodeService::class)->payload($registration);
+        $this->getJson('/api/admin/check-ins/lookup?'.http_build_query(['credential' => $payload]))
+            ->assertOk()
+            ->assertJsonPath('data.id', $registration->id);
+    }
+
     public function test_attendee_can_check_in_and_admin_sees_them_in_the_log(): void
     {
         $attendee = User::factory()->create();
@@ -134,6 +159,73 @@ class CheckInFlowTest extends TestCase
         $this->assertSame(0, $payload['summary']['remaining']);
         $this->assertSame('Sokha Leng', $payload['check_ins'][0]['name']);
         $this->assertSame('Sokha Leng', $payload['recent_registrations'][0]['name']);
+    }
+
+    public function test_attendee_cannot_check_in_someone_elses_registration(): void
+    {
+        $event = $this->event();
+        $registration = $this->register(User::factory()->create(), $event);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('credential');
+        $this->assertDatabaseMissing('check_ins', ['registration_id' => $registration->id]);
+    }
+
+    public function test_check_in_staff_must_have_permission_and_own_the_event(): void
+    {
+        $staff = User::factory()->create(['role' => 'maker']);
+        $event = $this->event();
+        $registration = $this->register(User::factory()->create(), $event);
+        Sanctum::actingAs($staff);
+
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('credential');
+
+        $this->grantCheckInPermission('maker');
+        $staffEvent = $this->event(['created_by' => $staff->id]);
+        $staffRegistration = $this->register(User::factory()->create(), $staffEvent);
+        $this->postJson('/api/check-ins', ['credential' => $staffRegistration->qr_token])
+            ->assertCreated()
+            ->assertJsonPath('check_in.registration_id', $staffRegistration->id);
+    }
+
+    public function test_check_in_manager_can_load_and_check_in_events_created_by_other_staff(): void
+    {
+        $this->grantCheckInPermission('maker');
+        $manager = User::factory()->create(['role' => 'maker']);
+        $organizer = User::factory()->create(['role' => 'maker']);
+        $event = $this->event(['created_by' => $organizer->id]);
+        $registration = $this->register(User::factory()->create(), $event, ['registration_code' => 'SHARED-001']);
+        Sanctum::actingAs($manager);
+
+        $eventsResponse = $this->getJson('/api/admin/events')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $event->id, 'name' => $event->name]);
+        $this->assertTrue(array_is_list($eventsResponse->json()), 'The admin events endpoint returns a plain event list.');
+        $eventResponse = $this->getJson("/api/events/{$event->id}")->assertOk();
+        $entranceToken = $eventResponse->json('data.check_in_qr_token');
+        $this->assertTrue(Str::isUuid($entranceToken), 'The event check-in page receives a valid QR token.');
+        $attendanceResponse = $this->getJson("/api/admin/events/{$event->id}/check-ins")->assertOk();
+        $this->assertSame($entranceToken, $attendanceResponse->json('data.event.check_in_qr_token'));
+        $this->getJson("/api/admin/events/{$event->id}/registrants")->assertOk();
+        $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => 'SHARED-001'])
+            ->assertOk()
+            ->assertJsonPath('data.registration.id', $registration->id);
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])
+            ->assertCreated()
+            ->assertJsonPath('check_in.registration_id', $registration->id);
+    }
+
+    public function test_registration_lookup_is_restricted_to_check_in_staff_and_requires_a_credential(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson('/api/check-ins/lookup?credential=anything')->assertNotFound();
+
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $this->getJson('/api/admin/check-ins/lookup')->assertUnprocessable()->assertJsonValidationErrors(['credential', 'qr_token']);
     }
 
     public function test_event_check_in_log_requires_admin(): void
@@ -257,5 +349,12 @@ class CheckInFlowTest extends TestCase
         $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => $code])
             ->assertOk()
             ->assertJsonPath('data.registration.full_name', 'Ravy Sot');
+    }
+
+    private function grantCheckInPermission(string $roleKey): void
+    {
+        $role = Role::query()->where('key', $roleKey)->firstOrFail();
+        $permissionId = Permission::query()->where('key', 'checkins.manage')->value('id');
+        $role->permissions()->syncWithoutDetaching([$permissionId]);
     }
 }
