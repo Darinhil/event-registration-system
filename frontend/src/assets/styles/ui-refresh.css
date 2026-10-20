@@ -2612,3 +2612,234 @@ button, input, select, textarea { font-family: inherit; }
     padding-inline: 12px;
   }
 }
+
+/* ============================================================
+   Event overview page polish
+   Richer hero, modern step cards, per-card meta accents,
+   refined agenda + CTA band.
+   ============================================================ */
+
+.public-event-hero {
+  background:
+    radial-gradient(1000px 360px at 102% -30%, rgba(45, 212, 191, .22), transparent 62%),
+    radial-gradient(760px 320px at -8% 120%, rgba(37, 99, 235, .16), transparent 58%),
+    linear-gradient(140deg, #0c2a33 0%, #0f3d45 55%, #10514f 100%);
+}
+
+.public-event-status {
+  padding: 9px 16px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+/* --- Step cards (event overview + registration) --- */
+.public-event-content > .event-flow-progress,
+.dynamic-registration-shell > .event-flow-progress {
+  gap: 16px;
+}
+
+.public-event-content > .event-flow-progress li,
+.dynamic-registration-shell > .event-flow-progress li {
+  min-height: 96px;
+  padding: 18px 22px;
+  border: 1px solid var(--ur-border);
+  border-radius: 16px;
+  background: var(--ur-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.public-event-content > .event-flow-progress li:hover,
+.dynamic-registration-shell > .event-flow-progress li:hover {
+  border-color: #bfd3ea;
+  box-shadow: 0 14px 30px -18px rgba(15, 23, 42, .28);
+}
+
+.public-event-content > .event-flow-progress li.is-current,
+.dynamic-registration-shell > .event-flow-progress li.is-current {
+  border-color: #99e2d5;
+  background: linear-gradient(150deg, #f0fdfa 0%, #f7fbff 70%);
+  box-shadow: 0 14px 30px -18px rgba(13, 148, 136, .45);
+}
+
+/* Number badge → rounded tile */
+.public-event-content > .event-flow-progress li > span,
+.dynamic-registration-shell > .event-flow-progress li > span,
+.event-flow-progress.is-registration-step li > span {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .05);
+  color: #94a3b8;
+  font-size: .84rem;
+}
+
+.event-flow-progress.is-registration-step li.is-current > span,
+.event-flow-progress.is-registration-step li.is-complete > span,
+.public-event-content > .event-flow-progress li.is-current > span {
+  background: linear-gradient(140deg, #14b8a6, #0d9488);
+  box-shadow: 0 8px 16px -8px rgba(13, 148, 136, .6);
+  color: #fff;
+}
+
+.public-event-content > .event-flow-progress li strong,
+.dynamic-registration-shell > .event-flow-progress li strong {
+  color: var(--ur-body);
+  font-size: .86rem;
+}
+
+.public-event-content > .event-flow-progress li small,
+.dynamic-registration-shell > .event-flow-progress li small {
+  color: var(--ur-faint);
+  font-size: .74rem;
+}
+
+.public-event-content > .event-flow-progress li.is-current strong,
+.dynamic-registration-shell > .event-flow-progress li.is-current strong {
+  color: var(--ur-ink);
+}
+
+.public-event-content > .event-flow-progress li.is-current small {
+  color: #0f766e;
+}
+
+/* --- Event meta cards: one accent color each --- */
+.public-event-meta div {
+  min-height: 118px;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--ur-border);
+  border-radius: 14px;
+  background: var(--ur-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.public-event-meta div:hover {
+  transform: translateY(-2px);
+  border-color: #bfd3ea;
+  box-shadow: 0 16px 32px -20px rgba(15, 23, 42, .3);
+}
+
+.public-event-meta div > span {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+}
+
+.public-event-meta div:nth-child(1) > span { background: #eff6ff; color: #2563eb; }
+.public-event-meta div:nth-child(2) > span { background: #f0fdfa; color: #0d9488; }
+.public-event-meta div:nth-child(3) > span { background: #fffbeb; color: #b45309; }
+
+.public-event-meta strong {
+  color: var(--ur-ink);
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.public-event-meta small {
+  color: var(--ur-faint);
+  font-size: .62rem;
+  font-weight: 650;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+/* --- Agenda panel --- */
+.public-agenda {
+  border: 1px solid var(--ur-border);
+  border-radius: 18px;
+  background: var(--ur-surface);
+}
+
+.public-agenda > h2 {
+  color: var(--ur-ink);
+  font-weight: 800;
+}
+
+.public-agenda-day-tabs button {
+  border-radius: 12px;
+}
+
+.public-agenda-day-tabs button.active {
+  border-color: transparent;
+  background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 10px 20px -10px rgba(37, 99, 235, .55);
+}
+
+.public-agenda-day-tabs button.active > small {
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+}
+
+.public-agenda-table th {
+  border-bottom-color: var(--ur-border);
+  background: #f8fafc;
+  color: var(--ur-body);
+}
+
+/* --- Next-step CTA band --- */
+.public-event-next-step {
+  padding: 26px 28px;
+  border: 1px solid #cfe4fb;
+  border-radius: 18px;
+}
+
+.public-event-next-step h2 {
+  font-size: 1.2rem;
+}
+
+.public-event-next-step .primary-button {
+  min-height: 50px;
+  padding: 0 24px;
+  border-radius: 12px;
+  background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+}
+
+.public-event-next-step .primary-button:hover {
+  background: linear-gradient(140deg, #2f74ee, #164ecf);
+}
+
+/* --- Mobile --- */
+@media (max-width: 760px) {
+  .public-event-content > .event-flow-progress { gap: 10px; }
+
+  .public-event-content > .event-flow-progress li {
+    min-height: 0;
+    padding: 13px 15px;
+  }
+
+  .public-event-content > .event-flow-progress li > span {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    border-radius: 9px;
+    font-size: .74rem;
+  }
+
+  .public-event-meta div {
+    min-height: 0;
+  }
+
+  .public-event-meta div > span {
+    width: 32px;
+    height: 32px;
+  }
+
+  .public-event-meta small { font-size: .58rem; }
+
+  .public-agenda {
+    width: calc(100% + 32px);
+    margin-inline: -16px;
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .public-event-next-step {
+    padding: 19px;
+    border-radius: 14px;
+  }
+}
