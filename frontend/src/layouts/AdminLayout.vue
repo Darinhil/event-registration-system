@@ -9,9 +9,11 @@ import adminLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
 const router = useRouter(); const route = useRoute(); const auth = useAuthStore()
 const isAdmin = computed(() => auth.isAdmin); const roleLabel = computed(() => auth.roleLabel)
 const eventMenuOpen = ref(false)
+const mobileMenuOpen = ref(false)
 const eventSectionPaths = ['/admin/events', '/admin/users', '/admin/check-ins', '/admin/reports']
 const isEventSection = computed(() => eventSectionPaths.some((path) => route.path === path || route.path.startsWith(`${path}/`)))
 watch(() => route.path, (path) => {
+  mobileMenuOpen.value = false
   eventMenuOpen.value = ['/admin/users', '/admin/check-ins', '/admin/reports']
     .some((itemPath) => path === itemPath || path.startsWith(`${itemPath}/`))
 }, { immediate: true })
@@ -27,7 +29,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
 </script>
 
 <template>
-  <div class="admin-app-shell"><a class="skip-link" href="#main-content">Skip to content</a><aside class="admin-sidebar">
+  <div class="admin-app-shell" :class="{ 'mobile-menu-open': mobileMenuOpen }"><a class="skip-link" href="#main-content">Skip to content</a><button type="button" class="admin-mobile-menu-toggle" :aria-expanded="mobileMenuOpen" aria-controls="admin-sidebar" aria-label="Toggle navigation" @click="mobileMenuOpen = !mobileMenuOpen"><span></span><span></span><span></span></button><button v-if="mobileMenuOpen" type="button" class="admin-mobile-menu-backdrop" aria-label="Close navigation" @click="mobileMenuOpen = false"></button><aside id="admin-sidebar" class="admin-sidebar">
     <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="Live &amp; Learn Cambodia" decoding="async" /></RouterLink>
     <nav class="admin-nav" :class="{ 'has-open-submenu': eventMenuOpen }" aria-label="Admin navigation">
       <div v-if="auth.canViewEvents" class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">

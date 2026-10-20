@@ -110,8 +110,8 @@ const reset = () => { registration.value = null; store.reset() }
 
           <p v-if="store.error" class="error" role="alert">{{ store.error }}</p>
 
-          <button v-if="!alreadyIn" type="button" class="button ci-confirm" :disabled="store.checkingIn" @click="confirm">
-            {{ store.checkingIn ? 'Checking in…' : 'I\'m here — join the event' }}
+          <button v-if="!alreadyIn" type="button" class="button ci-confirm" :disabled="store.loading" @click="confirm">
+            {{ store.loading ? 'Checking in…' : 'I\'m here — join the event' }}
           </button>
           <button type="button" class="link-button ci-secondary" @click="reset">Scan a different code</button>
         </article>
