@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import api from '../../services/api'
@@ -19,6 +19,8 @@ const ageFilter = ref('all')
 const genderFilter = ref('all')
 const ethnicityFilter = ref('all')
 const disabilityFilter = ref('all')
+const currentPage = ref(1)
+const pageSize = 6
 const router = useRouter()
 
 const ageOptions = [
@@ -78,6 +80,7 @@ const upcomingEventCount = computed(() => events.value.filter((event) => event.s
 const ongoingEventCount = computed(() => events.value.filter((event) => event.status === 'open').length ? 1 : 0)
 const pastEventCount = computed(() => events.value.filter((event) => event.status === 'closed').length)
 const registrationFor = (user) => user.registrations?.[0] || {}
+const attendeeName = (user) => registrationFor(user).full_name?.trim() || user.name?.trim() || user.email || user.phone || 'Unnamed attendee'
 const isCheckedIn = (registration) => Boolean(registration?.checked_in_at || registration?.check_in)
 const checkedInCount = computed(() => attendees.value.filter((user) => user.registrations?.some(isCheckedIn)).length)
 const eventAttendeeCount = computed(() => selectedEvent.value?.registered || attendees.value.length)
@@ -136,7 +139,7 @@ const disabilityValues = (registration) => {
 }
 const filteredAttendees = computed(() => attendees.value.filter((user) => {
   const query = search.value.trim().toLowerCase()
-  const matchesSearch = !query || `${user.name} ${user.email} ${user.phone || ''}`.toLowerCase().includes(query)
+  const matchesSearch = !query || `${attendeeName(user)} ${user.email || ''} ${user.phone || ''}`.toLowerCase().includes(query)
   const registered = Boolean(user.registrations?.length)
   const matchesStatus = status.value === 'all' || (status.value === 'registered' && registered) || (status.value === 'pending' && !registered)
   const checkedIn = user.registrations?.some((registration) => registration.check_in)
@@ -148,6 +151,16 @@ const filteredAttendees = computed(() => attendees.value.filter((user) => {
   const matchesDisability = disabilityFilter.value === 'all' || registrations.some((registration) => disabilityValues(registration).some((value) => value.toLowerCase() === disabilityFilter.value.toLowerCase() || value.toLowerCase().startsWith(disabilityFilter.value.toLowerCase())))
   return matchesSearch && matchesStatus && matchesTab && matchesAge && matchesGender && matchesEthnicity && matchesDisability
 }))
+const pageCount = computed(() => Math.max(1, Math.ceil(filteredAttendees.value.length / pageSize)))
+const paginatedAttendees = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredAttendees.value.slice(start, start + pageSize)
+})
+const pageStart = computed(() => filteredAttendees.value.length ? (currentPage.value - 1) * pageSize + 1 : 0)
+const pageEnd = computed(() => Math.min(currentPage.value * pageSize, filteredAttendees.value.length))
+const pageNumbers = computed(() => Array.from({ length: pageCount.value }, (_, index) => index + 1))
+const goToPage = (page) => { currentPage.value = Math.min(Math.max(page, 1), pageCount.value) }
+watch([search, status, activeTab, ageFilter, genderFilter, ethnicityFilter, disabilityFilter, selectedEventId], () => { currentPage.value = 1 })
 
 const loadWorkspace = async () => {
   loading.value = true
@@ -228,7 +241,7 @@ const exportFilteredExcel = async () => {
     const registration = registrationFor(user)
     return [
       index + 1,
-      user.name,
+      attendeeName(user),
       registration.gender || normalizedGender(registration) || '-',
       displayAge(registration),
       displayEthnicity(registration),
@@ -286,8 +299,8 @@ onMounted(loadWorkspace)
             </section>
             <section class="attendance-table-card">
               <div class="attendance-table-toolbar"><label class="attendance-table-search"><span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></span><input v-model="search" type="search" placeholder="Search by name, ID, email, or phone..." /></label><select v-model="ageFilter" :class="{ 'is-active': ageFilter !== 'all' }" aria-label="Filter by age"><option value="all">Age</option><option v-for="option in ageOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="genderFilter" :class="{ 'is-active': genderFilter !== 'all' }" aria-label="Filter by gender"><option value="all">Gender</option><option v-for="option in genderOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="ethnicityFilter" :class="{ 'is-active': ethnicityFilter !== 'all' }" aria-label="Filter by ethnicity"><option value="all">Ethnicity</option><option v-for="option in ethnicityOptions" :key="option" :value="option">{{ option }}</option></select><select v-model="disabilityFilter" :class="{ 'is-active': disabilityFilter !== 'all' }" aria-label="Filter by disability"><option value="all">Disability</option><option v-for="option in disabilityOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select><select v-model="status" :class="{ 'is-active': status !== 'all' }" aria-label="Filter attendee status"><option value="all">All Status</option><option value="registered">Registered</option><option value="pending">Pending</option></select><button v-if="activeFilterCount || search" type="button" class="attendance-clear-filters" @click="clearFilters">Clear</button></div>
-              <div class="attendance-table-scroll"><table class="attendance-table"><thead><tr><th>#</th><th>Photo</th><th>Full Name</th><th>Gender</th><th>Age</th><th>Ethnicity</th><th>Disability</th><th>Checked-time</th><th>Status</th><th>Action</th><th v-for="field in dynamicColumns" :key="`h-${field.id}`">{{ field.label }}</th></tr></thead><tbody><tr v-for="(user, index) in filteredAttendees" :key="user.id"><td>{{ index + 1 }}</td><td><span class="attendance-avatar">{{ initials(user.name) }}</span></td><td><strong>{{ user.name }}</strong></td><td>{{ formatAnswer(registrationFor(user)?.gender || pickAnswer(registrationFor(user), ['gender'], '')) }}</td><td>{{ displayAge(registrationFor(user)) }}</td><td>{{ displayEthnicity(registrationFor(user)) }}</td><td>{{ displayDisability(registrationFor(user)) }}</td><td>{{ displayCheckedTime(user) }}</td><td><span class="attendance-status-pill" :class="user.registrations?.some(isCheckedIn) ? 'checked' : 'pending'">{{ user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending' }}</span></td><td><RouterLink :to="`/admin/users/${user.id}`" class="attendance-view-button">View</RouterLink></td><td v-for="field in dynamicColumns" :key="`c-${field.id}`">{{ formValueFor(registrationFor(user), field) }}</td></tr><tr v-if="!filteredAttendees.length"><td :colspan="10 + dynamicColumns.length"><div class="attendance-table-empty"><span><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg></span><strong>{{ search || activeFilterCount ? 'No matching attendances' : 'No attendances yet' }}</strong><small>{{ search || activeFilterCount ? 'Try clearing a filter or changing your search.' : 'Attendance records will appear here when people sign up.' }}</small></div></td></tr></tbody></table></div>
-              <footer class="attendance-pagination"><span>Showing 1-{{ filteredAttendees.length }} of {{ eventAttendeeCount }} attendances</span><div><button type="button">‹</button><button type="button" class="current">1</button><button type="button">2</button><button type="button">3</button><button type="button">›</button></div></footer>
+              <div class="attendance-table-scroll"><table class="attendance-table"><thead><tr><th>#</th><th>Photo</th><th>Full Name</th><th>Gender</th><th>Age</th><th>Ethnicity</th><th>Disability</th><th>Checked-time</th><th>Status</th><th>Action</th><th v-for="field in dynamicColumns" :key="`h-${field.id}`">{{ field.label }}</th></tr></thead><tbody><tr v-for="(user, index) in paginatedAttendees" :key="user.id"><td>{{ pageStart + index }}</td><td><span class="attendance-avatar">{{ initials(attendeeName(user)) }}</span></td><td><strong>{{ attendeeName(user) }}</strong></td><td>{{ formatAnswer(registrationFor(user)?.gender || pickAnswer(registrationFor(user), ['gender'], '')) }}</td><td>{{ displayAge(registrationFor(user)) }}</td><td>{{ displayEthnicity(registrationFor(user)) }}</td><td>{{ displayDisability(registrationFor(user)) }}</td><td>{{ displayCheckedTime(user) }}</td><td><span class="attendance-status-pill" :class="user.registrations?.some(isCheckedIn) ? 'checked' : 'pending'">{{ user.registrations?.some(isCheckedIn) ? 'Checked in' : 'Pending' }}</span></td><td><RouterLink :to="`/admin/users/${user.id}`" class="attendance-view-button">View</RouterLink></td><td v-for="field in dynamicColumns" :key="`c-${field.id}`">{{ formValueFor(registrationFor(user), field) }}</td></tr><tr v-if="!filteredAttendees.length"><td :colspan="10 + dynamicColumns.length"><div class="attendance-table-empty"><span><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg></span><strong>{{ search || activeFilterCount ? 'No matching attendances' : 'No attendances yet' }}</strong><small>{{ search || activeFilterCount ? 'Try clearing a filter or changing your search.' : 'Attendance records will appear here when people sign up.' }}</small></div></td></tr></tbody></table></div>
+              <footer class="attendance-pagination"><span>Showing {{ pageStart }}-{{ pageEnd }} of {{ filteredAttendees.length }} attendances</span><div><button type="button" :disabled="currentPage === 1" aria-label="Previous page" @click="goToPage(currentPage - 1)">‹</button><button v-for="page in pageNumbers" :key="page" type="button" :class="{ current: currentPage === page }" :aria-current="currentPage === page ? 'page' : undefined" @click="goToPage(page)">{{ page }}</button><button type="button" :disabled="currentPage === pageCount" aria-label="Next page" @click="goToPage(currentPage + 1)">›</button></div></footer>
             </section>
           </template>
           <div v-else class="attendance-empty attendance-empty-state"><span class="attendance-empty-icon">+</span><strong>No events yet</strong><p>Create an event to start tracking attendance.</p><RouterLink to="/admin/events/new" class="attendance-empty-action">Create event</RouterLink></div>
