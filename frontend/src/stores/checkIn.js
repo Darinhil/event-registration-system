@@ -1,13 +1,6 @@
 import { defineStore } from 'pinia'
-<<<<<<< HEAD
-import { checkIn, lookupCheckIn } from '../services/checkInService'
-export const useCheckInStore = defineStore('checkIn', { state: () => ({ result: null, attendee: null, loading: false, lookupLoading: false, error: null }), actions: {
-  async lookup(credential) { this.lookupLoading = true; this.error = null; try { this.attendee = (await lookupCheckIn(credential)).data.data; return this.attendee } catch (error) { this.attendee = null; this.error = error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Attendee lookup failed.'; throw error } finally { this.lookupLoading = false } },
-  async submit(credential) { this.loading = true; this.error = null; try { this.result = (await checkIn(credential)).data; return this.result } catch (error) { this.error = error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Check-in failed.'; throw error } finally { this.loading = false } },
-  reset() { this.result = null; this.attendee = null; this.loading = false; this.lookupLoading = false; this.error = null },
-} })
-=======
 import { checkIn, lookupCheckIn, previewCheckIn, searchCheckIns } from '../services/checkInService'
+
 export const useCheckInStore = defineStore('checkIn', {
   state: () => ({
     result: null,
@@ -87,10 +80,13 @@ export const useCheckInStore = defineStore('checkIn', {
       this.result = null
       this.attendee = null
       this.registration = null
+      this.loading = false
+      this.checkingIn = false
+      this.lookupLoading = false
+      this.searchLoading = false
       this.error = null
       this.searchResult = null
       this.suggestions = []
     },
   },
 })
->>>>>>> feature/check-in_improve
