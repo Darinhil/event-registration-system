@@ -3,7 +3,17 @@ import { useAuthStore } from '../stores/auth'
 
 // Keep the initial bundle small. Admin tools, the QR scanner, and form builder
 // are only downloaded when the user navigates to them.
-const lazy = (path) => () => import(path)
+const views = import.meta.glob('../views/**/*.vue')
+
+const lazy = (path) => {
+  const loadView = views[path]
+
+  if (!loadView) {
+    throw new Error(`View not found: ${path}`)
+  }
+
+  return loadView
+}
 const HomeView = lazy('../views/public/HomeView.vue')
 const RegistrationView = lazy('../views/public/RegistrationView.vue')
 const EventView = lazy('../views/public/EventView.vue')
