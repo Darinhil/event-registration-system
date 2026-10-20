@@ -540,3 +540,32 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Keep the agenda contained on tablets while preserving the desktop table. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .public-event-page {
+    padding-inline: 0;
+  }
+
+  .public-event-hero {
+    padding-inline: 30px;
+  }
+
+  .public-event-content {
+    padding-inline: 30px;
+  }
+
+  .public-agenda {
+    width: 100%;
+    margin-inline: 0;
+    padding: 20px;
+  }
+
+  .public-agenda-table {
+    min-width: 760px;
+  }
+
+  .public-event-next-step {
+    align-items: flex-start;
+  }
+}
