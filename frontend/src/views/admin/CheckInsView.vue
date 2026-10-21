@@ -18,6 +18,9 @@ const logError = ref('')
 const events = ref([])
 const selectedEventId = ref('')
 const selectedEvent = ref(null)
+const registrants = ref([])
+const registrantsLoading = ref(false)
+const registrantsError = ref('')
 const searchQuery = ref('')
 const activeMode = ref('code') // 'code', 'scan', 'qr'
 const eventQrLoading = ref(false)
@@ -27,7 +30,7 @@ const resultsList = ref([])
 const loadEvents = async () => {
   try {
     const { data } = await getAdminEvents()
-    events.value = data.data || []
+    events.value = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])
     if (events.value.length > 0 && !selectedEventId.value) {
       selectedEventId.value = events.value[0].id
       await loadSelectedEvent()
