@@ -4,7 +4,7 @@ import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRScanner from '../../components/QRScanner.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import { useCheckInStore } from '../../stores/checkIn'
-import { getCheckIns, getAdminEvents, getEvent, regenerateEventCheckInQr } from '../../services/adminService'
+import { getCheckIns, getAdminEvents, getEvent, getEventCheckInSummary, regenerateEventCheckInQr } from '../../services/adminService'
 
 const scanning = ref(false)
 const scanMessage = ref('')
@@ -40,8 +40,16 @@ const loadEvents = async () => {
 const loadSelectedEvent = async () => {
   if (!selectedEventId.value) return
   try {
-    const { data } = await getEvent(selectedEventId.value)
-    selectedEvent.value = data.data
+    const [{ data }, summaryResponse] = await Promise.all([
+      getEvent(selectedEventId.value),
+      getEventCheckInSummary(selectedEventId.value),
+    ])
+    const attendanceData = summaryResponse.data.data || {}
+    selectedEvent.value = {
+      ...(data.data || {}),
+      registered: data.registered,
+      check_in_qr_token: data.data?.check_in_qr_token || attendanceData.event?.check_in_qr_token,
+    }
     await loadRegistrants()
   } catch {
     // ignore

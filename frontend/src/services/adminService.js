@@ -7,4 +7,5 @@ export const getEventReportAttendees = (eventId, params) => api.get(`/admin/even
 export const getAdminEvents = (params) => api.get('/admin/events', { params })
 export const regenerateEventCheckInQr = (eventId) => api.post(`/admin/events/${eventId}/check-in-qr`)
 export const getEvent = (eventId) => api.get(`/events/${eventId}`)
+export const getEventCheckInSummary = (eventId) => api.get(`/admin/events/${eventId}/check-ins`)
 export const getEventRegistrants = (eventId, params) => api.get(`/admin/events/${eventId}/registrants`, { params })
