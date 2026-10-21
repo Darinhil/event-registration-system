@@ -111,6 +111,10 @@ const eventCheckInQrValue = computed(() => {
 })
 
 const loadCheckIns = async () => {
+  if (!selectedEventId.value) {
+    checkIns.value = []
+    return
+  }
   logLoading.value = true
   logError.value = ''
   try {

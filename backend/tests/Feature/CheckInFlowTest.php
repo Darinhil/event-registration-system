@@ -228,6 +228,21 @@ class CheckInFlowTest extends TestCase
         $this->getJson('/api/admin/check-ins/lookup')->assertUnprocessable()->assertJsonValidationErrors(['credential', 'qr_token']);
     }
 
+    public function test_registration_qr_requires_the_owner_or_event_manager(): void
+    {
+        $event = $this->event();
+        $owner = User::factory()->create();
+        $registration = $this->register($owner, $event);
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertForbidden();
+
+        Sanctum::actingAs($owner);
+        $this->getJson("/api/registrations/{$registration->id}/qr")
+            ->assertOk()
+            ->assertJsonStructure(['payload']);
+    }
+
     public function test_event_check_in_log_requires_admin(): void
     {
         $event = $this->event();

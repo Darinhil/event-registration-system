@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 
 class CheckInService
 {
+    private const STAFF_ROLES = ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'];
+
     public function findRegistration(string $credential, ?User $staff = null): Registration
     {
         $credential = trim($credential);

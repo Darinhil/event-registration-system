@@ -50,5 +50,15 @@ class RegistrationController extends Controller
 
         return response()->json(['message' => 'Registration deleted successfully.']);
     }
-    public function qr(Registration $registration): JsonResponse { return response()->json(['payload' => $this->qr->payload($registration)]); }
+    public function qr(Request $request, Registration $registration): JsonResponse
+    {
+        $registration->loadMissing('event');
+        abort_unless(
+            $request->user()->id === $registration->user_id || $request->user()->can('view', $registration->event),
+            403,
+            'You are not allowed to view this registration QR code.'
+        );
+
+        return response()->json(['payload' => $this->qr->payload($registration)]);
+    }
 }

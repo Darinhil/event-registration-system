@@ -19,7 +19,6 @@ Route::get('/events', [EventController::class, 'index']);
 Route::get('/events/{event}/banner', [EventController::class, 'banner']);
 Route::get('/events/{event}', [EventController::class, 'show']);
 Route::get('/events/{event}/form', [EventController::class, 'form']);
-Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
 
 Route::middleware(['auth:sanctum', 'active-account'])->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -29,6 +28,7 @@ Route::middleware(['auth:sanctum', 'active-account'])->group(function (): void {
     Route::patch('/me/password', [UserController::class, 'updatePassword']);
     Route::post('/registrations', [RegistrationController::class, 'store']);
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
+    Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
     Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
     Route::post('/check-ins', [CheckInController::class, 'store']);
