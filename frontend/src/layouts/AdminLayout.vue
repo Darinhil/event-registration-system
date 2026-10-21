@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import AdminTopbar from '../components/AdminTopbar.vue'
+import AppIcon from '../components/AppIcon.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../services/api'
@@ -8,8 +9,24 @@ import adminLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
 const router = useRouter(); const route = useRoute(); const auth = useAuthStore()
 const isAdmin = computed(() => auth.isAdmin); const roleLabel = computed(() => auth.roleLabel)
+const hasEventWorkspace = computed(() => auth.isAdmin || auth.isEventAdmin)
 const eventMenuOpen = ref(false)
 const mobileMenuOpen = ref(false)
+const personnelPortalOpen = ref(true)
+const personnelMenuOpen = ref(false)
+const isPersonnelSection = computed(() => route.path === '/admin/personnel-profile')
+const personnelItems = [
+  { id: 'my-profile', label: 'My Profile (5 steps)', icon: 'user' },
+  { id: 'compliances', label: 'Compliances', icon: 'lock' },
+  { id: 'contract-history', label: 'Contract History', icon: 'calendar' },
+  { id: 'training', label: 'Staff Online Training', icon: 'check-circle' },
+]
+const workspaceItems = [
+  { id: 'time-management', label: 'Time Management', icon: 'clock' },
+  { id: 'other-requests', label: 'Other Requests', icon: 'inbox' },
+  { id: 'finance-management', label: 'Finance Management', icon: 'ticket' },
+  { id: 'my-requests', label: 'My Requests', icon: 'inbox' },
+]
 const eventSectionPaths = ['/admin/events', '/admin/users', '/admin/check-ins', '/admin/reports']
 const isEventSection = computed(() => eventSectionPaths.some((path) => route.path === path || route.path.startsWith(`${path}/`)))
 watch(() => route.path, (path) => {
@@ -17,6 +34,7 @@ watch(() => route.path, (path) => {
   eventMenuOpen.value = ['/admin/users', '/admin/check-ins', '/admin/reports']
     .some((itemPath) => path === itemPath || path.startsWith(`${itemPath}/`))
 }, { immediate: true })
+watch(isPersonnelSection, (open) => { personnelMenuOpen.value = open }, { immediate: true })
 const profilePhotoSrc = ref(auth.profilePhotoPreview || ''); let profilePhotoRequest = 0
 const loadProfilePhoto = async () => { const id = ++profilePhotoRequest; if (!auth.user?.profile_photo) { profilePhotoSrc.value = ''; return } try { const { data } = await api.get('/me/profile-photo', { params: { photo: auth.user.profile_photo }, responseType: 'blob' }); if (id === profilePhotoRequest) profilePhotoSrc.value = auth.setProfilePhotoPreview(data) } catch { if (id === profilePhotoRequest) profilePhotoSrc.value = '' } }
 onMounted(() => {
@@ -31,8 +49,9 @@ const logout = async () => { await auth.logout(); router.push('/login') }
 <template>
   <div class="admin-app-shell" :class="{ 'mobile-menu-open': mobileMenuOpen }"><a class="skip-link" href="#main-content">Skip to content</a><button type="button" class="admin-mobile-menu-toggle" :aria-expanded="mobileMenuOpen" aria-controls="admin-sidebar" aria-label="Toggle navigation" @click="mobileMenuOpen = !mobileMenuOpen"><span></span><span></span><span></span></button><button v-if="mobileMenuOpen" type="button" class="admin-mobile-menu-backdrop" aria-label="Close navigation" @click="mobileMenuOpen = false"></button><aside id="admin-sidebar" class="admin-sidebar">
     <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="Live &amp; Learn Cambodia" decoding="async" /></RouterLink>
-    <nav class="admin-nav" :class="{ 'has-open-submenu': eventMenuOpen }" aria-label="Admin navigation">
-      <div v-if="auth.canViewEvents" class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">
+    <nav class="admin-nav" :class="{ 'has-open-submenu': eventMenuOpen || personnelMenuOpen }" aria-label="Admin navigation">
+      <p class="admin-nav-section-label">WORKSPACE</p>
+      <div v-if="auth.canViewEvents || hasEventWorkspace" class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">
         <div class="admin-nav-group-heading">
           <RouterLink to="/admin/events" class="admin-nav-group-link" :class="{ 'is-active': route.path === '/admin/events' || route.path.startsWith('/admin/events/') }">
             <span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 9h18"/></svg></span>{{ isAdmin ? 'All Events' : 'My Events' }}
