@@ -756,6 +756,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Reference-style admin navigation */
 .admin-sidebar {
   width: 270px;
+  height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
   padding: 26px 18px 22px;
   background: #073f3a;
   border-right: 1px solid #1c5554;
@@ -854,7 +858,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-main-shell { width: calc(100% - 230px); margin-left: 230px; }
 }
 @media (max-width: 720px) {
-  .admin-sidebar { width: 100%; padding: 18px 15px 16px; }
+  .admin-sidebar { width: 100%; height: auto; max-height: 60vh; padding: 18px 15px 16px; }
   .admin-brand { margin: 0 5px 18px; }
   .admin-welcome { margin-bottom: 18px; }
   .admin-welcome-avatar { width: 54px; height: 54px; font-size: 1rem; }
@@ -1388,4 +1392,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .personnel-portal-menu{position:relative;gap:5px;margin:4px 0 8px 12px;padding:5px 0 5px 9px;border-left:1px solid rgba(199,215,237,.2);border-radius:0 8px 8px 0;background:rgba(4,42,48,.12)}.personnel-portal-menu>.admin-nav-group,.personnel-portal-menu>a{width:calc(100% - 4px);margin-left:4px}
 .administration-section-label{margin-top:16px;padding-top:12px;border-top:1px solid rgba(199,215,237,.13);color:#91a6b0}
 .personnel-portal-menu>.admin-nav-group>.admin-nav-submenu{margin-left:7px;padding-left:7px}.admin-personnel-submenu a{min-height:38px;padding:8px 8px;font-size:.74rem;line-height:1.2;white-space:nowrap}.personnel-portal-menu>a{font-size:.78rem;white-space:nowrap}.personnel-portal-menu>.admin-nav-group-heading .admin-nav-group-link{font-size:.82rem;white-space:nowrap}.personnel-portal-menu .admin-nav-icon{width:17px;flex-basis:17px}
+.personnel-portal-menu .admin-nav-group-link{display:flex;align-items:center;gap:13px;white-space:nowrap}
 .basic-grid .khmer-hint{color:#8c9aac;font-size:11px;font-weight:400;font-family:inherit}
