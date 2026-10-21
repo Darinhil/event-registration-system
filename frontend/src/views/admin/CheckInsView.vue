@@ -4,7 +4,7 @@ import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRScanner from '../../components/QRScanner.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import { useCheckInStore } from '../../stores/checkIn'
-import { getCheckIns, getAdminEvents, getEvent, getEventCheckInSummary, regenerateEventCheckInQr } from '../../services/adminService'
+import { getCheckIns, getAdminEvents, getEvent, getEventCheckInSummary, getEventRegistrants, regenerateEventCheckInQr } from '../../services/adminService'
 
 const scanning = ref(false)
 const scanMessage = ref('')
@@ -148,7 +148,14 @@ const confirmCheckIn = async (cred = null) => {
   } catch {}
 }
 
-const handleScan = (value) => lookupCredential(value)
+const handleScan = (value) => {
+  scannerError.value = ''
+  return lookupCredential(value)
+}
+const toggleScanner = () => {
+  scannerError.value = ''
+  scanning.value = !scanning.value
+}
 const submitCode = () => lookupCredential(code.value)
 
 const searchAttendees = async () => {
@@ -253,7 +260,7 @@ onMounted(async () => {
             </button>
           </div>
 
-          <button type="button" class="toggle-scanner" @click="scanning = !scanning">
+          <button type="button" class="toggle-scanner" @click="toggleScanner">
             {{ scanning ? 'Hide QR scanner' : 'Show QR scanner' }}
           </button>
 

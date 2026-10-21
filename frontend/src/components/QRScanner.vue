@@ -21,6 +21,9 @@ const stopCamera = async () => {
 onMounted(async () => {
 	reader = new Html5Qrcode(scannerId)
 	try {
+		if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+			throw new Error('Camera access requires HTTPS or localhost.')
+		}
 		await reader.start(
 			{ facingMode: 'environment' },
 			{ fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
@@ -32,8 +35,11 @@ onMounted(async () => {
 			},
 			() => {},
 		)
-	} catch {
-		emit('error', 'Camera access is unavailable. Allow camera permission or enter the attendee code below.')
+	} catch (error) {
+		const reason = error instanceof Error && error.message.includes('HTTPS')
+			? 'Camera access requires HTTPS (or localhost). Open the site using an HTTPS URL, then allow camera permission.'
+			: 'Camera access is unavailable. Allow camera permission, close other apps using the camera, or enter the attendee code below.'
+		emit('error', reason)
 	}
 })
 
