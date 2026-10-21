@@ -1,10 +1,12 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../services/api'
 
 const router = useRouter()
+const route = useRoute()
+const personnelPageTitle = computed(() => ({ compliances: 'Compliances', 'contract-history': 'Contract History', training: 'Staff Online Training' }[route.query.section] || 'My Profile (5 steps)'))
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
@@ -71,6 +73,7 @@ onBeforeUnmount(() => {
 
 <template>
   <header class="admin-topbar">
+    <strong v-if="route.path === '/admin/personnel-profile'" class="profile-context-title">{{ personnelPageTitle }}</strong>
     <label class="admin-search">
       <span class="admin-search-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
@@ -107,3 +110,8 @@ onBeforeUnmount(() => {
     </div>
   </header>
 </template>
+
+<style scoped>
+.profile-context-title{flex:none;margin-right:auto;color:#172b4d;font-size:14px;font-weight:700;letter-spacing:-.1px}
+@media(max-width:720px){.profile-context-title{font-size:12px}}
+</style>

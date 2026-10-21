@@ -87,12 +87,31 @@ const loadDashboard = async () => {
     loading.value = false
   }
 }
-onMounted(loadDashboard)
+onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else loading.value = false })
 </script>
 
 <template>
   <AdminLayout>
-    <section class="reference-dashboard">
+    <section v-if="!auth.isAdmin && !auth.isEventAdmin" class="staff-home">
+      <header class="staff-home__title"><h1>Dashboard</h1></header>
+      <section class="staff-home__welcome"><div><h2>Welcome, {{ auth.user?.name || 'Staff member' }}</h2><p>Here’s an overview of your information and current activities.</p></div><RouterLink to="/admin/personnel-profile?section=my-profile">Complete your profile</RouterLink></section>
+      <section class="staff-home__metrics" aria-label="Your staff overview">
+        <article><small>Profile Completion</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=my-profile">View profile →</RouterLink></article>
+        <article><small>Training Progress</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=training">View training →</RouterLink></article>
+        <article><small>Active Contract</small><strong>—</strong><div class="staff-home__metric-note">Contract information</div><RouterLink to="/admin/personnel-profile?section=contract-history">View contract →</RouterLink></article>
+        <article><small>Compliance Status</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=compliances">View compliance →</RouterLink></article>
+      </section>
+      <section class="staff-home__panel staff-home__quick"><h2>Quick Actions</h2><div class="staff-home__quick-grid">
+        <RouterLink to="/admin/personnel-profile?section=leave-application"><span>▣</span>Apply for Leave</RouterLink><RouterLink to="/admin/personnel-profile?section=overtime-request"><span>◷</span>Request Overtime</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span>➤</span>Travel Application</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span>🛒</span>Purchase Request</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span>▤</span>Fuel Log-sheet</RouterLink><RouterLink to="/admin/personnel-profile?section=finance-management"><span>▱</span>Submit Voucher</RouterLink>
+      </div></section>
+      <div class="staff-home__columns">
+        <section class="staff-home__panel"><header><h2>My Recent Requests</h2><RouterLink to="/admin/personnel-profile?section=my-requests">View all →</RouterLink></header><p class="staff-home__empty">Your recent requests will appear here.</p></section>
+        <section class="staff-home__panel"><header><h2>Upcoming Training</h2><RouterLink to="/admin/personnel-profile?section=training">View all →</RouterLink></header><p class="staff-home__empty">No upcoming training to show.</p></section>
+        <section class="staff-home__panel"><header><h2>Leave Balance</h2><RouterLink to="/admin/personnel-profile?section=time-management">Apply →</RouterLink></header><p class="staff-home__empty">Leave balances will appear when available.</p></section>
+        <section class="staff-home__panel"><header><h2>Recent Activities</h2></header><p class="staff-home__empty">Your recent activities will appear here.</p></section>
+      </div>
+    </section>
+    <section v-else class="reference-dashboard">
       <header class="reference-dashboard__heading">
         <div><h1>Dashboard</h1></div>
         <time class="reference-dashboard__date" :datetime="new Date().toISOString()">{{ dateLabel(new Date(), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) }}</time>

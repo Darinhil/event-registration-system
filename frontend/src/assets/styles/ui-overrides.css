@@ -1379,3 +1379,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   box-sizing: border-box;
   max-width: 100%;
 }
+/* Personnel Portal navigation group */
+.personnel-portal-heading{display:flex;align-items:center;gap:11px;margin:16px 11px 8px;padding:11px 4px;border-top:1px solid rgba(199,215,237,.13);color:#e1f2ef;font-size:.82rem;font-weight:700;letter-spacing:.01em}.personnel-portal-heading svg{width:18px;height:18px;fill:none;stroke:#9fc4bd;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.8}
+.admin-nav-group.has-active-child>.admin-nav-group-heading .admin-nav-group-link.is-active{background:rgba(28,130,117,.24);color:#eafffb}
+.admin-personnel-submenu a.is-active{background:rgba(37,124,242,.75);color:#fff}
+.personnel-portal-heading{width:calc(100% - 22px);text-align:left;cursor:pointer;background:transparent;border:0;font-family:inherit}.personnel-portal-heading:hover{color:#fff;background:rgba(255,255,255,.06)}.personnel-portal-heading .portal-chevron{width:15px;height:15px;margin-left:auto;transition:transform .16s}.personnel-portal-heading[aria-expanded="true"] .portal-chevron{transform:rotate(180deg)}.personnel-portal-menu{display:grid;gap:5px}
+.personnel-portal-heading{width:100%;min-height:44px;margin:5px 0 4px;padding:0 13px;gap:13px;border:1px solid transparent;border-radius:9px;color:#c7d7ed;font-size:.85rem;font-weight:650;letter-spacing:0}.personnel-portal-heading:hover{background:rgba(255,255,255,.08);color:#fff}.personnel-portal-heading>svg:first-child{width:18px;height:18px;flex:0 0 18px;stroke:#c7d7ed}.personnel-portal-heading .portal-chevron{width:17px;height:17px;flex:0 0 17px;padding:8px;box-sizing:content-box;margin-right:-6px;border-radius:9px;background:rgba(255,255,255,.06);stroke:#d6e4f1}
+.personnel-portal-menu{position:relative;gap:5px;margin:4px 0 8px 12px;padding:5px 0 5px 9px;border-left:1px solid rgba(199,215,237,.2);border-radius:0 8px 8px 0;background:rgba(4,42,48,.12)}.personnel-portal-menu>.admin-nav-group,.personnel-portal-menu>a{width:calc(100% - 4px);margin-left:4px}
+.administration-section-label{margin-top:16px;padding-top:12px;border-top:1px solid rgba(199,215,237,.13);color:#91a6b0}
+.personnel-portal-menu>.admin-nav-group>.admin-nav-submenu{margin-left:7px;padding-left:7px}.admin-personnel-submenu a{min-height:38px;padding:8px 8px;font-size:.74rem;line-height:1.2;white-space:nowrap}.personnel-portal-menu>a{font-size:.78rem;white-space:nowrap}.personnel-portal-menu>.admin-nav-group-heading .admin-nav-group-link{font-size:.82rem;white-space:nowrap}.personnel-portal-menu .admin-nav-icon{width:17px;flex-basis:17px}
+.basic-grid .khmer-hint{color:#8c9aac;font-size:11px;font-weight:400;font-family:inherit}

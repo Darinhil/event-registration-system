@@ -772,6 +772,11 @@ img { max-width: 100%; }
 .admin-nav-group.is-expanded .admin-nav-toggle svg { transform: rotate(180deg); }
 .admin-nav-submenu { display: grid; gap: 4px; margin: 4px 0 5px 16px; padding-left: 10px; border-left: 1px solid rgba(199, 215, 237, .24); }
 .admin-nav-submenu a { padding: 10px 12px; font-size: .8rem; }
+.admin-nav-section-label { margin: 6px 12px 8px; color: #91a6b0; font-size: .65rem; font-weight: 750; letter-spacing: .1em; }
+.admin-personnel-submenu { gap: 4px; margin: 4px 0 5px 23px; padding-left: 12px; }
+.admin-personnel-submenu a { display: flex; align-items: center; gap: 9px; min-height: 39px; padding: 8px 10px; font-size: .76rem; }
+.admin-personnel-submenu a .admin-nav-icon { display: grid; flex: 0 0 18px; width: 18px; height: 18px; place-items: center; background: transparent; color: currentColor; }
+.admin-personnel-submenu a.is-active { background: #2563eb; box-shadow: inset 2px 0 #93c5fd; color: #fff; }
 .admin-brand { color: #fff; }
 
 /* --- Events page --- */
