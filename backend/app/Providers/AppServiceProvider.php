@@ -22,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('manage-events', fn (User $user): bool => in_array($user->role, ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'], true));
+        Gate::define('manage-compliance', fn (User $user): bool => in_array($user->role, ['admin', 'event_admin', 'manager'], true));
+        Gate::define('manage-training', fn (User $user): bool => in_array($user->role, ['admin', 'event_admin'], true));
         Gate::define('manage-admin-accounts', fn (User $user): bool => $user->role === 'admin');
     }
 }

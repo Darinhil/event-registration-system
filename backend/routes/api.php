@@ -8,6 +8,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\SystemSettingsController;
+use App\Http\Controllers\StaffContractController;
+use App\Http\Controllers\CompliancePolicyController;
+use App\Http\Controllers\TrainingCourseController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -25,6 +28,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/me/profile-photo', [UserController::class, 'profilePhoto']);
     Route::post('/me/profile', [UserController::class, 'updateProfile']);
     Route::patch('/me/password', [UserController::class, 'updatePassword']);
+    Route::middleware('can:manage-events')->prefix('training')->group(function (): void {
+        Route::get('/courses', [TrainingCourseController::class, 'assigned']);
+        Route::post('/assignments/{assignment}/start', [TrainingCourseController::class, 'start']);
+        Route::post('/assignments/{assignment}/quiz', [TrainingCourseController::class, 'submitQuiz']);
+    });
     Route::post('/registrations', [RegistrationController::class, 'store']);
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
@@ -34,6 +42,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
+        Route::middleware('can:manage-training')->prefix('training')->group(function (): void {
+            Route::get('/staff', [TrainingCourseController::class, 'staff']);
+            Route::get('/courses', [TrainingCourseController::class, 'index']);
+            Route::post('/courses', [TrainingCourseController::class, 'store']);
+            Route::put('/courses/{trainingCourse}', [TrainingCourseController::class, 'update']);
+            Route::patch('/courses/{trainingCourse}/assignments', [TrainingCourseController::class, 'assign']);
+            Route::delete('/courses/{trainingCourse}', [TrainingCourseController::class, 'destroy']);
+        });
+        Route::get('/compliance-policies', [CompliancePolicyController::class, 'index']);
+        Route::post('/compliance-policies', [CompliancePolicyController::class, 'store'])->middleware('can:manage-compliance');
+        Route::put('/compliance-policies/{compliancePolicy}', [CompliancePolicyController::class, 'update'])->middleware('can:manage-compliance');
+        Route::delete('/compliance-policies/{compliancePolicy}', [CompliancePolicyController::class, 'destroy'])->middleware('can:manage-compliance');
+        Route::get('/staff-contracts', [StaffContractController::class, 'index']);
+        Route::post('/staff-contracts', [StaffContractController::class, 'store']);
+        Route::delete('/staff-contracts/{contract}', [StaffContractController::class, 'destroy']);
         Route::post('/check-ins/lookup', [CheckInController::class, 'lookup']);
         Route::post('/check-ins/search', [CheckInController::class, 'search']);
         Route::get('/events', [EventController::class, 'adminIndex']);

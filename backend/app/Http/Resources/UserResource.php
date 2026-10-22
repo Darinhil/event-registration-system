@@ -19,6 +19,10 @@ class UserResource extends JsonResource
             'profile_photo' => $this->profile_photo
                 ? $request->getSchemeAndHttpHost() . Storage::disk('public')->url($this->profile_photo)
                 : null,
+            'personal_information' => $this->personal_information,
+            'professional_qualifications' => $this->professional_qualifications,
+            'family_information' => $this->family_information,
+            'compliance_acknowledgements' => $this->compliance_acknowledgements,
             'role' => $this->role,
             'created_at' => $this->created_at,
             'token' => $this->when(isset($this->token), $this->token),

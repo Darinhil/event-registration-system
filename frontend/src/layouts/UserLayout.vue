@@ -7,6 +7,9 @@ import logo from '../assets/LLEE_Cambodia_Inverse_L.png'
 const router = useRouter()
 const auth = useAuthStore()
 const mobileMenuOpen = ref(false)
+const props = defineProps({
+  onboarding: { type: Boolean, default: false },
+})
 
 const logout = async () => {
   await auth.logout()
@@ -15,9 +18,9 @@ const logout = async () => {
 
 </script>
 <template>
-  <div class="shell" :class="{ 'mobile-menu-open': mobileMenuOpen }">
+  <div class="shell" :class="{ 'mobile-menu-open': mobileMenuOpen, 'onboarding-shell': props.onboarding }">
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <header class="topbar">
+    <header v-if="!props.onboarding" class="topbar">
       <RouterLink to="/" class="brand">
         <img :src="logo" alt="Live & Learn Cambodia" />
       </RouterLink>
@@ -51,6 +54,8 @@ const logout = async () => {
 </template>
 
 <style scoped>
+.shell.onboarding-shell { min-height: 100vh; background: #f5f7fc; }
+
 @media (max-width: 640px) {
   .topbar {
     top: 0;

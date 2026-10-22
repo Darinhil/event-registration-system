@@ -3,12 +3,21 @@ import { useAuthStore } from '../stores/auth'
 
 // Keep the initial bundle small. Admin tools, the QR scanner, and form builder
 // are only downloaded when the user navigates to them.
-const lazy = (path) => () => import(path)
+const viewModules = import.meta.glob('../views/**/*.vue')
+const lazy = (path) => {
+  const loadView = viewModules[path]
+  if (!loadView) throw new Error(`Unknown view module: ${path}`)
+  return loadView
+}
 const HomeView = lazy('../views/public/HomeView.vue')
 const RegistrationView = lazy('../views/public/RegistrationView.vue')
 const EventView = lazy('../views/public/EventView.vue')
 const RegistrationSuccessView = lazy('../views/user/RegistrationSuccessView.vue')
 const MyInformationView = lazy('../views/user/MyInformationView.vue')
+const PersonalInformationView = lazy('../views/user/PersonalInformationView.vue')
+const ProfessionalQualificationsView = lazy('../views/user/ProfessionalQualificationsView.vue')
+const FamilyInformationView = lazy('../views/user/FamilyInformationView.vue')
+const SupportingDocumentsView = lazy('../views/user/SupportingDocumentsView.vue')
 const EditRegistrationView = lazy('../views/user/EditRegistrationView.vue')
 const CheckInView = lazy('../views/user/CheckInView.vue')
 const DashboardView = lazy('../views/admin/DashboardView.vue')
@@ -30,7 +39,7 @@ const SystemSettingsView = lazy('../views/admin/SystemSettingsView.vue')
 const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView }, { path: '/events', redirect: '/me', meta: { auth: true } },
   { path: '/register', redirect: '/me' }, { path: '/events/:eventId', component: EventView }, { path: '/events/:eventId/register', component: RegistrationView, meta: { auth: true } },
-  { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } }, { path: '/check-in', component: CheckInView, meta: { auth: true } }, { path: '/me', component: MyInformationView, meta: { auth: true } }, { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
+  { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } }, { path: '/check-in', component: CheckInView, meta: { auth: true } }, { path: '/me', component: MyInformationView, meta: { auth: true } }, { path: '/me/personal-information', component: PersonalInformationView, meta: { auth: true } }, { path: '/me/professional-qualifications', component: ProfessionalQualificationsView, meta: { auth: true } }, { path: '/me/family-information', component: FamilyInformationView, meta: { auth: true } }, { path: '/me/supporting-documents', component: SupportingDocumentsView, meta: { auth: true } }, { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
   { path: '/profile', component: AdminProfileView, meta: { auth: true } },
   { path: '/admin', component: DashboardView, meta: { auth: true, staff: true } }, { path: '/admin/events', component: EventsView, meta: { auth: true, staff: true } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, staff: true } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, staff: true } },
   { path: '/admin/users', component: UsersView, meta: { auth: true, staff: true } }, { path: '/admin/users/:id', component: UserDetailView, meta: { auth: true, staff: true } },

@@ -5,7 +5,10 @@ backend/.env.*
 backend/vendor/
 backend/storage/*.key
 backend/storage/app/
-backend/storage/framework/
+backend/storage/framework/*
+!backend/storage/framework/views/
+backend/storage/framework/views/*
+!backend/storage/framework/views/.gitignore
 backend/storage/logs/
 backend/database/*.sqlite
 

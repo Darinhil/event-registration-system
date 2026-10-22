@@ -72,6 +72,7 @@ const formatDeadline = (value) => {
           <h1>My information</h1>
           <p>Manage your profile and keep track of every event you have joined.</p>
         </div>
+        <RouterLink class="mi-edit-profile-link" to="/me/personal-information">Edit personal information</RouterLink>
       </header>
 
       <div v-if="profileLoading" class="dynamic-loading" role="status">
