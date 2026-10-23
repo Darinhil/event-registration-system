@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import FinanceManagement from '../../components/FinanceManagement.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
@@ -571,6 +572,103 @@ const filteredCompliances = computed(() => complianceItems.value.filter((item) =
 const completedCompliances = computed(() => complianceItems.value.filter((item) => item.status === 'Completed').length)
 const pendingCompliances = computed(() => complianceItems.value.filter((item) => item.status === 'Pending').length)
 const exitProfile = () => router.push('/admin')
+const declarationAccepted = ref(false)
+const declarationSubmitted = ref(false)
+const declarationPreviewOpen = ref(false)
+const declarationText = 'I confirm that all details and documents submitted in this Personnel Profile are complete, true, and correct to the best of my knowledge. I understand that any false, misleading, or suppressed information may result in immediate disciplinary action or termination of employment in accordance with the organization policy. I undertake to inform administration and HR team immediately of any changes to this information.'
+const submitDeclaration = () => {
+  if (!declarationAccepted.value) return
+  declarationSubmitted.value = true
+}
+const printDeclaration = () => {
+  declarationPreviewOpen.value = true
+  window.requestAnimationFrame(() => window.print())
+}
+const supportingDocuments = ref([])
+const supportingNotes = ref('')
+const supportingDocumentFormOpen = ref(false)
+const supportingDocumentEditingId = ref(null)
+const supportingDocumentError = ref('')
+const supportingDocumentForm = reactive({
+  title: '',
+  description: '',
+  uploadDate: new Date().toISOString().slice(0, 10),
+  remark: '',
+  file: null,
+  fileName: '',
+})
+const resetSupportingDocumentForm = () => {
+  Object.assign(supportingDocumentForm, {
+    title: '',
+    description: '',
+    uploadDate: new Date().toISOString().slice(0, 10),
+    remark: '',
+    file: null,
+    fileName: '',
+  })
+  supportingDocumentEditingId.value = null
+  supportingDocumentFormOpen.value = false
+  supportingDocumentError.value = ''
+}
+const openSupportingDocumentForm = (document = null) => {
+  supportingDocumentError.value = ''
+  if (document) {
+    Object.assign(supportingDocumentForm, {
+      title: document.title,
+      description: document.description,
+      uploadDate: document.uploadDate,
+      remark: document.remark,
+      file: null,
+      fileName: document.fileName,
+    })
+    supportingDocumentEditingId.value = document.id
+  } else {
+    resetSupportingDocumentForm()
+    supportingDocumentFormOpen.value = true
+  }
+  supportingDocumentFormOpen.value = true
+}
+const selectSupportingDocumentFile = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']
+  if (!allowedTypes.includes(file.type)) {
+    supportingDocumentError.value = 'Choose a PDF, JPG, or PNG file.'
+    event.target.value = ''
+    supportingDocumentForm.file = null
+    return
+  }
+  supportingDocumentError.value = ''
+  supportingDocumentForm.file = file
+  supportingDocumentForm.fileName = file.name
+}
+const saveSupportingDocument = () => {
+  supportingDocumentError.value = ''
+  if (!supportingDocumentForm.title.trim()) {
+    supportingDocumentError.value = 'Enter a document title.'
+    return
+  }
+  if (!supportingDocumentForm.fileName) {
+    supportingDocumentError.value = 'Choose a PDF, JPG, or PNG attachment.'
+    return
+  }
+
+  const document = {
+    id: supportingDocumentEditingId.value ?? Date.now(),
+    title: supportingDocumentForm.title.trim(),
+    description: supportingDocumentForm.description.trim(),
+    uploadDate: supportingDocumentForm.uploadDate,
+    remark: supportingDocumentForm.remark.trim(),
+    fileName: supportingDocumentForm.fileName,
+  }
+  const index = supportingDocuments.value.findIndex(({ id }) => id === document.id)
+  if (index < 0) supportingDocuments.value.unshift(document)
+  else supportingDocuments.value[index] = document
+  resetSupportingDocumentForm()
+}
+const removeSupportingDocument = (documentId) => {
+  supportingDocuments.value = supportingDocuments.value.filter(({ id }) => id !== documentId)
+}
 const completeCompliance = async (item) => {
   if (complianceSavingKeys.value[item.key] || item.status === 'Completed') return
   complianceSavingKeys.value = { ...complianceSavingKeys.value, [item.key]: true }
@@ -599,7 +697,7 @@ const completeCompliance = async (item) => {
 <template>
   <AdminLayout>
     <div class="profile-workspace">
-      <div v-if="section !== 'training'" class="profile-page-top"><div><h1>{{ heading }}</h1><p>{{ section === 'compliances' ? 'Manage your required policies and declarations.' : section === 'contract-history' ? 'All contracts on record — probationary, full-time, part-time, and more.' : 'Complete all five tabs — your progress is saved per tab.' }}</p></div></div>
+      <div v-if="section !== 'training' && section !== 'finance-management'" class="profile-page-top"><div><h1>{{ heading }}</h1><p>{{ section === 'compliances' ? 'Manage your required policies and declarations.' : section === 'contract-history' ? 'All contracts on record — probationary, full-time, part-time, and more.' : 'Complete all five tabs — your progress is saved per tab.' }}</p></div></div>
 
       <template v-if="section === 'my-profile' || !sectionLabels[section]">
         <ol class="profile-stepper" aria-label="Profile steps">
@@ -697,7 +795,7 @@ const completeCompliance = async (item) => {
           <p v-if="familyMessage" class="qualification-notice is-success" role="status">{{ familyMessage }}</p>
           <div class="form-section-title"><span>▣</span><h3>Family Situation</h3></div>
           <div class="form-grid family-grid">
-            <label>Marital status<select v-model="familyInformation.marital_status"><option value="">Select status</option><option>Married</option><option>Single</option><option>Divorced</option><option>Widowed</option><option>Partnered</option></select></label>
+            <label>Marital status<select v-model="familyInformation.marital_status"><option value="">Select status</option><option>Married</option><option>Single</option></select></label>
             <label>Spouse / partner name<input v-model.trim="familyInformation.spouse_partner_name" maxlength="200" /></label>
             <label>Number of children (below 18 years old)<input type="number" min="0" :value="countChildrenUnder18" readonly /></label>
           </div>
@@ -742,9 +840,132 @@ const completeCompliance = async (item) => {
             <button class="add-row" type="button" @click="addBeneficiary">+ Add beneficiary</button>
           </section>
           </template>
+          <template v-else-if="step === 3">
+          <div class="supporting-documents-title">
+            <span class="supporting-documents-title-icon" aria-hidden="true">↥</span>
+            <div><h2>Supporting Documents</h2><p>Add the documents needed to complete your personnel profile.</p></div>
+            <span class="supporting-documents-count">{{ supportingDocuments.length }} {{ supportingDocuments.length === 1 ? 'document' : 'documents' }}</span>
+          </div>
+
+          <section class="supporting-documents-card">
+            <div class="supporting-documents-card-heading">
+              <div class="supporting-documents-heading-copy">
+                <span class="supporting-documents-heading-icon" aria-hidden="true">▤</span>
+                <div><h3>Attachments</h3><p>Upload a clear scan or photo. Accepted formats: PDF, JPG, PNG.</p></div>
+              </div>
+              <button type="button" class="supporting-document-add-button" @click="openSupportingDocumentForm()"><span aria-hidden="true">＋</span> Add document</button>
+            </div>
+            <div class="supporting-document-examples">
+              <div class="supporting-document-examples-heading"><span aria-hidden="true">ⓘ</span><strong>Examples of supporting documents</strong></div>
+              <ul>
+                <li><span aria-hidden="true">▣</span>ID card, birth certificate, or passport for you and listed family members</li>
+                <li><span aria-hidden="true">▣</span>Valid visa and work permit, if you are not Cambodian</li>
+                <li><span aria-hidden="true">▣</span>Employment book, if applicable</li>
+                <li><span aria-hidden="true">▣</span>Family record book, if married</li>
+                <li><span aria-hidden="true">▣</span>Residential book or immigration report for foreigners</li>
+                <li><span aria-hidden="true">▣</span>Certificates</li>
+              </ul>
+            </div>
+
+            <p v-if="supportingDocumentError" class="qualification-notice is-error" role="alert">{{ supportingDocumentError }}</p>
+            <div v-if="supportingDocumentFormOpen" class="supporting-document-editor">
+              <div class="supporting-document-editor-heading"><div><strong>{{ supportingDocumentEditingId !== null ? 'Edit document' : 'Add a supporting document' }}</strong><small>Enter the document details and attach your file.</small></div><button type="button" aria-label="Close document form" @click="resetSupportingDocumentForm">×</button></div>
+              <div class="supporting-document-form-grid">
+                <label><span>Document title <b>*</b></span><input v-model="supportingDocumentForm.title" maxlength="200" placeholder="e.g. National ID card" /></label>
+                <label><span>Uploading date</span><input v-model="supportingDocumentForm.uploadDate" type="date" /></label>
+                <label class="supporting-document-description"><span>Description</span><textarea v-model="supportingDocumentForm.description" rows="3" maxlength="1000" placeholder="Briefly describe this document"></textarea></label>
+                <label><span>Remark</span><textarea v-model="supportingDocumentForm.remark" rows="3" maxlength="1000" placeholder="Add an optional note"></textarea></label>
+                <label class="supporting-document-attachment"><span>Attachment <b>*</b></span><input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" @change="selectSupportingDocumentFile" /><small>PDF, JPG, or PNG<span v-if="supportingDocumentForm.fileName"> · Selected: {{ supportingDocumentForm.fileName }}</span></small></label>
+              </div>
+              <div class="supporting-document-editor-actions">
+                <button type="button" class="supporting-document-cancel-button" @click="resetSupportingDocumentForm">Cancel</button>
+                <button type="button" class="supporting-document-save-button" @click="saveSupportingDocument">{{ supportingDocumentEditingId !== null ? 'Update document' : 'Save document' }}</button>
+              </div>
+            </div>
+
+            <div class="profile-qualification-table-wrap supporting-document-table-wrap">
+              <table class="profile-qualification-table supporting-document-table">
+                <thead><tr><th>Document</th><th>Description</th><th>Uploading date</th><th>Remark</th><th>Actions</th></tr></thead>
+                <tbody>
+                  <tr v-for="document in supportingDocuments" :key="document.id">
+                    <td><span class="supporting-document-file-icon" aria-hidden="true">PDF</span><span class="supporting-document-file-details"><strong>{{ document.title }}</strong><small>{{ document.fileName }}</small></span></td>
+                    <td>{{ document.description || '—' }}</td>
+                    <td>{{ document.uploadDate || '—' }}</td>
+                    <td>{{ document.remark || '—' }}</td>
+                    <td><div class="supporting-document-row-actions"><button type="button" @click="openSupportingDocumentForm(document)">Edit</button><button type="button" class="danger" @click="removeSupportingDocument(document.id)">Delete</button></div></td>
+                  </tr>
+                  <tr v-if="supportingDocuments.length === 0"><td colspan="5" class="supporting-document-empty"><span aria-hidden="true">▤</span><strong>No documents added yet</strong><small>Your uploaded documents will appear here.</small></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="supporting-documents-notes">
+            <div class="supporting-documents-notes-heading"><span class="supporting-documents-notes-icon" aria-hidden="true">✎</span><div><h3>Your notes to the organization</h3><p>Share any additional information you would like the organization to know.</p></div></div>
+            <textarea v-model="supportingNotes" rows="4" maxlength="3000" placeholder="Write your notes here..."></textarea>
+          </section>
+          </template>
+          <template v-else-if="step === 4">
+          <header class="declaration-heading">
+            <div class="declaration-heading-mark" aria-hidden="true"><span>05</span><i></i></div>
+            <div class="declaration-heading-copy"><p>PERSONNEL PROFILE <span>·</span> FINAL STEP</p><h2>Declaration</h2><span>Review your statement and confirm before submitting.</span></div>
+            <span class="declaration-heading-status"><i></i> Ready for review</span>
+          </header>
+          <div class="declaration-layout">
+            <article class="declaration-card">
+              <div class="declaration-card-top">
+                <div class="declaration-document-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" focusable="false">
+                    <path d="M7 3.75h6.2L18 8.6v11.65H7a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2Z" />
+                    <path d="M13 4v5h5M8.5 13h7M8.5 16.5h7" />
+                  </svg>
+                </div>
+                <div class="declaration-card-heading-copy"><small>CONFIRMATION STATEMENT</small><strong>Accuracy and completeness</strong></div>
+                <span class="declaration-required"><i></i> Required</span>
+              </div>
+              <div class="declaration-statement-wrap">
+                <span class="declaration-quote-mark" aria-hidden="true">“</span>
+                <p class="declaration-statement">{{ declarationText }}</p>
+              </div>
+              <div class="declaration-card-foot"><span class="declaration-info-icon" aria-hidden="true">i</span><span>This declaration applies to all information and documents provided in your Personnel Profile.</span></div>
+            </article>
+            <aside class="declaration-aside">
+              <div class="declaration-aside-heading"><span class="declaration-aside-icon" aria-hidden="true">✓</span><div><small>YOUR ACKNOWLEDGMENT</small><strong>Confirm this declaration</strong></div></div>
+              <p>By checking the box below, you confirm that you have read and understood the statement.</p>
+              <label class="declaration-confirm">
+                <input v-model="declarationAccepted" type="checkbox" :disabled="declarationSubmitted" />
+                <span class="declaration-checkbox" aria-hidden="true"></span>
+                <span>I have read and agree. I confirm the information and documents submitted are accurate.</span>
+              </label>
+              <div class="declaration-aside-note"><span aria-hidden="true">⌁</span><span>Your confirmation will be recorded when you submit.</span></div>
+            </aside>
+          </div>
+          <div v-if="declarationSubmitted" class="declaration-success" role="status">
+            <span aria-hidden="true">✓</span>
+            <div><strong>Declaration confirmed</strong><small>Your confirmation is recorded for this session.</small></div>
+          </div>
+          <div v-if="!declarationAccepted && !declarationSubmitted" class="declaration-hint"><span aria-hidden="true">!</span> Confirmation is required before you can submit your profile.</div>
+
+          <div v-if="declarationPreviewOpen" class="declaration-preview-backdrop" @click.self="declarationPreviewOpen = false">
+            <section class="declaration-preview" role="dialog" aria-modal="true" aria-labelledby="declaration-preview-title">
+              <header><div><small>PERSONNEL PROFILE</small><h3 id="declaration-preview-title">Declaration preview</h3></div><button type="button" aria-label="Close preview" @click="declarationPreviewOpen = false">×</button></header>
+              <div class="declaration-preview-content"><p>{{ declarationText }}</p><div class="declaration-preview-signature"><span>Staff signature</span><span>Date</span></div></div>
+              <footer><button type="button" class="declaration-action-secondary" @click="declarationPreviewOpen = false">Close</button><button type="button" class="declaration-action-primary" @click="printDeclaration">Print</button></footer>
+            </section>
+          </div>
+          </template>
           <div v-else class="profile-step-placeholder"><div class="form-section-title"><span>✓</span><h2>{{ steps[step] }}</h2></div><p>Complete this section of your personnel profile.</p></div>
 
-          <footer class="form-actions"><button type="button" class="home-button">Home</button><span class="step-count">Tab {{ step + 1 }} of 5</span><button type="button" :disabled="step === 0" @click="step = Math.max(0, step - 1)">Previous</button><div class="action-spacer"></div><button type="button" :disabled="qualificationsSaving || familySaving" @click="step === 1 ? saveQualifications() : step === 2 ? saveFamilyInformation(false) : undefined">{{ qualificationsSaving || familySaving ? 'Saving…' : 'Save' }}</button><button type="button" @click="exitProfile">Exit</button><button class="next-button" type="button" :disabled="familySaving" @click="step === 2 ? saveFamilyInformation(true).then((saved) => { if (saved) step = Math.min(4, step + 1) }) : step = Math.min(4, step + 1)">{{ step === 4 ? 'Finish' : 'Next →' }}</button></footer>
+          <footer v-if="step !== 4" class="form-actions"><button type="button" class="home-button">Home</button><span class="step-count">Tab {{ step + 1 }} of 5</span><button type="button" :disabled="step === 0" @click="step = Math.max(0, step - 1)">Previous</button><div class="action-spacer"></div><button type="button" :disabled="qualificationsSaving || familySaving" @click="step === 1 ? saveQualifications() : step === 2 ? saveFamilyInformation(false) : undefined">{{ qualificationsSaving || familySaving ? 'Saving…' : 'Save' }}</button><button type="button" @click="exitProfile">Exit</button><button class="next-button" type="button" :disabled="familySaving" @click="step === 2 ? saveFamilyInformation(true).then((saved) => { if (saved) step = Math.min(4, step + 1) }) : step = Math.min(4, step + 1)">{{ step === 4 ? 'Finish' : 'Next →' }}</button></footer>
+          <footer v-else class="declaration-actions">
+            <button type="button" class="declaration-action-secondary" @click="step = 3">← Previous</button>
+            <span class="step-count">Tab 5 of 5</span>
+            <div class="declaration-actions-spacer"></div>
+            <button type="button" class="declaration-action-secondary" @click="declarationPreviewOpen = true">Preview</button>
+            <button type="button" class="declaration-action-secondary" @click="printDeclaration">Print</button>
+            <button type="button" class="declaration-action-primary" :disabled="!declarationAccepted || declarationSubmitted" @click="submitDeclaration">{{ declarationSubmitted ? 'Submitted' : 'Submit' }}</button>
+            <button type="button" class="declaration-action-exit" @click="exitProfile">Exit</button>
+          </footer>
         </section>
 
         <section class="change-requests">
@@ -933,6 +1154,7 @@ const completeCompliance = async (item) => {
         </div>
         <div v-if="selectedCourse" class="training-modal-backdrop" @click.self="selectedCourse = null"><section class="training-modal training-learner-modal" role="dialog" aria-modal="true" aria-labelledby="training-modal-title"><button class="training-modal-close" type="button" aria-label="Close" @click="selectedCourse = null">×</button><span class="training-modal-kicker">{{ selectedCourse.course.category }}</span><h2 id="training-modal-title">{{ selectedCourse.course.title }}</h2><template v-if="trainingStage === 'content'"><p>{{ selectedCourse.course.description }}</p><div class="training-learning-content">{{ selectedCourse.course.content }}</div><div class="training-modal-meta"><span>Due {{ selectedCourse.course.due_date || 'No due date' }}</span><span>Pass mark: {{ selectedCourse.course.pass_percent }}%</span></div><button class="training-start training-modal-action" type="button" @click="trainingStage = 'quiz'">I have read this — take quiz</button></template><form v-else-if="trainingStage === 'quiz'" class="training-live-quiz" @submit.prevent="submitTrainingQuiz"><p>Answer every question. You need {{ selectedCourse.course.pass_percent }}% or higher to earn your certificate.</p><fieldset v-for="(question, questionIndex) in selectedCourse.course.quiz" :key="questionIndex"><legend>{{ questionIndex + 1 }}. {{ question.question }}</legend><label v-for="(option, optionIndex) in question.options" :key="optionIndex"><input v-model="trainingAnswers[questionIndex]" type="radio" :name="`training-question-${questionIndex}`" :value="optionIndex" />{{ option }}</label></fieldset><div v-if="trainingError" class="training-error" role="alert">{{ trainingError }}</div><footer><button type="button" class="training-secondary" @click="trainingStage = 'content'">Back to material</button><button type="submit" class="training-start" :disabled="trainingSaving">{{ trainingSaving ? 'Submitting…' : 'Submit quiz' }}</button></footer></form><div v-else-if="trainingStage === 'result'" class="training-result"><strong>Score: {{ trainingResult?.score }}%</strong><p>You did not reach the passing score of {{ selectedCourse.course.pass_percent }}%. Review the material and try again.</p><button class="training-start" type="button" @click="retryTrainingQuiz">Try again</button></div><div v-else class="training-certificate"><span class="training-modal-kicker">CERTIFICATE OF COMPLETION</span><h2>Certificate</h2><p>This certifies that</p><strong class="training-certificate-name">{{ auth.user?.name }}</strong><p>has successfully completed</p><strong>{{ selectedCourse.course.title }}</strong><p>{{ selectedCourse.course.category }}</p><div class="training-certificate-score">Final score: {{ selectedCourse.score }}% · Completed {{ selectedCourse.completed_at ? new Date(selectedCourse.completed_at).toLocaleDateString() : 'today' }}</div><button class="training-start training-certificate-print" type="button" @click="printTrainingCertificate">Print / Save certificate</button></div></section></div>
       </section>
+      <FinanceManagement v-else-if="section === 'finance-management'" />
       <section v-else class="other-section"><h2>{{ heading }}</h2><p>{{ heading }} information will appear here.</p></section>
     </div>
   </AdminLayout>
@@ -942,7 +1164,7 @@ const completeCompliance = async (item) => {
 .compliance-save-error{margin:0 0 12px;padding:10px 12px;border:1px solid #f2caca;border-radius:6px;background:#fff4f4;color:#a93232}
 .contract-error{margin:0 0 12px;padding:10px 12px;border:1px solid #f2caca;border-radius:6px;background:#fff4f4;color:#a93232}
 .contract-history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}.contract-history-toolbar p{margin:0;color:#718198;font-size:11px}
-.contract-add-button,.contract-cancel-button{min-height:34px;padding:0 12px;border:1px solid #2f49c4;border-radius:5px;background:#2f49c4;color:#fff;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.contract-add-button:disabled{opacity:.6;cursor:wait}.contract-cancel-button{border-color:#dfe5ef;background:#fff;color:#455671}
+.contract-add-button,.contract-cancel-button{min-height:34px;padding:0 12px;border:1px solid #08796d;border-radius:5px;background:#08796d;color:#fff;font:inherit;font-size:10px;font-weight:700;cursor:pointer}.contract-add-button:hover:not(:disabled){border-color:#06685e;background:#06685e}.contract-add-button:disabled{opacity:.6;cursor:wait}.contract-cancel-button{border-color:#dfe5ef;background:#fff;color:#455671}
 .contract-delete-button{padding:0;border:0;background:none;color:#a93232;font:inherit;font-size:9px;font-weight:650;cursor:pointer}
 .contract-empty{padding:24px!important;color:#8190a3!important;text-align:center}
 .contract-modal-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:16px;background:rgba(15,27,48,.48)}
@@ -1165,4 +1387,137 @@ const completeCompliance = async (item) => {
 .training-assignment-selected{margin:10px 0 0;color:#6b7e92;font-size:9px}
 .training-assignment-modal>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 @media(max-width:560px){.training-staff-setup{align-items:flex-start;flex-wrap:wrap}.training-staff-setup>a{margin-left:39px}.training-role-pill{display:none}.training-assignment-modal{padding:20px}}
+.supporting-documents-title{display:flex;align-items:center;gap:11px;margin-bottom:14px;padding:2px 1px}
+.supporting-documents-title-icon,.supporting-documents-heading-icon,.supporting-documents-notes-icon{display:grid;flex:none;place-items:center;width:38px;height:38px;border:1px solid #d9eeea;border-radius:11px;background:#edf8f5;color:#08796d;font-size:20px}
+.supporting-documents-title h2{margin:0;color:#19324c;font-size:16px;letter-spacing:-.2px}
+.supporting-documents-title p{margin:4px 0 0;color:#78899d;font-size:10px}
+.supporting-documents-count{margin-left:auto;padding:6px 10px;border:1px solid #dce8e6;border-radius:99px;background:#f5faf9;color:#56746e;font-size:9px;font-weight:700}
+.supporting-documents-card,.supporting-documents-notes{margin-top:12px;padding:18px;border:1px solid #e3eaf0;border-radius:12px;background:#fff;box-shadow:0 4px 14px rgba(28,48,70,.035)}
+.supporting-documents-card-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.supporting-documents-heading-copy{display:flex;align-items:center;gap:10px}
+.supporting-documents-heading-icon{width:34px;height:34px;border-radius:9px;font-size:16px}
+.supporting-documents-card-heading h3{margin:0;color:#263e59;font-size:13px}
+.supporting-documents-card-heading p{margin:4px 0 0;color:#8291a5;font-size:10px}
+.supporting-document-add-button,.supporting-document-save-button{display:inline-flex;min-height:35px;align-items:center;justify-content:center;gap:7px;padding:0 13px;border:1px solid #08796d;border-radius:7px;background:#08796d;color:#fff;font:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
+.supporting-document-add-button:hover,.supporting-document-save-button:hover{transform:translateY(-1px);background:#06685e}
+.supporting-document-add-button span{font-size:16px;line-height:1}
+.supporting-document-examples{margin:15px 0;padding:13px 15px;border:1px solid #e3eaf0;border-radius:9px;background:#f7f9fc;color:#596d84;font-size:10px;line-height:1.65}
+.supporting-document-examples-heading{display:flex;align-items:center;gap:7px;margin-bottom:8px;color:#344961}
+.supporting-document-examples-heading>span{color:#168575;font-size:14px}
+.supporting-document-examples ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin:0;padding:0;list-style:none}
+.supporting-document-examples li{display:flex;align-items:flex-start;gap:7px}
+.supporting-document-examples li>span{flex:none;color:#74a99c;font-size:9px}
+.supporting-document-editor{margin:14px 0;padding:16px;border:1px solid #dce8e8;border-radius:10px;background:linear-gradient(145deg,#f7fbfb,#f8faff)}
+.supporting-document-editor-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:13px}
+.supporting-document-editor-heading strong{display:block;color:#253d58;font-size:12px}
+.supporting-document-editor-heading small{display:block;margin-top:4px;color:#8291a5;font-size:9px}
+.supporting-document-editor-heading>button{width:26px;height:26px;border:0;border-radius:6px;background:#eaf0f3;color:#60758b;font-size:18px;line-height:1;cursor:pointer}
+.supporting-document-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.supporting-document-form-grid label{display:grid;min-width:0;gap:6px;color:#42566e;font-size:10px;font-weight:650}
+.supporting-document-form-grid label>span b{color:#d14d4d}
+.supporting-document-form-grid input:not([type=file]),.supporting-document-form-grid textarea,.supporting-documents-notes textarea{box-sizing:border-box;width:100%;min-width:0;min-height:37px;padding:9px 10px;border:1px solid #d7e1e9;border-radius:7px;background:#fff;color:#263e59;font:inherit;font-size:10px;font-weight:400;transition:border-color .15s,box-shadow .15s}
+.supporting-document-form-grid textarea,.supporting-documents-notes textarea{resize:vertical}
+.supporting-document-form-grid input:focus,.supporting-document-form-grid textarea:focus,.supporting-documents-notes textarea:focus{border-color:#168575;outline:0;box-shadow:0 0 0 3px rgba(22,133,117,.1)}
+.supporting-document-description{grid-row:span 2}
+.supporting-document-description textarea{height:100%;min-height:86px}
+.supporting-document-form-grid .supporting-document-attachment{align-content:start}
+.supporting-document-form-grid input[type=file]{box-sizing:border-box;width:100%;min-height:38px;padding:7px;border:1px dashed #b9cbd5;border-radius:7px;background:#fff;color:#53677c;font:inherit;font-size:9px}
+.supporting-document-form-grid label>small{color:#8291a5;font-size:9px;font-weight:400;overflow-wrap:anywhere}
+.supporting-document-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #e4ebef}
+.supporting-document-cancel-button{min-height:35px;padding:0 13px;border:1px solid #d7e1e9;border-radius:7px;background:#fff;color:#53677c;font:inherit;font-size:10px;font-weight:650;cursor:pointer}
+.supporting-document-table-wrap{margin-top:12px;border:1px solid #e8edf2;border-radius:9px}
+.supporting-document-table{min-width:740px}
+.supporting-document-table th{padding:11px 10px;background:#f6f8fb;color:#6a7d92;font-size:8px;letter-spacing:.04em;text-transform:uppercase}
+.supporting-document-table td{padding:10px;color:#52667d;font-size:10px}
+.supporting-document-table td:first-child{display:flex;align-items:center;gap:8px}
+.supporting-document-file-icon{display:grid;width:29px;height:32px;flex:none;place-items:center;border:1px solid #f0d8d6;border-radius:6px;background:#fff5f4;color:#bd5c52;font-size:7px;font-weight:800}
+.supporting-document-file-details{display:grid;gap:3px;min-width:0}
+.supporting-document-file-details strong{color:#344961;font-size:10px}
+.supporting-document-file-details small{color:#8291a5;font-size:8px;overflow-wrap:anywhere}
+.supporting-document-row-actions{display:flex;gap:9px}
+.supporting-document-row-actions button{padding:3px 0;border:0;background:none;color:#3155bc;font:inherit;font-size:9px;font-weight:650;cursor:pointer}
+.supporting-document-row-actions button:hover{text-decoration:underline}
+.supporting-document-row-actions button.danger{color:#b43f3f}
+.supporting-document-table .supporting-document-empty{display:table-cell;padding:28px 12px;text-align:center}
+.supporting-document-empty>span,.supporting-document-empty strong,.supporting-document-empty small{display:block}
+.supporting-document-empty>span{margin-bottom:7px;color:#91a4b4;font-size:19px}
+.supporting-document-empty strong{color:#53677c;font-size:10px}
+.supporting-document-empty small{margin-top:4px;color:#8998a9;font-size:9px}
+.supporting-documents-notes{display:grid;gap:12px}
+.supporting-documents-notes-heading{display:flex;align-items:center;gap:10px}
+.supporting-documents-notes-icon{width:32px;height:32px;border-radius:9px;font-size:15px}
+.supporting-documents-notes-heading h3{margin:0;color:#263e59;font-size:12px}
+.supporting-documents-notes-heading p{margin:4px 0 0;color:#8291a5;font-size:9px}
+.supporting-documents-notes textarea{min-height:92px}
+.qualification-notice.is-error{margin:10px 0}
+@media(max-width:700px){.supporting-documents-title{align-items:flex-start}.supporting-documents-title-icon{width:34px;height:34px}.supporting-documents-count{font-size:8px}.supporting-documents-card,.supporting-documents-notes{padding:13px}.supporting-documents-card-heading{align-items:flex-start;flex-direction:column}.supporting-document-add-button{width:100%}.supporting-document-examples ul{grid-template-columns:1fr}.supporting-document-form-grid{grid-template-columns:1fr}.supporting-document-description{grid-row:auto}.supporting-document-description textarea{min-height:78px}.supporting-document-editor{padding:12px}.supporting-document-editor-actions>*{flex:1}.supporting-document-table-wrap{margin-inline:-3px}}
+.declaration-heading{position:relative;display:flex;align-items:center;gap:15px;min-height:102px;margin:4px 0 16px;padding:20px 23px;overflow:hidden;border:1px solid #deebe8;border-radius:14px;background:radial-gradient(ellipse at 8% 100%,rgba(195,235,224,.32),transparent 42%),linear-gradient(115deg,#f5fbf9 0%,#fff 74%);box-shadow:0 5px 18px rgba(31,74,67,.035)}
+.declaration-heading-mark{position:relative;display:grid;width:52px;height:52px;flex:none;place-items:center;overflow:hidden;border:1px solid #cfe6df;border-radius:15px;background:linear-gradient(145deg,#e5f5ef,#f7fcfa);color:#08796d}
+.declaration-heading-mark span{font-size:15px;font-weight:800;letter-spacing:-.06em}
+.declaration-heading-mark i{position:absolute;right:-11px;bottom:-17px;width:33px;height:33px;border:1px solid rgba(8,121,109,.14);border-radius:50%}
+.declaration-heading-copy{min-width:0}
+.declaration-heading-copy p{margin:0 0 5px;color:#168071;font-size:8px;font-weight:800;letter-spacing:.11em}
+.declaration-heading-copy p span{padding:0 3px;color:#a6b9b2}
+.declaration-heading h2{margin:0;color:#1a3048;font-size:21px;letter-spacing:-.45px}
+.declaration-heading-copy>span{display:block;margin-top:5px;color:#73869a;font-size:10px}
+.declaration-heading-status{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:7px 10px;border:1px solid #dcece5;border-radius:99px;background:rgba(255,255,255,.8);color:#547767;font-size:9px;font-weight:650;white-space:nowrap}
+.declaration-heading-status i,.declaration-required i{width:6px;height:6px;border-radius:50%;background:#39a77e;box-shadow:0 0 0 3px rgba(57,167,126,.12)}
+.declaration-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(230px,.85fr);gap:14px;align-items:stretch}
+.declaration-card,.declaration-aside{overflow:hidden;border:1px solid #e2e9ef;border-radius:12px;background:#fff;box-shadow:0 7px 22px rgba(28,48,70,.045)}
+.declaration-card{display:flex;flex-direction:column}
+.declaration-card-top{display:flex;align-items:center;gap:11px;min-height:68px;padding:13px 17px;border-bottom:1px solid #edf1f4;background:linear-gradient(110deg,#fbfcfe,#f8fafb)}
+.declaration-document-icon{display:grid;width:40px;height:40px;flex:none;place-items:center;border:1px solid #dce9e5;border-radius:11px;background:linear-gradient(145deg,#f2faf7,#fff);color:#168071;box-shadow:0 2px 5px rgba(30,55,70,.035)}
+.declaration-document-icon svg{width:21px;height:21px;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.6}
+.declaration-card-heading-copy{display:grid;min-width:0;gap:5px}
+.declaration-card-top strong{color:#2b4259;font-size:12px;line-height:1.3}
+.declaration-card-top small{color:#168071;font-size:8px;font-weight:800;letter-spacing:.09em;line-height:1.3}
+.declaration-required{display:inline-flex;align-items:center;gap:7px;margin-left:auto;padding:6px 9px;border:1px solid #f1e3ca;border-radius:99px;background:#fffaf2;color:#a87532;font-size:8px;font-weight:750;text-transform:uppercase;letter-spacing:.04em}
+.declaration-required i{width:5px;height:5px;background:#d49a47;box-shadow:none}
+.declaration-statement-wrap{position:relative;display:flex;flex:1;align-items:center;padding:25px 24px 23px 28px}
+.declaration-quote-mark{position:absolute;top:13px;left:15px;color:#dceee8;font-family:Georgia,serif;font-size:44px;line-height:1}
+.declaration-statement{position:relative;margin:0;color:#40556b;font-size:12px;line-height:1.9}
+.declaration-card-foot{display:flex;align-items:flex-start;gap:8px;margin:0 16px 16px;padding:10px 11px;border:1px solid #e7edf0;border-radius:8px;background:#f8fafb;color:#708297;font-size:9px;line-height:1.5}
+.declaration-info-icon{display:grid;width:15px;height:15px;flex:none;place-items:center;border:1px solid #bdd4ce;border-radius:50%;color:#168071;font-size:9px;font-weight:700}
+.declaration-aside{display:flex;flex-direction:column;padding:18px;background:linear-gradient(165deg,#fbfefd,#f5faf8)}
+.declaration-aside-heading{display:flex;align-items:center;gap:9px}
+.declaration-aside-icon{display:grid;width:35px;height:35px;flex:none;place-items:center;border:1px solid #d5eae2;border-radius:10px;background:#edf8f3;color:#16825e;font-size:15px;font-weight:800}
+.declaration-aside-heading small,.declaration-aside-heading strong{display:block}
+.declaration-aside-heading small{margin-bottom:4px;color:#168071;font-size:7px;font-weight:800;letter-spacing:.09em}
+.declaration-aside-heading strong{color:#2b4259;font-size:11px}
+.declaration-aside>p{margin:15px 0;color:#73869a;font-size:10px;line-height:1.65}
+.declaration-aside .declaration-confirm{display:flex;align-items:flex-start;gap:10px;margin:0;padding:12px;border:1px solid #dce8e4;border-radius:9px;background:#fff;color:#3d5669;font-size:10px;font-weight:600;line-height:1.65;cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s}
+.declaration-aside .declaration-confirm:hover{border-color:#a9cec3;box-shadow:0 3px 10px rgba(25,105,88,.06)}
+.declaration-confirm input{position:absolute;width:1px;height:1px;opacity:0}
+.declaration-checkbox{display:grid;width:18px;height:18px;flex:none;place-items:center;margin-top:1px;border:1.5px solid #b9c7d2;border-radius:5px;background:#fff;color:transparent;transition:all .15s}
+.declaration-confirm input:checked+.declaration-checkbox{border-color:#08796d;background:#08796d;color:#fff}
+.declaration-confirm input:checked+.declaration-checkbox::after{content:'✓';font-size:11px;font-weight:800}
+.declaration-confirm input:focus-visible+.declaration-checkbox{outline:3px solid rgba(8,121,109,.2)}
+.declaration-confirm input:checked~span:last-child{color:#176655}
+.declaration-aside-note{display:flex;align-items:flex-start;gap:7px;margin-top:auto;padding-top:14px;color:#788c9a;font-size:9px;line-height:1.5}
+.declaration-aside-note span:first-child{color:#158575;font-size:14px}
+.declaration-success{display:flex;align-items:center;gap:10px;margin-top:12px;padding:12px 14px;border:1px solid #cce8d9;border-radius:9px;background:#f2fbf5;color:#247444}
+.declaration-success>span{display:grid;width:28px;height:28px;place-items:center;border-radius:50%;background:#dff4e7;font-weight:800}
+.declaration-success strong,.declaration-success small{display:block}
+.declaration-success strong{font-size:10px}.declaration-success small{margin-top:3px;color:#60816e;font-size:9px}
+.declaration-hint{display:flex;align-items:center;gap:7px;margin-top:10px;color:#73869a;font-size:9px}
+.declaration-hint>span{display:grid;width:15px;height:15px;place-items:center;border-radius:50%;background:#fff5e8;color:#b87826;font-size:9px;font-weight:800}
+.declaration-actions{display:flex;align-items:center;gap:8px;margin-top:17px;padding-top:13px;border-top:1px solid #e9eef2}
+.declaration-actions-spacer{flex:1}
+.declaration-actions button,.declaration-preview footer button{min-height:36px;padding:0 14px;border:1px solid #08796d;border-radius:7px;background:#08796d;color:#fff;font:inherit;font-size:10px;font-weight:650;cursor:pointer;box-shadow:0 3px 8px rgba(8,121,109,.14);transition:background .15s,border-color .15s,transform .15s}
+.declaration-actions button:hover:not(:disabled),.declaration-preview footer button:hover{transform:translateY(-1px);border-color:#06685e;background:#06685e}
+.declaration-actions button:disabled{border-color:#9dc9c2;background:#9dc9c2;color:#fff;box-shadow:none;cursor:not-allowed}
+.declaration-preview-backdrop{position:fixed;z-index:1200;inset:0;display:grid;place-items:center;padding:20px;background:rgba(20,36,54,.48);backdrop-filter:blur(3px)}
+.declaration-preview{width:min(100%,620px);overflow:hidden;border:1px solid #e1e8ef;border-radius:14px;background:#fff;box-shadow:0 24px 70px rgba(15,34,54,.25)}
+.declaration-preview>header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #edf1f4}
+.declaration-preview>header small{color:#168071;font-size:8px;font-weight:800;letter-spacing:.1em}
+.declaration-preview>header h3{margin:5px 0 0;color:#243b55;font-size:15px}
+.declaration-preview>header button{width:30px;height:30px;border:0;border-radius:7px;background:#f1f4f7;color:#65798c;font-size:19px;cursor:pointer}
+.declaration-preview-content{padding:24px}
+.declaration-preview-content p{margin:0;color:#40556b;font-size:12px;line-height:1.9}
+.declaration-preview-signature{display:grid;grid-template-columns:2fr 1fr;gap:30px;margin-top:44px;color:#6f8194;font-size:9px}
+.declaration-preview-signature span{padding-top:8px;border-top:1px solid #bfcbd5}
+.declaration-preview footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid #edf1f4;background:#fbfcfe}
+@media(max-width:760px){.declaration-layout{grid-template-columns:1fr}.declaration-aside-note{margin-top:12px}.declaration-statement-wrap{padding:24px 20px 20px 25px}}
+@media(max-width:600px){.declaration-heading{min-height:0;align-items:flex-start;padding:15px}.declaration-heading-mark{width:43px;height:43px;border-radius:12px}.declaration-heading h2{font-size:18px}.declaration-heading-status{align-self:flex-start;padding:6px 8px;font-size:8px}.declaration-heading-copy>span{line-height:1.5}.declaration-card-top{padding:12px}.declaration-statement-wrap{padding:22px 15px 17px 20px}.declaration-statement{font-size:11px;line-height:1.8}.declaration-card-foot{margin:0 11px 11px}.declaration-aside{padding:14px}.declaration-actions{flex-wrap:wrap}.declaration-actions .declaration-actions-spacer{flex-basis:100%;height:0}.declaration-actions .step-count{margin-left:auto}.declaration-actions button{flex:1;padding:0 8px}.declaration-preview-backdrop{padding:10px}.declaration-preview-content{padding:18px}}
+@media print{body *{visibility:hidden!important}.declaration-preview-backdrop,.declaration-preview-backdrop *{visibility:visible!important}.declaration-preview-backdrop{position:absolute;inset:0;display:block;padding:0;background:#fff;backdrop-filter:none}.declaration-preview{width:100%;border:0;border-radius:0;box-shadow:none}.declaration-preview>header button,.declaration-preview footer{display:none}.declaration-preview-content{padding:30px 0}.declaration-preview-content p{font-size:12pt;line-height:1.8}.declaration-preview-signature{margin-top:70px;color:#222}.declaration-preview>header{padding:0 0 15px}}
 </style>

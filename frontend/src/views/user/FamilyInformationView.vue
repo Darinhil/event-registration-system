@@ -86,7 +86,7 @@ const familySituationSection = {
   key: 'family_situation',
   title: 'Family Situation',
   fields: [
-    { key: 'marital_status', label: 'Marital status', type: 'select', options: ['Married', 'Single', 'Divorced', 'Widowed', 'Partnered'] },
+    { key: 'marital_status', label: 'Marital status', type: 'select', options: ['Married', 'Single'] },
     { key: 'spouse_partner_name', label: 'Spouse/partner name', type: 'text' },
   ],
 }

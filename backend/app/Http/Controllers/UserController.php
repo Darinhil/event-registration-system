@@ -104,7 +104,7 @@ class UserController extends Controller
             'professional_qualifications.memberships.*.description' => ['nullable', 'string', 'max:2000'],
             'family_information' => ['sometimes', 'required', 'array'],
             'family_information_complete' => ['sometimes', 'boolean'],
-            'family_information.marital_status' => ['required_if:family_information_complete,true', 'nullable', Rule::in(['Married', 'Single', 'Divorced', 'Widowed', 'Partnered'])],
+            'family_information.marital_status' => ['required_if:family_information_complete,true', 'nullable', Rule::in(['Married', 'Single'])],
             'family_information.spouse_partner_name' => ['nullable', 'string', 'max:200'],
             'family_information.children' => ['sometimes', 'array', 'max:50'],
             'family_information.children.*.name' => ['nullable', 'string', 'max:200'],
