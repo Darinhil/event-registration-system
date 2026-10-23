@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->hasMany(StaffContract::class);
     }
 
+    public function financeVouchers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(FinanceVoucher::class);
+    }
+
     public function trainingAssignments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(TrainingCourseAssignment::class);

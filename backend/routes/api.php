@@ -11,6 +11,7 @@ use App\Http\Controllers\SystemSettingsController;
 use App\Http\Controllers\StaffContractController;
 use App\Http\Controllers\CompliancePolicyController;
 use App\Http\Controllers\TrainingCourseController;
+use App\Http\Controllers\FinanceVoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -42,6 +43,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
+        Route::get('/finance-vouchers', [FinanceVoucherController::class, 'index']);
+        Route::post('/finance-vouchers', [FinanceVoucherController::class, 'store']);
+        Route::get('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'show']);
+        Route::put('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'update']);
         Route::middleware('can:manage-training')->prefix('training')->group(function (): void {
             Route::get('/staff', [TrainingCourseController::class, 'staff']);
             Route::get('/courses', [TrainingCourseController::class, 'index']);
