@@ -14,7 +14,22 @@ const eventMenuOpen = ref(false)
 const mobileMenuOpen = ref(false)
 const personnelPortalOpen = ref(true)
 const personnelMenuOpen = ref(false)
+const timeManagementOpen = ref(true)
+const otherRequestsOpen = ref(true)
 const isPersonnelSection = computed(() => route.path === '/admin/personnel-profile')
+const timeManagementItems = [
+  { id: 'leave-application', label: 'Leave Application' },
+  { id: 'overtime-request', label: 'Overtime Request' },
+  { id: 'monthly-timesheet', label: 'Monthly Timesheet' },
+]
+const otherRequestItems = [
+  { id: 'travel-application', label: 'Travel Application' },
+  { id: 'fuel-log-sheet', label: 'Fuel Log-sheet' },
+  { id: 'purchase-request', label: 'Purchase Request' },
+]
+const isOtherRequestSection = computed(() => otherRequestItems.some((item) => route.query.section === item.id))
+const isTimeManagementSection = computed(() => timeManagementItems.some((item) => route.query.section === item.id))
+const isTimeManagementRoute = computed(() => route.query.section === 'time-management' || isTimeManagementSection.value)
 const personnelItems = [
   { id: 'my-profile', label: 'My Profile (5 steps)', icon: 'user' },
   { id: 'compliances', label: 'Compliances', icon: 'lock' },
@@ -35,6 +50,8 @@ watch(() => route.path, (path) => {
     .some((itemPath) => path === itemPath || path.startsWith(`${itemPath}/`))
 }, { immediate: true })
 watch(isPersonnelSection, (open) => { personnelMenuOpen.value = open }, { immediate: true })
+watch(isTimeManagementRoute, (open) => { if (open) timeManagementOpen.value = true }, { immediate: true })
+watch(isOtherRequestSection, (open) => { if (open) otherRequestsOpen.value = true }, { immediate: true })
 const profilePhotoSrc = ref(auth.profilePhotoPreview || ''); let profilePhotoRequest = 0
 const loadProfilePhoto = async () => { const id = ++profilePhotoRequest; if (!auth.user?.profile_photo) { profilePhotoSrc.value = ''; return } try { const { data } = await api.get('/me/profile-photo', { params: { photo: auth.user.profile_photo }, responseType: 'blob' }); if (id === profilePhotoRequest) profilePhotoSrc.value = auth.setProfilePhotoPreview(data) } catch { if (id === profilePhotoRequest) profilePhotoSrc.value = '' } }
 onMounted(loadProfilePhoto); watch(() => auth.user?.profile_photo, loadProfilePhoto)
@@ -73,7 +90,25 @@ const logout = async () => { await auth.logout(); router.push('/login') }
           <RouterLink v-for="item in personnelItems" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }"><span class="admin-nav-icon" aria-hidden="true"><AppIcon :name="item.icon" :size="17" /></span>{{ item.label }}</RouterLink>
         </div>
       </div>
-      <RouterLink v-for="item in workspaceItems" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }"><span class="admin-nav-icon" aria-hidden="true"><AppIcon :name="item.icon" :size="17" /></span>{{ item.label }}</RouterLink>
+      <div class="admin-nav-group time-management-group" :class="{ 'is-expanded': timeManagementOpen, 'has-active-child': isTimeManagementSection }">
+        <div class="admin-nav-group-heading">
+          <RouterLink :to="{ path: '/admin/personnel-profile', query: { section: 'time-management' } }" class="admin-nav-group-link" :class="{ 'is-active': route.query.section === 'time-management' }"><span class="admin-nav-icon" aria-hidden="true"><AppIcon name="clock" :size="17" /></span>Time Management</RouterLink>
+          <button type="button" class="admin-nav-toggle" :aria-expanded="timeManagementOpen" aria-controls="admin-time-management-subnav" :aria-label="`${timeManagementOpen ? 'Collapse' : 'Expand'} time management navigation`" @click="timeManagementOpen = !timeManagementOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+        </div>
+        <div v-if="timeManagementOpen" id="admin-time-management-subnav" class="admin-nav-submenu time-management-submenu">
+          <RouterLink v-for="item in timeManagementItems" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }">{{ item.label }}</RouterLink>
+        </div>
+      </div>
+      <div class="admin-nav-group other-requests-group" :class="{ 'is-expanded': otherRequestsOpen, 'has-active-child': isOtherRequestSection }">
+        <div class="admin-nav-group-heading">
+          <RouterLink :to="{ path: '/admin/personnel-profile', query: { section: 'other-requests' } }" class="admin-nav-group-link" :class="{ 'is-active': route.query.section === 'other-requests' }"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m21 3-7.4 18-3.8-7.8L2 9.4 21 3Z"/><path d="M9.8 13.2 15 8"/></svg></span>Other Requests</RouterLink>
+          <button type="button" class="admin-nav-toggle" :aria-expanded="otherRequestsOpen" aria-controls="admin-other-requests-subnav" :aria-label="`${otherRequestsOpen ? 'Collapse' : 'Expand'} other requests navigation`" @click="otherRequestsOpen = !otherRequestsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+        </div>
+        <div v-if="otherRequestsOpen" id="admin-other-requests-subnav" class="admin-nav-submenu other-requests-submenu">
+          <RouterLink v-for="item in otherRequestItems" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }">{{ item.label }}</RouterLink>
+        </div>
+      </div>
+      <RouterLink v-for="item in workspaceItems.filter((item) => !['time-management', 'other-requests'].includes(item.id))" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }"><span class="admin-nav-icon" aria-hidden="true"><AppIcon :name="item.icon" :size="17" /></span>{{ item.label }}</RouterLink>
       </div>
       <p v-if="isAdmin" class="admin-nav-section-label administration-section-label">ADMINISTRATION</p>
       <RouterLink v-if="isAdmin" to="/admin/admin-accounts" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m5-9v6m3-3h-6"/></svg></span>Admin Accounts</RouterLink>
@@ -81,6 +116,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
       <RouterLink v-else to="/admin/profile" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span>Profile</RouterLink>
     </nav>
     <div class="admin-event-card"><div class="admin-event-thumb">LW</div><div><strong>Live workspace</strong><small>{{ roleLabel }} access</small></div><b>Ready</b></div>
-    <div class="admin-user-card"><RouterLink to="/admin/profile" class="admin-user-link"><span class="admin-avatar"><img v-if="profilePhotoSrc" :src="profilePhotoSrc" alt="" /><span v-else>{{ (auth.user?.name || 'AD').slice(0, 2).toUpperCase() }}</span></span><span><strong>{{ auth.user?.name || 'Admin' }}</strong><small>{{ roleLabel }}</small></span></RouterLink><button type="button" aria-label="Log out" @click="logout">↪</button></div>
+    <div class="admin-user-card"><RouterLink to="/admin/profile" class="admin-user-link"><span class="admin-avatar"><img v-if="profilePhotoSrc" :src="profilePhotoSrc" alt="" /><span v-else>{{ (auth.user?.name || 'AD').slice(0, 2).toUpperCase() }}</span></span><span><strong>{{ auth.user?.name || 'Admin' }}</strong><small>{{ roleLabel }}</small></span></RouterLink></div>
+    <button class="admin-sidebar-logout" type="button" @click="logout"><span class="admin-sidebar-logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></span><span>Log out</span></button>
   </aside><div class="admin-main-shell"><AdminTopbar /><main id="main-content" tabindex="-1"><slot /></main></div></div>
 </template>

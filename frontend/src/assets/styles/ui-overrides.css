@@ -1393,4 +1393,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .administration-section-label{margin-top:16px;padding-top:12px;border-top:1px solid rgba(199,215,237,.13);color:#91a6b0}
 .personnel-portal-menu>.admin-nav-group>.admin-nav-submenu{margin-left:7px;padding-left:7px}.admin-personnel-submenu a{min-height:38px;padding:8px 8px;font-size:.74rem;line-height:1.2;white-space:nowrap}.personnel-portal-menu>a{font-size:.78rem;white-space:nowrap}.personnel-portal-menu>.admin-nav-group-heading .admin-nav-group-link{font-size:.82rem;white-space:nowrap}.personnel-portal-menu .admin-nav-icon{width:17px;flex-basis:17px}
 .personnel-portal-menu .admin-nav-group-link{display:flex;align-items:center;gap:13px;white-space:nowrap}
+
+/* Time Management is a focused, compact submenu in the Personnel Portal. */
+.personnel-portal-menu>.time-management-group{width:calc(100% - 4px);margin-left:4px}
+.time-management-group>.admin-nav-group-heading{min-height:42px;gap:5px}
+.time-management-group>.admin-nav-group-heading>.admin-nav-group-link{gap:12px;padding:10px 11px;font-size:.82rem;white-space:nowrap}
+.time-management-group>.admin-nav-group-heading>.admin-nav-toggle{flex:0 0 30px;width:30px;height:30px}
+.time-management-group>.time-management-submenu{gap:3px;margin:4px 0 6px 10px;padding:0 0 0 8px;border:0}
+.time-management-group>.time-management-submenu>a{min-height:37px;padding:9px 11px;border:1px solid transparent;border-radius:8px;color:#c7d7ed;font-size:.78rem;line-height:1.2;white-space:nowrap}
+.time-management-group>.time-management-submenu>a:hover{background:rgba(255,255,255,.08);color:#fff}
+.time-management-group>.time-management-submenu>a.is-active{background:#15518a;border-color:rgba(119,180,238,.12);box-shadow:0 5px 12px rgba(4,25,48,.16);color:#fff}
+.personnel-portal-menu>.other-requests-group{width:calc(100% - 4px);margin-left:4px}
+.other-requests-group>.admin-nav-group-heading{min-height:42px;gap:5px}
+.other-requests-group>.admin-nav-group-heading>.admin-nav-group-link{gap:12px;padding:10px 11px;font-size:.82rem;white-space:nowrap}
+.other-requests-group>.admin-nav-group-heading>.admin-nav-toggle{flex:0 0 30px;width:30px;height:30px}
+.other-requests-group>.other-requests-submenu{gap:3px;margin:4px 0 6px 10px;padding:0 0 0 8px;border:0}
+.other-requests-group>.other-requests-submenu>a{min-height:37px;padding:9px 11px;border:1px solid transparent;border-radius:8px;color:#c7d7ed;font-size:.78rem;line-height:1.2;white-space:nowrap}
+.other-requests-group>.other-requests-submenu>a:hover{background:rgba(255,255,255,.08);color:#fff}
+.other-requests-group>.other-requests-submenu>a.is-active{background:#15518a;border-color:rgba(119,180,238,.12);box-shadow:0 5px 12px rgba(4,25,48,.16);color:#fff}
 .basic-grid .khmer-hint{color:#8c9aac;font-size:11px;font-weight:400;font-family:inherit}
