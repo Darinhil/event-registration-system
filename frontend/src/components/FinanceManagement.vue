@@ -584,9 +584,12 @@ onMounted(refreshSavedVouchers)
 .voucher-approval-card>label{display:grid;gap:3px;color:#8190a1;font-size:8px}
 .voucher-approval-card input{box-sizing:border-box;width:100%;min-width:0;height:29px;padding:5px 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;color:#33485c;font:inherit;font-size:9px}
 .voucher-approval-card input:focus-visible{outline:2px solid #56c89b;outline-offset:0;border-color:#56c89b}
-.approval-signature{position:relative;overflow:hidden;min-height:48px;cursor:crosshair}
-.approval-signature canvas{grid-area:1/1;width:100%;height:48px;touch-action:none}
-.approval-signature span{grid-area:1/1;z-index:1;pointer-events:none}
+.approval-signature{position:relative;overflow:hidden;min-height:58px;border:1px solid #dce5ed;border-radius:7px;background:#fff;cursor:crosshair;transition:border-color .16s ease,box-shadow .16s ease}
+.approval-signature:hover{border-color:#a7cbbb;box-shadow:0 2px 8px #1c6b5210}
+.approval-signature:focus-within{border-color:#50b98f;box-shadow:0 0 0 3px #50b98f1a}
+.approval-signature::after{position:absolute;right:12px;bottom:14px;left:12px;border-bottom:1px solid #e8edf2;content:"";pointer-events:none}
+.approval-signature canvas{grid-area:1/1;z-index:1;width:100%;height:58px;touch-action:none}
+.approval-signature span{grid-area:1/1;z-index:2;align-self:center;color:#9aa7b5;font-size:9px;font-style:normal;pointer-events:none}
 .signature-clear{justify-self:end;padding:2px 4px;border:0;background:transparent;color:#71839a;font:inherit;font-size:8px;cursor:pointer}
 .signature-clear:hover{color:#b34d5c;text-decoration:underline}
 .voucher-expenses{margin-top:14px;padding:0 0 5px;border:1px solid #e7edf3;border-radius:12px;background:#fff;overflow:hidden}
