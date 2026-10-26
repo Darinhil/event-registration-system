@@ -18,6 +18,7 @@ Route::get('/events/{event}/banner', [EventController::class, 'banner']);
 Route::get('/events/{event}', [EventController::class, 'show']);
 Route::get('/events/{event}/form', [EventController::class, 'form']);
 Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
+Route::get('/settings', [SystemSettingsController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

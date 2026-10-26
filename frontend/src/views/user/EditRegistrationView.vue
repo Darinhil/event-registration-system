@@ -191,7 +191,7 @@ load()
       </div>
 
       <div v-else class="dynamic-empty">
-        <h2>{{ error || 'Registration not found' }}</h2>
+        <h1>{{ error || 'Registration not found' }}</h1>
         <RouterLink to="/me">Return to My registrations</RouterLink>
       </div>
     </section>

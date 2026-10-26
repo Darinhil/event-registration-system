@@ -64,14 +64,14 @@ export const useAuthStore = defineStore('auth', {
       if (!this.user?.profile_photo) this.clearProfilePhotoPreview()
       localStorage.setItem('event_user', JSON.stringify(this.user))
     },
-    async updateProfile(payload) {
+    async updateProfile(payload, requestOptions = {}) {
       // Invalidate any older /me request so it cannot restore stale profile data.
       profileStateVersion += 1
       this.loading = true
       this.error = null
       try {
         // Let Axios/browser add the multipart boundary automatically.
-        const { data } = await api.post('/me/profile', payload)
+        const { data } = await api.post('/me/profile', payload, requestOptions)
         this.user = normalizeUserPhoto(data.data)
         if (!this.user?.profile_photo) this.clearProfilePhotoPreview()
         localStorage.setItem('event_user', JSON.stringify(this.user))

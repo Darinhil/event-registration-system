@@ -107,7 +107,7 @@ onBeforeUnmount(() => {
         <button type="button" class="profile-menu-trigger" :aria-expanded="profileMenuOpen" @click="togglePanel('profile')">
           <span class="admin-top-avatar">
             <img v-if="profilePhotoSrc && !profilePhotoBroken" :key="profilePhotoSrc" :src="profilePhotoSrc" alt="" @error="profilePhotoBroken = true" />
-            <span v-else class="admin-avatar-fallback">{{ (auth.user?.name || 'AD').slice(0, 2).toUpperCase() }}</span>
+            <span v-else class="admin-avatar-fallback">{{ (auth.user?.name || 'Admin').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() }}</span>
           </span>
           <span class="admin-profile-copy"><strong>{{ auth.user?.name || 'Event Admin' }}</strong><small>{{ auth.roleLabel }}</small></span>
           <span class="admin-chevron" aria-hidden="true">

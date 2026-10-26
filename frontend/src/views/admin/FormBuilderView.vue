@@ -481,7 +481,7 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
 
     <div v-else-if="loadError && !fields.length" class="fb-state">
       <div class="fb-state-icon">!</div>
-      <h2>Builder unavailable</h2>
+      <h1>Builder unavailable</h1>
       <p>{{ loadError }}</p>
       <button class="fb-btn fb-btn--primary" type="button" @click="load">Retry</button>
     </div>

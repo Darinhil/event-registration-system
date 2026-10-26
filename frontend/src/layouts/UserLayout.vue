@@ -1,12 +1,16 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useSettingsStore } from '../stores/settings'
+import AppIcon from '../components/AppIcon.vue'
 import logo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
 const router = useRouter()
 const auth = useAuthStore()
 const mobileMenuOpen = ref(false)
+const settings = useSettingsStore()
+onMounted(() => settings.load())
 
 const logout = async () => {
   await auth.logout()
@@ -46,12 +50,22 @@ const logout = async () => {
       </nav>
     </header>
 
+    <div v-if="settings.maintenance_mode || settings.registration_notice" class="site-notices">
+      <p v-if="settings.maintenance_mode" class="site-notice site-notice--warn" role="status"><AppIcon name="alert-circle" :size="18" /><span><strong>Scheduled maintenance.</strong> New registrations are paused for now. You can still view events and your existing registrations.</span></p>
+      <p v-if="settings.registration_notice" class="site-notice" role="note"><AppIcon name="info" :size="18" /><span>{{ settings.registration_notice }}</span></p>
+    </div>
     <main id="main-content" tabindex="-1"><slot /></main>
   </div>
 </template>
 
 <style scoped>
+.site-notices { display: grid; gap: 8px; max-width: 1180px; margin: 8px auto 0; padding: 0 20px; }
+.site-notice { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 11px 14px; border: 1px solid #cfe6dd; border-radius: 10px; background: #f0faf6; color: #0b4d3c; font-size: .9rem; line-height: 1.5; white-space: pre-line; }
+.site-notice svg { flex: none; margin-top: 2px; }
+.site-notice--warn { border-color: #f1d8a8; background: #fffaf0; color: #6b4504; }
 @media (max-width: 640px) {
+  .site-notices { padding: 0 12px; }
+
   .topbar {
     top: 0;
     gap: 8px;

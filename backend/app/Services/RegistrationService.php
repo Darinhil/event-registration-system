@@ -215,6 +215,7 @@ class RegistrationService
         if ($event->status !== 'published') return 'Registration is not open for this event.';
         if (($settings['allow_registration'] ?? true) === false) return 'Registration is currently closed for this event.';
         if ($event->ends_at && $event->ends_at->isPast()) return 'This event has already ended.';
+        if (\App\Http\Controllers\SystemSettingsController::maintenanceMode()) return 'Registration is paused while the system is under maintenance. Please try again later.';
         $start = $settings['registration_start'] ?? null;
         $end = $settings['registration_end'] ?? null;
         if ($start && Carbon::parse($start)->isAfter(now())) return 'Registration for this event has not opened yet.';

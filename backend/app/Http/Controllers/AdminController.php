@@ -38,11 +38,15 @@ class AdminController extends Controller
             'name' => $event->name,
             'location' => $event->location,
             'starts_at' => $event->starts_at?->toIso8601String(),
+            'ends_at' => $event->ends_at?->toIso8601String(),
             'status' => $event->status,
             'capacity' => $event->capacity,
             'registrations' => $event->registrations_count,
             'checked_in' => $event->checked_in_count,
-            'no_show' => max($event->registrations_count - $event->checked_in_count, 0),
+            'not_checked_in' => max($event->registrations_count - $event->checked_in_count, 0),
+            // A no-show only exists once the event is over; before that people may still arrive.
+            'has_ended' => $this->eventHasEnded($event),
+            'no_show' => $this->eventHasEnded($event) ? max($event->registrations_count - $event->checked_in_count, 0) : null,
             'attendance_rate' => $event->registrations_count > 0
                 ? round($event->checked_in_count / $event->registrations_count * 1000) / 10
                 : 0.0,
@@ -51,6 +55,13 @@ class AdminController extends Controller
                 : 0.0,
         ])]);
     }
+    private function eventHasEnded(Event $event): bool
+    {
+        $end = $event->ends_at ?? $event->starts_at;
+
+        return $end !== null && $end->isPast();
+    }
+
     /**
      * Attendee-level report for one event: every registration with its check-in
      * state, filterable by check-in status and search term. Unpaginated so the
@@ -213,6 +224,8 @@ class AdminController extends Controller
         abort_unless(in_array($user->role, ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'], true), 404);
         $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:100'], 'role' => ['sometimes', 'required', 'in:admin,event_admin,manager,officer_3,officer_2,officer_1,officer_0'], 'password' => ['sometimes', 'nullable', 'string', 'min:8']]);
         if (array_key_exists('password', $data) && ! $data['password']) unset($data['password']);
+        // Only Master Admins reach this route, so blocking self-demotion also guarantees one always remains.
+        abort_if(isset($data['role']) && $data['role'] !== $user->role && $request->user()->is($user), 422, 'You cannot change your own role.');
         $user->update($data);
         return response()->json(['data' => $user->fresh()]);
     }

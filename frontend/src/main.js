@@ -25,5 +25,9 @@ import './assets/styles/event-details.css'
 import './assets/styles/registration.css'
 import './assets/styles/event-public.css'
 import './assets/styles/app-polish.css'
+import './assets/styles/attendance.css'
+import './assets/styles/checkin-desk.css'
+import './assets/styles/reports.css'
+import './assets/styles/sidebar.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

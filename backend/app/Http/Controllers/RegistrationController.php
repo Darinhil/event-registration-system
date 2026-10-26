@@ -45,6 +45,10 @@ class RegistrationController extends Controller
     public function destroy(Request $request, Registration $registration): JsonResponse
     {
         abort_unless($request->user()->id === $registration->user_id, 403, 'You can only delete your own registration.');
+        // Keep attendance history intact: a registration that was used to check in,
+        // or whose event is over, is part of the organiser's records.
+        abort_if($registration->checkIn()->exists(), 422, 'You have already checked in to this event, so this registration can’t be cancelled.');
+        abort_if($registration->event?->ends_at?->isPast(), 422, 'This event has ended, so the registration can’t be cancelled.');
 
         $registration->delete();
 

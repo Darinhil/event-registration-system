@@ -98,3 +98,15 @@ export const toCsv = (header, rows) => {
   }
   return [header, ...rows].map((row) => row.map(cell).join(',')).join('\r\n')
 }
+
+// Where an event is in its lifecycle right now: draft | unscheduled | upcoming | ongoing | past.
+export const eventPhase = (event, now = Date.now()) => {
+  if (event?.status === 'draft') return 'draft'
+  const starts = event?.starts_at ? new Date(event.starts_at) : null
+  if (!starts || Number.isNaN(starts.getTime())) return 'unscheduled'
+  const ends = event.ends_at ? new Date(event.ends_at) : starts
+  if (now < starts.getTime()) return 'upcoming'
+  return now <= ends.getTime() ? 'ongoing' : 'past'
+}
+
+export const phaseLabels = { draft: 'Draft', unscheduled: 'Date pending', upcoming: 'Upcoming', ongoing: 'Happening now', past: 'Ended' }

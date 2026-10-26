@@ -227,6 +227,23 @@ class CheckInFlowTest extends TestCase
         $this->assertCount(2, $response->json('data.suggestions'));
     }
 
+    public function test_desk_search_finds_attendee_by_phone_ignoring_spacing(): void
+    {
+        $event = $this->event();
+        $other = Event::create(['name' => 'Other', 'starts_at' => now()->addWeek(), 'location' => 'X', 'capacity' => 5, 'enabled_fields' => [], 'status' => 'published']);
+        $registration = $this->register(User::factory()->create(), $event, ['full_name' => 'Sokha Leng', 'phone' => '012 345 678', 'registration_code' => 'CTS-001']);
+        $this->register(User::factory()->create(), $other, ['full_name' => 'Elsewhere', 'phone' => '012345678', 'registration_code' => 'OTH-001']);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => '012-345-678'])
+            ->assertOk()
+            ->assertJsonPath('data.registration.id', $registration->id);
+
+        // Short digit runs do not match every phone number.
+        $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => '78'])
+            ->assertStatus(422);
+    }
+
     public function test_desk_search_is_admin_only(): void
     {
         $event = $this->event();
