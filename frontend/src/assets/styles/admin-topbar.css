@@ -4,7 +4,7 @@
    ============================================================ */
 
 .admin-topbar {
-  --tb-accent: #3b82f6;
+  --tb-accent: #0b9a76;
   --tb-ink: #16345f;
   --tb-muted: #64748b;
 
@@ -41,7 +41,7 @@
 .admin-topbar .admin-search:focus-within {
   border-color: var(--tb-accent);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, .12);
+  box-shadow: 0 0 0 4px rgba(11, 154, 118, .12);
 }
 .admin-topbar .admin-search > span {
   display: grid;
@@ -80,6 +80,7 @@
 /* ---------- Action buttons ---------- */
 .admin-topbar .admin-top-actions {
   flex: 0 0 auto;
+  margin-left: auto;
   gap: 10px;
   color: var(--tb-muted);
 }
@@ -309,3 +310,7 @@
   .admin-topbar .admin-profile-copy small { font-size: .62rem; }
   .admin-topbar .admin-top-avatar { width: 34px; height: 34px; }
 }
+
+/* Sidebar log-out icon button */
+.admin-user-card .admin-logout-button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 9px; transition: background-color .16s ease, color .16s ease; }
+.admin-user-card .admin-logout-button:hover { background: rgba(255, 255, 255, .1); color: #fff; }

@@ -322,7 +322,8 @@ onMounted(load)
 }
 @media (max-width: 960px) {
   .aa-grid {
-    grid-template-columns: 1fr;
+    /* minmax(0, …) lets the accounts table scroll inside its card instead of widening the page */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -407,9 +408,9 @@ onMounted(load)
 }
 .aa-field input:focus {
   outline: none;
-  border-color: #6ea3f2;
+  border-color: #5cc2a3;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 4px rgba(11, 127, 98, 0.1);
 }
 .aa-field small {
   color: var(--ui-subtle);
@@ -464,9 +465,9 @@ onMounted(load)
 }
 .aa-select-wrap select:focus {
   outline: none;
-  border-color: #6ea3f2;
+  border-color: #5cc2a3;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 4px rgba(11, 127, 98, 0.1);
 }
 .aa-chevron {
   position: absolute;
@@ -489,14 +490,14 @@ onMounted(load)
   padding: 0 20px;
   border: 0;
   border-radius: 11px;
-  background: linear-gradient(180deg, #3b82f6, var(--ui-blue));
+  background: linear-gradient(180deg, #0b9a76, var(--ui-blue));
   color: #fff;
   font: inherit;
   font-size: 0.86rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 18px rgba(11, 127, 98, 0.22);
   transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 .aa-submit:hover:not(:disabled) {
@@ -577,9 +578,9 @@ onMounted(load)
   letter-spacing: 0.02em;
 }
 .aa-avatar--admin {
-  background: linear-gradient(135deg, #3b82f6, #174ea6);
+  background: linear-gradient(135deg, #0b9a76, #065c46);
   color: #fff;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 4px 10px rgba(11, 127, 98, 0.28);
 }
 .aa-avatar--event {
   background: linear-gradient(135deg, #34d399, #0e9f6e);
@@ -620,7 +621,7 @@ onMounted(load)
 }
 .aa-role-pill--admin {
   background: #eaf2ff;
-  color: #2563eb;
+  color: #0b7f62;
 }
 .aa-role-pill--event {
   background: #e6f7f1;

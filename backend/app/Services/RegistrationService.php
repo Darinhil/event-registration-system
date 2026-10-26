@@ -8,18 +8,28 @@ use App\Models\Event;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class RegistrationService
 {
     public function create(User $user, array $data): Registration
     {
-        $event = Event::findOrFail($data['event_id']);
-        $settings = $event->form_config['settings'] ?? [];
-        $this->assertRegistrationWindow($event, $settings);
+        // Lock the event row so two people can't both take the last spot or
+        // register the same email at the same moment.
+        return DB::transaction(fn () => $this->createLocked($user, $data));
+    }
 
-        $formData = $this->sanitizeFormData($data['form_data'] ?? []);
+    private function createLocked(User $user, array $data): Registration
+    {
+        $event = Event::whereKey($data['event_id'])->lockForUpdate()->firstOrFail();
+        $settings = $event->form_config['settings'] ?? [];
+        if ($reason = $this->closedReason($event)) {
+            throw ValidationException::withMessages(['event_id' => $reason]);
+        }
+
         $fields = $event->formFields()->get();
+        $formData = $this->sanitizeFormData($data['form_data'] ?? [], $fields);
 
         // Mirror labeled answers onto the profile columns so admin tables,
         // exports, and check-in screens work without hardcoded field ids.
@@ -31,9 +41,6 @@ class RegistrationService
             if (($enabled[$optional] ?? false) !== true) unset($data[$optional]);
         }
 
-        $registeredCount = $event->registrations()->count();
-        $max = (int) ($settings['max_participants'] ?? $event->capacity);
-        if ($registeredCount >= $max) throw ValidationException::withMessages(['event_id' => 'This event is full.']);
 
         // Report duplicate email and one-per-account independently — both may apply.
         $conflicts = [];
@@ -63,7 +70,7 @@ class RegistrationService
     public function update(Registration $registration, array $data): Registration
     {
         $event = $registration->event;
-        $formData = $this->sanitizeFormData($data['form_data'] ?? []);
+        $formData = $this->sanitizeFormData($data['form_data'] ?? [], $event->formFields()->get());
 
         // Use the same conversion as create(). In particular, age-group choices
         // such as "K: Under 18" must never be written to the integer `age` column.
@@ -101,10 +108,15 @@ class RegistrationService
         return $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT);
     }
 
-    /** Reject values that are not scalars/arrays (never trust client JSON blobs). */
-    private function sanitizeFormData($formData): array
+    /**
+     * Keep only answers for this event's own fields, and reject values that are
+     * not scalars/arrays (never trust client JSON blobs).
+     */
+    private function sanitizeFormData($formData, $fields): array
     {
         if (! is_array($formData)) return [];
+        $allowed = collect($fields)->reject(fn ($field) => $field->type === 'heading')->map(fn ($field) => (string) $field->id)->all();
+        $formData = array_intersect_key($formData, array_flip($allowed));
         foreach ($formData as $key => $value) {
             if ($value instanceof UploadedFile) continue;
             if (is_array($value)) {
@@ -190,17 +202,25 @@ class RegistrationService
         }
     }
 
-    /** Enforce the optional registration window configured in the builder settings. */
-    private function assertRegistrationWindow(Event $event, array $settings): void
+    /**
+     * Why registration is not possible right now, or null when it is open.
+     * Shared by registration and the public event/form endpoints so the page
+     * and the server always agree.
+     */
+    public function closedReason(Event $event): ?string
     {
+        $settings = $event->form_config['settings'] ?? [];
+        // Drafts, closed and cancelled events never accept registrations, and
+        // organisers can pause registration with the "Allow registration" switch.
+        if ($event->status !== 'published') return 'Registration is not open for this event.';
+        if (($settings['allow_registration'] ?? true) === false) return 'Registration is currently closed for this event.';
+        if ($event->ends_at && $event->ends_at->isPast()) return 'This event has already ended.';
         $start = $settings['registration_start'] ?? null;
         $end = $settings['registration_end'] ?? null;
-
-        if ($start && Carbon::parse($start)->isAfter(now())) {
-            throw ValidationException::withMessages(['event_id' => 'Registration for this event has not opened yet.']);
-        }
-        if ($end && Carbon::parse($end)->endOfDay()->isPast()) {
-            throw ValidationException::withMessages(['event_id' => 'Registration for this event has closed.']);
-        }
+        if ($start && Carbon::parse($start)->isAfter(now())) return 'Registration for this event has not opened yet.';
+        if ($end && Carbon::parse($end)->endOfDay()->isPast()) return 'Registration for this event has closed.';
+        $max = (int) ($settings['max_participants'] ?? $event->capacity);
+        if ($max > 0 && $event->registrations()->count() >= $max) return 'This event is full.';
+        return null;
     }
 }

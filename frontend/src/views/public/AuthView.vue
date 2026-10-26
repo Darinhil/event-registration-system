@@ -9,6 +9,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const isSignup = computed(() => route.path === '/account/register')
+const forgotOpen = ref(false)
 const redirectPath = computed(() => typeof route.query.redirect === 'string' ? route.query.redirect : '')
 const rememberedIdentifier = localStorage.getItem('event_remembered_identifier') || localStorage.getItem('event_remembered_email') || ''
 const loginForm = reactive({ identifier: rememberedIdentifier, password: '' })
@@ -71,8 +72,9 @@ const signup = async () => {
   <UserLayout>
     <section class="auth-page">
       <div class="auth-cards">
-        <section v-if="!isSignup" class="auth-card auth-card-login">
+        <section v-if="!isSignup" class="auth-card auth-card-login" aria-labelledby="auth-title">
           <div class="auth-form-panel">
+            <h1 id="auth-title" class="sr-only">Sign in to your account</h1>
             <div class="auth-tabs-row">
               <img class="auth-signup-logo" :src="logo" alt="Live &amp; Learn Cambodia" />
               <div class="auth-tabs" role="tablist">
@@ -84,7 +86,8 @@ const signup = async () => {
             <form class="auth-form" :aria-busy="auth.loading" @submit.prevent="login">
               <label for="login-identifier">Email or Phone<input id="login-identifier" v-model="loginForm.identifier" type="text" placeholder="Enter your email or phone" autocomplete="username" :aria-invalid="Boolean(loginValidationError || auth.error)" :aria-describedby="loginValidationError || auth.error ? 'login-error' : undefined" required @input="clearLoginError" /></label>
               <label for="login-password">Password<div class="password-field"><input id="login-password" v-model="loginForm.password" :type="loginPasswordVisible ? 'text' : 'password'" placeholder="Enter your password" autocomplete="current-password" :aria-invalid="Boolean(loginValidationError || auth.error)" :aria-describedby="loginValidationError || auth.error ? 'login-error' : undefined" required @input="clearLoginError" /><button type="button" class="password-toggle" :aria-label="loginPasswordVisible ? 'Hide password' : 'Show password'" @click="loginPasswordVisible = !loginPasswordVisible"><svg v-if="loginPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.2A11.2 11.2 0 0 1 12 6c6.5 0 10 6 10 6a17.8 17.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8.1 2 12 2 12s3.5 6 10 6c1.7 0 3.1-.4 4.4-1"/></svg></button></div></label>
-              <div class="login-options"><label class="remember-option" for="remember-me"><input id="remember-me" v-model="rememberMe" type="checkbox" name="remember_me" /> <span>Remember me</span></label><RouterLink class="forgot-link" to="/login">Forgot password?</RouterLink></div>
+              <div class="login-options"><label class="remember-option" for="remember-me"><input id="remember-me" v-model="rememberMe" type="checkbox" name="remember_me" /> <span>Remember me</span></label><button type="button" class="forgot-link" :aria-expanded="forgotOpen" aria-controls="forgot-help" @click="forgotOpen = !forgotOpen">Forgot password?</button></div>
+              <p v-if="forgotOpen" id="forgot-help" class="auth-hint" role="status">Password resets aren’t available online yet. Ask your event organizer or administrator to reset it for you.</p>
               <p v-if="(loginValidationError || auth.error) && !auth.loading" id="login-error" class="auth-error" role="alert">{{ loginValidationError || auth.error }}</p>
               <button type="submit" :disabled="auth.loading">{{ auth.loading ? 'Signing in...' : 'Sign in' }}</button>
             </form>
@@ -93,8 +96,9 @@ const signup = async () => {
           </div>
         </section>
 
-        <section v-else class="auth-card auth-card-signup">
+        <section v-else class="auth-card auth-card-signup" aria-labelledby="auth-title">
           <div class="auth-form-panel">
+            <h1 id="auth-title" class="sr-only">Create your account</h1>
             <div class="auth-tabs-row">
               <img class="auth-signup-logo" :src="logo" alt="Live &amp; Learn Cambodia" />
               <div class="auth-tabs" role="tablist">

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import FormRenderer from '../../components/FormRenderer.vue'
@@ -177,7 +177,9 @@ const serialize = () => ({
   form_title: formTitle.value.trim() || 'Event Registration Form',
   form_description: formDescription.value,
   config: { settings: { ...settings }, steps: steps.value },
+  // The id lets the server update fields in place, so existing registrations keep their answers.
   fields: fields.value.map((field) => ({
+    id: field.id,
     label: field.label, description: field.description, placeholder: field.placeholder,
     type: field.type, required: field.required, options: field.options, settings: field.settings,
   })),
@@ -447,6 +449,12 @@ onMounted(() => {
   window.addEventListener('beforeunload', onBeforeUnload)
   load()
 })
+onBeforeRouteLeave(async () => {
+  if (!dirty.value) return true
+  // Try to save first so leaving rarely loses work; only ask when that fails.
+  if (await saveNow()) return true
+  return window.confirm('Your latest form changes couldn’t be saved. Leave anyway and lose them?')
+})
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   window.removeEventListener('beforeunload', onBeforeUnload)
@@ -532,7 +540,7 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <div>
             <strong>This form already has {{ registrationsCount }} registration{{ registrationsCount === 1 ? '' : 's' }}.</strong>
-          <p>Changing or deleting fields may affect existing registration data.</p>
+          <p>Editing, renaming or reordering a field keeps everyone’s answers. Deleting a field removes it for new attendees; past answers stay in exports under the old label. Changing options doesn’t change answers already given.</p>
           </div>
         </div>
         <button class="fb-banner-dismiss" type="button" @click="structuralWarningDismissed = true">Dismiss</button>
@@ -674,7 +682,7 @@ const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
                     <div v-else-if="field.type === 'yesno'" class="fb-mock-choices"><span class="fb-mock-choice">◯ Yes</span><span class="fb-mock-choice">◯ No</span></div>
                     <div v-else-if="field.type === 'file'" class="fb-mock-file">⬆ Upload file</div>
                     <textarea v-else-if="field.type === 'textarea'" rows="2" disabled :placeholder="field.placeholder || 'Type your answer…'"></textarea>
-                    <input v-else type="text" disabled :placeholder="field.placeholder || `Enter ${field.label.toLowerCase()}`" />
+                    <input v-else type="text" disabled aria-hidden="true" tabindex="-1" :placeholder="field.placeholder || `Enter ${field.label.toLowerCase()}`" />
                   </div>
                 </div>
                 <div class="fb-field-actions" @click.stop>

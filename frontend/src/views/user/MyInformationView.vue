@@ -57,9 +57,12 @@ const removeRegistration = async (registration) => {
   }
 }
 
+// The deadline is a calendar date (editing closes at the end of that day). Parsing it as a
+// timestamp showed UTC midnight in local time, e.g. "Nov 3, 2026, 7:00 AM".
 const formatDeadline = (value) => {
   if (!value) return ''
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  const day = String(value).slice(0, 10)
+  return `end of ${new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { dateStyle: 'medium' })}`
 }
 </script>
 

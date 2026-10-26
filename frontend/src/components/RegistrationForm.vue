@@ -1,103 +1,205 @@
 <script setup>
 /**
- * Public registration form — renders exactly what the admin built in the
- * Form Builder (fields, types, labels, options, required flags, descriptions,
- * order, steps, and form settings) via the shared FormRenderer.
+ * Public registration page — renders exactly what the organizer built in the
+ * Form Builder via the shared FormRenderer, and submits to the API. A success
+ * screen is only shown after the server confirms the registration.
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FormRenderer from './FormRenderer.vue'
 import AppIcon from './AppIcon.vue'
-import { useAuthStore } from '../stores/auth'
 import { useRegistrationStore } from '../stores/registration'
 import api from '../services/api'
-import { buildSubmission, displayValue, normalizeStoredValue, validateFields } from '../utils/formValidation'
+import { buildSubmission } from '../utils/formValidation'
 
 const route = useRoute(); const router = useRouter(); const store = useRegistrationStore()
-const event = ref(null); const fields = ref([]); const values = reactive({}); const loading = ref(true); const error = ref(''); const step = ref(1)
-const normalizeType = (field) => { const type = String(field.type || 'text').toLowerCase().replaceAll(' ', '').replace('select/dropdown', 'select'); return type === 'phonenumber' ? 'phone' : type }
-const load = async () => { const id = route.params.eventId; try { const eventResponse = await api.get(`/events/${id}`); const formResponse = await api.get(`/events/${id}/form`); event.value = eventResponse.data.data; const formData = formResponse.data.data; fields.value = Array.isArray(formData) ? formData : (formData?.fields || []) } catch (requestError) { const local = JSON.parse(localStorage.getItem('event_list') || '[]').find((item) => String(item.id) === String(id)); if (local) { event.value = local; fields.value = (local.fields || []).map((field, index) => ({ ...field, id: field.id || index + 1, type: normalizeType(field), sort_order: index })) } else if (requestError.response?.status) error.value = `This event could not be loaded (API ${requestError.response.status}).`; else error.value = `Cannot connect to the registration service at ${api.defaults.baseURL}.` } finally { loading.value = false } }
-const isRequired = (field) => Boolean(field.required)
-const fieldValue = (field) => values[field.id] ?? ''
-const updateValue = (field, value) => { values[field.id] = value }
-const toggleCheckboxValue = (field, option) => {
-  const selected = Array.isArray(fieldValue(field)) ? [...fieldValue(field)] : []
-  const index = selected.indexOf(option)
-  if (index >= 0) selected.splice(index, 1)
-  else selected.push(option)
-  updateValue(field, selected)
+const eventId = computed(() => route.params.eventId)
+const event = ref(null)
+const form = ref({ fields: [], steps: [], settings: {} })
+const registration = ref({ open: true, reason: null })
+const remaining = ref(null)
+const loading = ref(true)
+const loadError = ref('')
+const step = ref(0)
+const submitting = ref(false)
+const serverErrors = ref({})
+const alert = ref(null) // { tone, title, message, action? }
+const alertEl = ref(null)
+
+// Older forms stored some types with spaces or slashes ("Yes/No", "select/dropdown").
+const normalizeType = (type) => {
+  const value = String(type || 'text').toLowerCase().replaceAll(' ', '')
+  return { 'yes/no': 'yesno', 'select/dropdown': 'select', phonenumber: 'phone' }[value] || value
 }
-const isMissing = (field) => {
-  const value = fieldValue(field)
-  return isRequired(field) && (Array.isArray(value) ? value.length === 0 : !value)
+
+const load = async () => {
+  loading.value = true; loadError.value = ''
+  try {
+    const [eventResponse, formResponse] = await Promise.all([api.get(`/events/${eventId.value}`), api.get(`/events/${eventId.value}/form`)])
+    event.value = eventResponse.data.data
+    remaining.value = eventResponse.data.remaining ?? null
+    registration.value = eventResponse.data.registration || { open: formResponse.data.data?.registration_open !== false, reason: formResponse.data.data?.registration_closed_reason || null }
+    const data = formResponse.data.data || {}
+    const fields = Array.isArray(data) ? data : (data.fields || [])
+    form.value = {
+      fields: fields.map((field) => ({ ...field, type: normalizeType(field.type) })),
+      steps: Array.isArray(data.steps) ? data.steps : [],
+      settings: data.settings || {},
+      title: data.form_title,
+      description: data.form_description,
+    }
+  } catch (requestError) {
+    const status = requestError.response?.status
+    loadError.value = status === 404 ? 'This event isn’t available. It may have ended or been unpublished.' : 'We couldn’t load the registration form. Check your connection and try again.'
+  } finally {
+    loading.value = false
+  }
 }
-const reviewValue = (field) => {
-  const value = fieldValue(field)
-  if (normalizeType(field) === 'file') return value?.name || '—'
-  if (normalizeType(field) === 'checkbox' && !field.settings?.multiple) return value ? field.settings?.checkbox_text || 'Selected' : '—'
-  if (Array.isArray(value)) return value.join(', ') || '—'
-  return value || '—'
-}
-const updateUrl = (field, value) => {
-  const trimmed = value.trim()
-  const url = trimmed && !/^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed
-  updateValue(field, url)
-}
-const inputPlaceholder = (field) => field.placeholder || (normalizeType(field) === 'url' ? 'https://example.com' : `Enter ${field.label.toLowerCase()}`)
-const fileAccept = (field) => (field.settings?.allowed_types || []).map((extension) => `.${extension}`).join(',') || undefined
-const validate = () => { const missing = fields.value.find(isMissing); if (missing) { error.value = `${missing.label} is required.`; return false } error.value = ''; return true }
-const continueForm = () => { if (validate()) step.value = 2 }
-const submit = async () => { if (!validate()) return; const formData = {}; fields.value.forEach((field) => { formData[field.id] = fieldValue(field) }); try { await store.register({ event_id: Number(route.params.eventId), form_data: formData }); router.push('/registration/success') } catch { error.value = store.error || 'Registration could not be submitted.' } }
-const eventDate = computed(() => {
-  if (!event.value?.starts_at) return event.value?.start_date || 'Date to be confirmed'
+load()
+
+/* ---------- Event summary ---------- */
+const banner = computed(() => event.value?.branding?.image || '')
+const dateLabel = computed(() => {
+  if (!event.value?.starts_at) return 'Date to be confirmed'
   const start = new Date(event.value.starts_at)
   const end = event.value.ends_at ? new Date(event.value.ends_at) : null
-  const format = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  if (!end || Number.isNaN(end.getTime()) || start.toDateString() === end.toDateString()) return format(start)
-  const sameYear = start.getFullYear() === end.getFullYear()
-  const endLabel = sameYear ? end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: undefined }) : format(end)
-  return `${format(start)} – ${endLabel}`
+  const format = (date) => date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+  if (!end || start.toDateString() === end.toDateString()) return format(start)
+  return `${format(start)} – ${format(end)}`
 })
-load()
+const timeLabel = computed(() => {
+  if (!event.value?.starts_at) return ''
+  const time = (value) => new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return event.value.ends_at ? `${time(event.value.starts_at)} – ${time(event.value.ends_at)}` : time(event.value.starts_at)
+})
+const deadlineLabel = computed(() => {
+  const deadline = form.value.settings?.registration_end
+  return deadline ? new Date(`${String(deadline).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+})
+const spotsLabel = computed(() => {
+  if (remaining.value === null || !event.value?.capacity) return ''
+  return remaining.value <= 10 ? `Only ${remaining.value} ${remaining.value === 1 ? 'spot' : 'spots'} left` : `${remaining.value} spots left`
+})
+
+/* ---------- Submit ---------- */
+const showAlert = async (value) => {
+  alert.value = value
+  await nextTick()
+  alertEl.value?.focus()
+  alertEl.value?.scrollIntoView({ block: 'center' })
+}
+const onSubmit = async (values) => {
+  if (submitting.value) return // ignore double clicks / repeated Enter presses
+  submitting.value = true
+  serverErrors.value = {}
+  alert.value = null
+  try {
+    const result = await store.register({ event_id: Number(eventId.value), form_data: buildSubmission(form.value.fields, values) })
+    // Only now — after the server confirmed — move to the confirmation screen.
+    await router.push({ path: '/registration/success', query: { id: result.id, new: '1' } })
+  } catch (requestError) {
+    const response = requestError.response
+    const errors = response?.data?.errors || {}
+    if (response?.status === 422) {
+      const fieldErrors = Object.fromEntries(Object.entries(errors).filter(([key]) => key.startsWith('form_data.')))
+      const eventError = [errors.event_id, errors.email].flat().filter(Boolean)[0]
+      if (Object.keys(fieldErrors).length) {
+        // The step with the first problem must be visible for its message to show.
+        const firstId = Object.keys(fieldErrors)[0].split('.')[1]
+        const firstField = form.value.fields.find((field) => String(field.id) === firstId)
+        if (firstField && form.value.steps.length > 1) step.value = Number(firstField.settings?.step ?? 0)
+        serverErrors.value = fieldErrors
+      }
+      if (eventError) {
+        const duplicate = /already registered/i.test(eventError)
+        if (!duplicate) { registration.value = { open: false, reason: eventError }; load() }
+        showAlert({ tone: duplicate ? 'info' : 'error', title: duplicate ? 'You’re already registered' : 'Registration isn’t possible', message: duplicate ? 'This account or email address is already registered for this event.' : eventError, action: duplicate ? { label: 'View my registrations', to: '/me' } : null })
+      } else if (!Object.keys(fieldErrors).length) {
+        showAlert({ tone: 'error', title: 'Please check your answers', message: response.data?.message || 'Some answers need attention.' })
+      }
+    } else if (!response) {
+      showAlert({ tone: 'error', title: 'We couldn’t reach the server', message: 'Your answers are still here. Check your connection and try again.' })
+    } else if (response.status === 401) {
+      showAlert({ tone: 'error', title: 'Please sign in again', message: 'Your session expired. Sign in and your answers will need to be entered again.', action: { label: 'Sign in', to: { path: '/login', query: { redirect: route.fullPath } } } })
+    } else {
+      showAlert({ tone: 'error', title: 'Something went wrong on our side', message: 'Your registration was not completed. Your answers are still here — please try again in a moment.' })
+    }
+  } finally {
+    submitting.value = false
+  }
+}
 </script>
 
 <template>
-  <section class="dynamic-registration-page">
-      <div v-if="loading" class="dynamic-loading">Loading event registration form…</div>
-      <div v-else-if="event" class="dynamic-registration-shell">
-        <RouterLink class="registration-back-link" :to="`/events/${event.id}`">← Back to event agenda</RouterLink>
-        <ol class="event-flow-progress is-registration-step" aria-label="Event registration steps">
-          <li class="is-complete"><span>✓</span><div><strong>Review agenda</strong><small>Event overview</small></div></li>
-          <li class="is-current" aria-current="step"><span>2</span><div><strong>Register</strong><small>Your information</small></div></li>
-        </ol>
-        <header class="dynamic-event-hero"><img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" alt="Event banner" /><div class="dynamic-event-hero-copy"><span class="event-category">{{ event.category || 'Event registration' }}</span><h1>{{ event.name }}</h1><p>{{ event.description || 'Complete the form below to reserve your place.' }}</p><div class="dynamic-event-meta"><span><AppIcon name="calendar" :size="18" />{{ eventDate }}</span><span><AppIcon name="clock" :size="18" />{{ event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : event.start_time || 'Time pending' }}</span><span><AppIcon name="pin" :size="18" />{{ event.location || 'Location pending' }}</span></div></div></header>
-        <div class="dynamic-registration-body">
-          <div class="dynamic-progress"><span :class="{ active: step === 1, complete: step > 1 }">1</span><i></i><span :class="{ active: step === 2 }">2</span><small>{{ step === 1 ? 'Your information' : 'Review details' }}</small></div>
-          <form v-if="step === 1" class="dynamic-form" @submit.prevent="continueForm">
-            <div class="dynamic-fields">
-              <label v-for="field in fields" :key="field.id" class="dynamic-field">
-                <span :class="{ 'dynamic-field-label--email': normalizeType(field) === 'email' }">{{ field.label }} <em v-if="isRequired(field)">*</em></span>
-                <select v-if="normalizeType(field) === 'select'" :value="fieldValue(field)" @change="updateValue(field, $event.target.value)"><option value="">Select {{ field.label.toLowerCase() }}</option><option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</option></select>
-                <div v-else-if="normalizeType(field) === 'radio'" class="dynamic-radio-group"><label v-for="option in field.options || []" :key="option"><input type="radio" :name="`field-${field.id}`" :value="option" :checked="fieldValue(field) === option" @change="updateValue(field, option)" /> {{ option }}</label></div>
-                <div v-else-if="normalizeType(field) === 'yesno'" class="dynamic-radio-group" role="radiogroup" :aria-label="field.label"><label v-for="option in ['Yes', 'No']" :key="option"><input type="radio" :name="`field-${field.id}`" :value="option" :checked="fieldValue(field) === option" :required="isRequired(field)" @change="updateValue(field, option)" /> {{ option }}</label></div>
-                <div v-else-if="normalizeType(field) === 'checkbox' && field.settings?.multiple" class="dynamic-check-group" role="group" :aria-label="field.label"><label v-for="option in field.options || []" :key="option"><input type="checkbox" :checked="Array.isArray(fieldValue(field)) && fieldValue(field).includes(option)" @change="toggleCheckboxValue(field, option)" /> {{ option }}</label></div>
-                <label v-else-if="normalizeType(field) === 'checkbox'" class="dynamic-single-check"><input type="checkbox" :checked="Boolean(fieldValue(field))" :required="isRequired(field)" @change="updateValue(field, $event.target.checked)" /><span>{{ field.settings?.checkbox_text || field.label }}</span></label>
-                <textarea v-else-if="normalizeType(field) === 'textarea'" :value="fieldValue(field)" :required="isRequired(field)" :placeholder="`Enter ${field.label.toLowerCase()}`" rows="3" @input="updateValue(field, $event.target.value)"></textarea>
-                <input v-else-if="normalizeType(field) === 'file'" type="file" :accept="fileAccept(field)" :required="isRequired(field)" @change="updateValue(field, $event.target.files?.[0] || null)" />
-                <input v-else :type="['email', 'date', 'number', 'tel', 'url'].includes(normalizeType(field)) ? normalizeType(field) : 'text'" :value="fieldValue(field)" :required="isRequired(field)" :placeholder="inputPlaceholder(field)" @input="updateValue(field, $event.target.value)" @change="normalizeType(field) === 'url' && updateUrl(field, $event.target.value)" />
-              </label>
-            </div>
-            <p v-if="error" class="dynamic-form-error" role="alert">{{ error }}</p>
-            <button class="primary-button" type="submit">Continue to review →</button>
-          </form>
-          <section v-else class="dynamic-review">
-            <p class="admin-eyebrow">Review registration</p><h2>Check your information</h2>
-            <div class="dynamic-review-list"><div v-for="field in fields" :key="field.id"><span>{{ field.label }}</span><strong>{{ reviewValue(field) }}</strong></div></div>
-            <p v-if="error" class="dynamic-form-error">{{ error }}</p>
-            <div class="dynamic-review-actions"><button type="button" class="secondary-button" @click="step = 1">Back to form</button><button type="button" class="primary-button" :disabled="store.loading" @click="submit">{{ store.loading ? 'Submitting…' : 'Confirm registration' }}</button></div>
-          </section>
+  <section class="rg-page">
+    <RouterLink class="rg-back" :to="`/events/${eventId}`"><AppIcon name="chevron-left" :size="16" />Back to event</RouterLink>
+
+    <div v-if="loading" class="rg-layout" role="status" aria-label="Loading registration form">
+      <div class="rg-skel rg-skel--side"></div>
+      <div class="rg-skel rg-skel--form"></div>
+    </div>
+
+    <div v-else-if="loadError" class="rg-card rg-state" role="alert">
+      <span class="rg-state__icon is-error"><AppIcon name="alert-circle" :size="26" /></span>
+      <h1>{{ loadError }}</h1>
+      <div class="rg-state__actions"><button type="button" class="rg-btn" @click="load"><AppIcon name="refresh" :size="16" />Try again</button><RouterLink class="rg-btn rg-btn--primary" to="/">Browse events</RouterLink></div>
+    </div>
+
+    <div v-else class="rg-layout">
+      <!-- Which event this is -->
+      <aside class="rg-event" aria-label="Event summary">
+        <img v-if="banner" class="rg-event__banner" :src="banner" alt="" />
+        <div class="rg-event__body">
+          <span v-if="event.category" class="rg-tag">{{ event.category }}</span>
+          <h2>{{ event.name }}</h2>
+          <ul class="rg-facts">
+            <li><AppIcon name="calendar" :size="16" /><span>{{ dateLabel }}</span></li>
+            <li v-if="timeLabel"><AppIcon name="clock" :size="16" /><span>{{ timeLabel }}</span></li>
+            <li><AppIcon name="pin" :size="16" /><span>{{ event.location || 'Location to be confirmed' }}</span></li>
+          </ul>
+          <p class="rg-status" :class="registration.open ? 'is-open' : 'is-closed'">
+            <AppIcon :name="registration.open ? 'check-circle' : 'lock'" :size="16" />
+            <span v-if="registration.open"><strong>Registration open</strong><template v-if="deadlineLabel"> · closes {{ deadlineLabel }}</template><template v-if="spotsLabel"> · {{ spotsLabel }}</template></span>
+            <span v-else><strong>Registration closed</strong></span>
+          </p>
+          <p v-if="event.description" class="rg-event__desc">{{ event.description }}</p>
+        </div>
+      </aside>
+
+      <div class="rg-main">
+        <div v-if="!registration.open" class="rg-card rg-state">
+          <span class="rg-state__icon"><AppIcon name="lock" :size="24" /></span>
+          <h1>Registration is closed</h1>
+          <p>{{ registration.reason || 'This event isn’t accepting registrations right now.' }}</p>
+          <div class="rg-state__actions"><RouterLink class="rg-btn" :to="`/events/${eventId}`">Back to event</RouterLink><RouterLink class="rg-btn rg-btn--primary" to="/me">My registrations</RouterLink></div>
+        </div>
+
+        <div v-else class="rg-card rg-form">
+          <header class="rg-form__head">
+            <h1>Register for {{ event.name }}</h1>
+            <p>{{ form.description || 'Fill in your details below. It only takes a minute.' }}</p>
+          </header>
+
+          <div v-if="alert" ref="alertEl" class="rg-alert" :class="`is-${alert.tone}`" role="alert" tabindex="-1">
+            <AppIcon :name="alert.tone === 'info' ? 'info' : 'alert-circle'" :size="20" />
+            <div><strong>{{ alert.title }}</strong><p>{{ alert.message }}</p><RouterLink v-if="alert.action" class="rg-link" :to="alert.action.to">{{ alert.action.label }} →</RouterLink></div>
+          </div>
+
+          <FormRenderer
+            :fields="form.fields"
+            :steps="form.steps"
+            :active-step="step"
+            :settings="form.settings"
+            :server-errors="serverErrors"
+            :submitting="submitting"
+            hide-header
+            submit-label="Complete registration"
+            submitting-label="Registering…"
+            @step-change="step = $event"
+            @submit="onSubmit"
+          />
         </div>
       </div>
-      <div v-else class="dynamic-empty"><h2>{{ error || 'Event not found' }}</h2><RouterLink to="/">Return home</RouterLink></div>
+    </div>
   </section>
 </template>

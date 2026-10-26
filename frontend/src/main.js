@@ -19,5 +19,11 @@ import './assets/styles/auth-refresh.css'
 import './assets/styles/ui-refresh.css'
 import './assets/styles/auth-production.css'
 import './assets/styles/responsive.css'
+import './assets/styles/events-page.css'
+import './assets/styles/event-setup.css'
+import './assets/styles/event-details.css'
+import './assets/styles/registration.css'
+import './assets/styles/event-public.css'
+import './assets/styles/app-polish.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

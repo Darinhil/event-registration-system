@@ -64,7 +64,7 @@ class AdminController extends Controller
         $formFields = FormField::where('event_id', $event->id)->orderBy('sort_order')->get();
 
         $attendees = $event->registrations()
-            ->with(['user:id,name,email,phone', 'checkIn.staff:id,name'])
+            ->with(['user:id,name,email,phone', 'checkIn.staff:id,name', 'event:id,form_config'])
             ->when($checkIn === 'in', fn ($query) => $query->whereHas('checkIn'))
             ->when($checkIn === 'out', fn ($query) => $query->whereDoesntHave('checkIn'))
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRScanner from '../../components/QRScanner.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
@@ -16,6 +17,7 @@ const checkIns = ref([])
 const logLoading = ref(false)
 const logError = ref('')
 const events = ref([])
+const route = useRoute()
 const selectedEventId = ref('')
 const selectedEvent = ref(null)
 const registrants = ref([])
@@ -32,7 +34,9 @@ const loadEvents = async () => {
     const { data } = await getAdminEvents()
     events.value = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])
     if (events.value.length > 0 && !selectedEventId.value) {
-      selectedEventId.value = events.value[0].id
+      // Event pages link here with ?event=<id> so check-in opens on that event.
+      const requested = events.value.find((item) => String(item.id) === String(route.query.event))
+      selectedEventId.value = (requested || events.value[0]).id
       await loadSelectedEvent()
     }
   } catch {
@@ -79,11 +83,13 @@ const eventCheckInQrValue = computed(() => {
   return `${origin}/check-in?e=${selectedEvent.value.check_in_qr_token}`
 })
 
+// The log endpoint covers every event; this desk shows only the selected event.
+const eventLog = computed(() => checkIns.value.filter((item) => !selectedEventId.value || String(item.registration?.event_id) === String(selectedEventId.value)))
 const loadCheckIns = async () => {
   logLoading.value = true
   logError.value = ''
   try {
-    checkIns.value = (await getCheckIns()).data.data || []
+    checkIns.value = (await getCheckIns({ per_page: 100 })).data.data || []
   } catch {
     logError.value = 'Unable to load recent check-ins.'
   } finally {
@@ -93,7 +99,7 @@ const loadCheckIns = async () => {
 
 const exportLog = () => {
   const header = ['Attendee', 'Registration code', 'Email', 'Checked in at', 'Checked in by']
-  const rows = checkIns.value.map((item) => [
+  const rows = eventLog.value.map((item) => [
     item.registration?.full_name || '',
     item.registration?.registration_code || '',
     item.registration?.email || '',
@@ -254,36 +260,28 @@ onMounted(async () => {
           </div>
 
           <div class="search-row">
-            <input v-model="searchQuery" placeholder="e.g. CTS-004, Sokha, or sokha@example.com" @keyup.enter="searchAttendees" />
+            <input v-model="searchQuery" type="search" aria-label="Search attendees by registration code, name or email" placeholder="e.g. CTS-004, Sokha, or sokha@example.com" @keyup.enter="searchAttendees" />
             <button type="button" class="primary-button" :disabled="store.searchLoading || !selectedEventId || !searchQuery.trim()" @click="searchAttendees">
               {{ store.searchLoading ? 'Searching...' : 'Search' }}
             </button>
           </div>
 
-          <button type="button" class="toggle-scanner" @click="toggleScanner">
-            {{ scanning ? 'Hide QR scanner' : 'Show QR scanner' }}
-          </button>
+          <button v-if="scanning" type="button" class="toggle-scanner" @click="toggleScanner">Stop camera</button>
 
           <div class="qr-scanner-area">
             <div v-if="scanning" class="scanner-video">
               <QRScanner @scan="handleScan" @error="scannerError = $event" />
             </div>
-            <div v-else class="scanner-placeholder-large">
-              <div class="camera-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </div>
-              <div class="camera-corners">
-                <span class="corner tl"></span>
-                <span class="corner tr"></span>
-                <span class="corner bl"></span>
-                <span class="corner br"></span>
-              </div>
-            </div>
-            <p class="scanner-instruction">Point your camera at the QR code</p>
+            <!-- Camera off: an honest call to action instead of an empty viewfinder. -->
+            <button v-else type="button" class="scanner-start" @click="toggleScanner">
+              <span class="scanner-start__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              <span><strong>Scan a QR pass</strong><small>Start the camera and point it at the attendee’s pass</small></span>
+            </button>
+            <p v-if="scanning" class="scanner-instruction">Point your camera at the QR code</p>
           </div>
 
           <div class="code-input-row">
-            <input v-model="code" placeholder="...or paste the QR code / token" @keyup.enter="submitCode" />
+            <input v-model="code" aria-label="Paste a QR code or check-in token" placeholder="...or paste the QR code / token" @keyup.enter="submitCode" />
             <button type="button" class="black-button" :disabled="!code.trim()" @click="submitCode">Use code</button>
           </div>
 
@@ -337,7 +335,7 @@ onMounted(async () => {
         <aside class="event-qr-panel">
           <section class="event-section">
             <div class="section-label">EVENT</div>
-            <select class="event-dropdown" v-model="selectedEventId" @change="loadSelectedEvent">
+            <select class="event-dropdown" v-model="selectedEventId" aria-label="Event" @change="loadSelectedEvent">
               <option value="" disabled>Select event</option>
               <option v-for="event in events" :key="event.id" :value="event.id">
                 {{ event.name }}
@@ -387,11 +385,11 @@ onMounted(async () => {
       </div>
 
       <section class="checkin-table-panel">
-        <header><div><p class="admin-eyebrow">Attendance log</p><h2>Recent check-ins</h2></div><button type="button" class="export-log-button" :disabled="logLoading || !checkIns.length" @click="exportLog">{{ logLoading ? 'Loading...' : 'Export log' }}</button></header>
+        <header><div><p class="admin-eyebrow">Attendance log</p><h2>Recent check-ins</h2></div><button type="button" class="export-log-button" :disabled="logLoading || !eventLog.length" @click="exportLog">{{ logLoading ? 'Loading...' : 'Export log' }}</button></header>
         <div v-if="logError" class="inline-error" role="alert"><span>{{ logError }}</span><button type="button" class="secondary-button" @click="loadCheckIns">Try again</button></div>
         <div v-else-if="logLoading" class="dynamic-loading" role="status">Loading recent check-ins…</div>
-        <div v-else-if="!checkIns.length" class="recent-empty"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
-        <div v-else class="checkin-log-list"><div v-for="item in checkIns" :key="item.id" class="checkin-log-row"><div><strong>{{ item.registration?.full_name || 'Unnamed attendee' }}</strong><small>{{ item.registration?.registration_code }}</small></div><time>{{ item.checked_in_at ? new Date(item.checked_in_at).toLocaleString() : 'Just now' }}</time></div></div>
+        <div v-else-if="!eventLog.length" class="recent-empty"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><strong>No check-ins yet</strong><p>Scanned participants will appear here with their check-in time.</p></div></div>
+        <div v-else class="checkin-log-list"><div v-for="item in eventLog" :key="item.id" class="checkin-log-row"><div><strong>{{ item.registration?.full_name || 'Unnamed attendee' }}</strong><small>{{ item.registration?.registration_code }}</small></div><time>{{ item.checked_in_at ? new Date(item.checked_in_at).toLocaleString() : 'Just now' }}</time></div></div>
       </section>
 
       <section v-if="selectedEventId" class="checkin-table-panel">
@@ -430,7 +428,7 @@ onMounted(async () => {
 .checkin-heading .eyebrow {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #2563eb;
+  color: #0b7f62;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 0.5rem;
@@ -530,7 +528,7 @@ onMounted(async () => {
 
 .primary-button {
   padding: 0.875rem 1.75rem;
-  background: #93c5fd;
+  background: #8fd8c2;
   color: #ffffff;
   border: none;
   border-radius: 0.5rem;
@@ -540,11 +538,11 @@ onMounted(async () => {
 }
 
 .primary-button:hover:not(:disabled) {
-  background: #60a5fa;
+  background: #34c39a;
 }
 
 .primary-button:hover:not(:disabled) {
-  background: #2563eb;
+  background: #0b7f62;
 }
 
 .primary-button:disabled {
@@ -700,7 +698,7 @@ onMounted(async () => {
 }
 
 .attendee-status.is-ready {
-  color: #1e40af;
+  color: #065c46;
 }
 
 .event-qr-section {
@@ -729,7 +727,7 @@ onMounted(async () => {
 }
 
 .text-link {
-  color: #3b82f6;
+  color: #0b9a76;
   text-decoration: none;
   font-weight: 500;
 }
@@ -823,7 +821,7 @@ onMounted(async () => {
 }
 
 .admin-eyebrow {
-  color: #3b82f6;
+  color: #0b9a76;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -995,7 +993,7 @@ onMounted(async () => {
 .toggle-scanner {
   background: transparent;
   border: none;
-  color: #3b82f6;
+  color: #0b9a76;
   cursor: pointer;
   font-weight: 500;
   margin-bottom: 1rem;

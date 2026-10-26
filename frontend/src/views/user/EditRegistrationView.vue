@@ -32,7 +32,8 @@ const fields = computed(() => {
 const steps = computed(() => formConfig.value?.steps || [])
 const settings = computed(() => formConfig.value?.settings || {})
 const deadlineLabel = computed(() => registration.value?.registration_deadline
-  ? new Date(registration.value.registration_deadline).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
+  // A calendar date (closes at the end of that day), not a timestamp.
+  ? `end of ${new Date(`${String(registration.value.registration_deadline).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { dateStyle: 'long' })}`
   : 'No deadline set')
 const eventDateLabel = computed(() => {
   if (!event.value?.starts_at) return event.value?.start_date || 'Date to be confirmed'
@@ -173,6 +174,7 @@ load()
         <div v-if="saved" class="edit-success">✓ Registration updated successfully.</div>
 
         <FormRenderer
+          hide-header
           :fields="fields"
           :steps="steps"
           :active-step="step"

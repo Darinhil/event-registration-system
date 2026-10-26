@@ -14,7 +14,15 @@ const profilePhotoBroken = ref(false)
 const profilePhotoSrc = ref(auth.profilePhotoPreview || '')
 const profileLoadError = ref('')
 const searchInput = ref(null)
+const searchTerm = ref(String(route.query.search || ''))
+const canSearchEvents = computed(() => auth.isAdmin || auth.isEventAdmin)
 let profilePhotoRequest = 0
+
+const submitSearch = () => {
+  const search = searchTerm.value.trim()
+  router.push({ path: '/admin/events', query: search ? { search } : {} })
+  searchInput.value?.blur()
+}
 
 const logout = async () => { await auth.logout(); router.push('/login') }
 const loadProfilePhoto = async () => {
@@ -74,17 +82,18 @@ onBeforeUnmount(() => {
 <template>
   <header class="admin-topbar">
     <strong v-if="route.path === '/admin/personnel-profile'" class="profile-context-title">{{ personnelPageTitle }}</strong>
-    <label class="admin-search">
+    <form v-if="canSearchEvents" class="admin-search" role="search" @submit.prevent="submitSearch">
       <span class="admin-search-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
       </span>
       <input
         ref="searchInput"
+        v-model="searchTerm"
         type="search"
-        placeholder="Search events, attendees…"
-        aria-label="Search dashboard"
+        placeholder="Search events…"
+        aria-label="Search events"
       />
-    </label>
+    </form>
 
     <div class="admin-top-actions">
       <div class="admin-action-wrap">

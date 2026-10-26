@@ -416,8 +416,8 @@ onMounted(loadReports)
 .attendee-close { margin: 0; height: 38px; padding: 0 12px; border: 1px solid #dce8f4; border-radius: 8px; background: #fff; color: #7890a8; display: inline-flex; align-items: center; }
 .attendee-close:hover { border-color: #f3c1c7; color: #b42318; }
 .reports-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid #d2dfeb; border-radius: 8px; background: #fcfdff; color: #9aabba; transition: border-color .15s ease, box-shadow .15s ease, color .15s ease; }
-.reports-search:hover { border-color: #abc9f2; }
-.reports-search:focus-within { border-color: #76a8ef; box-shadow: 0 0 0 3px rgba(39, 124, 242, .12); background: #fff; color: #277cf2; }
+.reports-search:hover { border-color: #a6dccb; }
+.reports-search:focus-within { border-color: #7cc9b2; box-shadow: 0 0 0 3px rgba(11, 127, 98, .12); background: #fff; color: #0b7f62; }
 .reports-search svg { flex: 0 0 auto; }
 .reports-search input { width: 220px; min-width: 0; border: 0; outline: 0; background: transparent; font: .74rem 'Space Grotesk', sans-serif; color: #16345f; }
 .reports-search input::placeholder { color: #9aabba; }
@@ -432,18 +432,18 @@ onMounted(loadReports)
 .reports-row { cursor: pointer; }
 .reports-row:hover td { background: #fafdff; }
 .reports-row.is-selected td { background: #f2f8ff; }
-.reports-row-action button { margin: 0; padding: 6px 11px; border: 1px solid #dce8f4; border-radius: 7px; background: #fff; color: #277cf2; font-size: .66rem; font-weight: 700; white-space: nowrap; }
-.reports-row-action button:hover { border-color: #8fbaff; background: #f7fbff; }
+.reports-row-action button { margin: 0; padding: 6px 11px; border: 1px solid #dce8f4; border-radius: 7px; background: #fff; color: #0b7f62; font-size: .66rem; font-weight: 700; white-space: nowrap; }
+.reports-row-action button:hover { border-color: #7cc9b2; background: #f7fbff; }
 .reports-rate { display: flex; align-items: center; gap: 10px; }
 .reports-rate-track { flex: 0 0 84px; height: 6px; border-radius: 999px; background: #eef3f9; overflow: hidden; }
-.reports-rate-track span { display: block; height: 100%; border-radius: 999px; background: #277cf2; transition: width .25s ease; }
+.reports-rate-track span { display: block; height: 100%; border-radius: 999px; background: #0b7f62; transition: width .25s ease; }
 .reports-rate-track span.good { background: #0d9b68; }
 .reports-rate-track span.mid { background: #d77911; }
 .reports-rate-track span.low { background: #db5360; }
 .reports-rate b { color: #16345f; font-size: .72rem; }
 .attendee-tabs { display: flex; gap: 8px; margin: 4px 22px 14px; }
 .attendee-tabs button { margin: 0; padding: 8px 14px; border: 1px solid #dce8f4; border-radius: 999px; background: #fff; color: #526e97; font-size: .68rem; font-weight: 600; }
-.attendee-tabs button.active { border-color: #277cf2; background: #eef5ff; color: #216bd8; }
+.attendee-tabs button.active { border-color: #0b7f62; background: #ecf8f4; color: #0b7f62; }
 .attendee-inline-error { margin: 0 22px 14px; }
 .checkin-pill { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: .62rem; font-weight: 700; }
 .checkin-pill.checked { background: #d9f7e9; color: #0b9b63; }
@@ -466,7 +466,7 @@ onMounted(loadReports)
 .profile-id-card strong { color: #16345f; font-size: .85rem; }
 .profile-id-card small { color: #8295aa; font-size: .66rem; }
 .profile-details { display: grid; gap: 14px; }
-.profile-details h4 { margin: 0 0 6px; color: #3978d8; font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.profile-details h4 { margin: 0 0 6px; color: #0b7f62; font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .profile-details dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; margin: 0; }
 .profile-details dl > div { display: grid; gap: 2px; padding: 8px 11px; border: 1px solid #e9eff6; border-radius: 8px; background: #fbfdff; }
 .profile-details dt { color: #8295aa; font-size: .62rem; text-transform: capitalize; }

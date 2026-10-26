@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { getUsers } from '../../services/adminService'
 
@@ -65,9 +66,10 @@ const normalizeEvent = (event) => ({
   status: event.status === 'published' ? 'open' : event.status,
   registered: event.registrations_count ?? event.registered ?? 0,
   capacity: event.capacity ?? event.maximum_participants,
+  // starts_at/ends_at are UTC; keep the Date objects so labels show the viewer's local time.
+  starts: event.starts_at ? new Date(event.starts_at) : null,
+  ends: event.ends_at ? new Date(event.ends_at) : null,
   start_date: event.start_date || event.starts_at?.slice(0, 10),
-  start_time: event.start_time || event.starts_at?.slice(11, 16),
-  end_time: event.end_time || event.ends_at?.slice(11, 16),
 })
 
 const selectedEvent = computed(() => events.value.find((event) => event.id === selectedEventId.value) || events.value[0] || null)
@@ -114,7 +116,8 @@ const pickAnswer = (registration, candidates, fallback) => {
   return fallback ?? ''
 }
 const ageBucket = (registration) => {
-  const age = Number(registration.age)
+  // Number(null) is 0, which used to file everyone without an age under "Under 18".
+  const age = registration.age === null || registration.age === undefined || registration.age === '' ? NaN : Number(registration.age)
   const group = String(registration.age_group || pickAnswer(registration, ['age group', 'age'], '')).toLowerCase()
   if (group.includes('under') || group.includes('18')) return group.includes('under') ? 'under-18' : '18-29'
   if (group.includes('30')) return '30-60'
@@ -218,8 +221,9 @@ const selectEvent = async (event) => {
   await loadAttendees()
 }
 
-const dateLabel = (event) => event?.start_date ? new Date(`${event.start_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date pending'
-const timeLabel = (event) => event?.start_time ? `${event.start_time} - ${event.end_time || '04:00'} PM` : 'Time pending'
+const dateLabel = (event) => event?.starts ? event.starts.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date pending'
+const clock = (date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+const timeLabel = (event) => event?.starts ? [clock(event.starts), event.ends && clock(event.ends)].filter(Boolean).join(' – ') : 'Time pending'
 const eventImage = (event) => event?.branding?.image || event?.image || ''
 const initials = (name) => (name || 'U').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
 const selectEventScope = (scope) => { eventScope.value = scope }
@@ -285,16 +289,16 @@ onMounted(loadWorkspace)
           <div class="attendance-event-tabs"><button type="button" :class="{ active: eventScope === 'all' }" @click="selectEventScope('all')">All Events <b>{{ events.length }}</b></button><button type="button" :class="{ active: eventScope === 'upcoming' }" @click="selectEventScope('upcoming')">Upcoming <b>{{ upcomingEventCount }}</b></button><button type="button" :class="{ active: eventScope === 'ongoing' }" @click="selectEventScope('ongoing')">Ongoing <b>{{ ongoingEventCount }}</b></button><button type="button" :class="{ active: eventScope === 'past' }" @click="selectEventScope('past')">Past <b>{{ pastEventCount }}</b></button></div>
           <div class="attendance-event-items">
             <button v-for="event in visibleEvents" :key="event.id" type="button" class="attendance-event-item" :class="{ active: event.id === selectedEventId }" @click="selectEvent(event)">
-              <span class="attendance-event-image"><img v-if="eventImage(event)" :src="eventImage(event)" alt="" /><b v-else>{{ event.name.slice(0, 2).toUpperCase() }}</b></span><span class="attendance-event-copy"><strong>{{ event.name }}</strong><small>Calendar {{ dateLabel(event) }} · {{ timeLabel(event) }}</small><small>Location {{ event.location || 'Location pending' }}</small></span><span class="attendance-event-count"><strong>{{ event.registered || 0 }} / {{ event.capacity || '-' }}</strong><small>attended</small></span><span class="attendance-event-arrow">›</span>
+              <span class="attendance-event-image"><img v-if="eventImage(event)" :src="eventImage(event)" alt="" /><b v-else>{{ event.name.slice(0, 2).toUpperCase() }}</b></span><span class="attendance-event-copy"><strong>{{ event.name }}</strong><small><AppIcon name="calendar" :size="14" class="attendance-inline-icon" />{{ dateLabel(event) }} · {{ timeLabel(event) }}</small><small><AppIcon name="pin" :size="14" class="attendance-inline-icon" />{{ event.location || 'Location pending' }}</small></span><span class="attendance-event-count"><strong>{{ event.registered || 0 }} / {{ event.capacity || '-' }}</strong><small>attended</small></span><span class="attendance-event-arrow">›</span>
             </button>
           </div>
-          <footer class="attendance-terminal"><small>Check-in Terminal</small><strong><i></i> Online</strong><b>Gate A - Phnom Penh</b></footer>
+          
         </aside>
         <main class="attendance-event-detail">
           <div v-if="loading" class="attendance-empty">Loading attendance...</div>
           <template v-else-if="selectedEvent">
             <section class="attendance-summary-card">
-              <header class="attendance-event-header"><span class="attendance-event-image attendance-event-image-large"><img v-if="eventImage(selectedEvent)" :src="eventImage(selectedEvent)" alt="" /><b v-else>{{ selectedEvent.name.slice(0, 2).toUpperCase() }}</b></span><div><h2>{{ selectedEvent.name }}</h2><p>Calendar {{ dateLabel(selectedEvent) }} · {{ timeLabel(selectedEvent) }}</p><p>Location {{ selectedEvent.location || 'Location pending' }}</p></div><span class="attendance-live-status">● {{ selectedEvent.status === 'open' ? 'Open' : selectedEvent.status }}</span><div class="attendance-header-actions"><button type="button" class="excel-action" @click="exportFilteredExcel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8l3 4-3 4m5-8h3m-3 4h3m-3 4h3" /></svg><span>Export to Excel</span></button><button type="button" class="primary" @click="openCheckIn">Check In Attendance</button></div></header>
+              <header class="attendance-event-header"><span class="attendance-event-image attendance-event-image-large"><img v-if="eventImage(selectedEvent)" :src="eventImage(selectedEvent)" alt="" /><b v-else>{{ selectedEvent.name.slice(0, 2).toUpperCase() }}</b></span><div><h2>{{ selectedEvent.name }}</h2><p><AppIcon name="calendar" :size="14" class="attendance-inline-icon" />{{ dateLabel(selectedEvent) }} · {{ timeLabel(selectedEvent) }}</p><p><AppIcon name="pin" :size="14" class="attendance-inline-icon" />{{ selectedEvent.location || 'Location pending' }}</p></div><span class="attendance-live-status">● {{ selectedEvent.status === 'open' ? 'Open' : selectedEvent.status }}</span><div class="attendance-header-actions"><button type="button" class="excel-action" @click="exportFilteredExcel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8l3 4-3 4m5-8h3m-3 4h3m-3 4h3" /></svg><span>Export to Excel</span></button><button type="button" class="primary" @click="openCheckIn">Check In Attendance</button></div></header>
               <div class="attendance-summary-tabs"><button type="button" :class="{ active: activeTab === 'attendees' }" @click="activeTab = 'attendees'">Attendances <b>{{ eventAttendeeCount }}</b></button><button type="button">VIP &amp; Speakers <b>0</b></button></div>
             </section>
             <section class="attendance-table-card">

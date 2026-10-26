@@ -41,7 +41,9 @@ class Registration extends Model
         }
 
         $fields ??= $this->event?->formFields ?? FormField::whereIn('id', array_keys($formData))->get();
-        $labels = collect($fields)->pluck('label', 'id');
+        // Fields removed after people registered keep their label here (see FormFieldSync).
+        $archived = collect($this->event?->form_config['archived_fields'] ?? [])->mapWithKeys(fn ($label, $id) => [(int) $id => $label]);
+        $labels = collect(collect($fields)->pluck('label', 'id')->all() + $archived->all());
 
         $values = [];
         foreach ($formData as $key => $value) {
@@ -51,6 +53,8 @@ class Registration extends Model
             if (is_array($value)) {
                 $value = implode(', ', array_map(fn ($item) => (string) $item, $value));
             }
+            // Single checkboxes are stored as booleans; show them as words in lists and exports.
+            if (is_bool($value)) $value = $value ? 'Yes' : 'No';
             $label = $labels[$key] ?? $labels[(int) $key] ?? null;
             $values[$label ?? (is_string($key) ? $key : "field_{$key}")] = $value;
         }
