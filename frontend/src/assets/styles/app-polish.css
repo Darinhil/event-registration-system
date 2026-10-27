@@ -77,7 +77,6 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .auth-form button.forgot-link { width: auto; min-height: 0; margin: 0; padding: 4px 0; border: 0; background: none; box-shadow: none; color: #0b7f62; font-size: .82rem; font-weight: 700; cursor: pointer; }
 .auth-form button.forgot-link:hover { text-decoration: underline; transform: none; }
 .auth-hint { margin: -4px 0 0; padding: 10px 12px; border-radius: 10px; background: #f1faf7; color: #33475c; font-size: .84rem; line-height: 1.45; }
-.pp-preview-note { margin: 0 0 16px; padding: 12px 14px; border: 1px solid #f3d9a6; border-radius: 12px; background: #fffaf0; color: #7a4a06; font-size: .9rem; line-height: 1.45; }
 
 /* Screen-reader-only text inside table headers is absolutely positioned; without a
    positioned ancestor it escapes the scroll container and widens the page on phones. */

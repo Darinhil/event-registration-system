@@ -4,6 +4,8 @@ import AdminLayout from '../../layouts/AdminLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import { getAdminEvents, getDashboard, getReports } from '../../services/adminService'
 import { useAuthStore } from '../../stores/auth'
+import { getMyCompliances } from '../../services/complianceService'
+import { getMyTraining } from '../../services/trainingService'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -116,7 +118,13 @@ const loadDashboard = async () => {
     loading.value = false
   }
 }
-onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else loading.value = false })
+// Staff home: the compliance card shows the person's real progress from their saved confirmations.
+const complianceSummary = ref(null)
+const loadComplianceSummary = async () => { try { complianceSummary.value = (await getMyCompliances()).data.summary } catch { complianceSummary.value = null } }
+const training = ref(null)
+const loadTraining = async () => { try { training.value = (await getMyTraining()).data } catch { training.value = null } }
+const upcomingTraining = computed(() => (training.value?.data || []).filter((course) => course.status !== 'completed').slice(0, 3))
+onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else { loading.value = false; loadComplianceSummary(); loadTraining() } })
 </script>
 
 <template>
@@ -126,16 +134,16 @@ onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else l
       <section class="staff-home__welcome"><div><h2>Welcome, {{ auth.user?.name || 'Staff member' }}</h2><p>Here’s an overview of your information and current activities.</p></div><RouterLink to="/admin/personnel-profile?section=my-profile">Complete your profile</RouterLink></section>
       <section class="staff-home__metrics" aria-label="Your staff overview">
         <article><small>Profile Completion</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=my-profile">View profile <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
-        <article><small>Training Progress</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=training">View training <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
+        <article><small>Training Progress</small><strong>{{ training ? `${training.summary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${training?.summary.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=training">View training <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
         <article><small>Active Contract</small><strong>—</strong><div class="staff-home__metric-note">Contract information</div><RouterLink to="/admin/personnel-profile?section=contract-history">View contract <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
-        <article><small>Compliance Status</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=compliances">View compliance <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
+        <article><small>Compliance Status</small><strong>{{ complianceSummary ? `${complianceSummary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${complianceSummary?.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=compliances">View compliance <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
       </section>
       <section class="staff-home__panel staff-home__quick"><h2>Quick Actions</h2><div class="staff-home__quick-grid">
         <RouterLink to="/admin/personnel-profile?section=leave-application"><span><AppIcon name="calendar-check" :size="18" /></span>Apply for Leave</RouterLink><RouterLink to="/admin/personnel-profile?section=overtime-request"><span><AppIcon name="timer" :size="18" /></span>Request Overtime</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span><AppIcon name="plane" :size="18" /></span>Travel Application</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span><AppIcon name="cart" :size="18" /></span>Purchase Request</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span><AppIcon name="fuel" :size="18" /></span>Fuel Log-sheet</RouterLink><RouterLink to="/admin/personnel-profile?section=finance-management"><span><AppIcon name="receipt" :size="18" /></span>Submit Voucher</RouterLink>
       </div></section>
       <div class="staff-home__columns">
         <section class="staff-home__panel"><header><h2>My Recent Requests</h2><RouterLink to="/admin/personnel-profile?section=my-requests">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><p class="staff-home__empty">Your recent requests will appear here.</p></section>
-        <section class="staff-home__panel"><header><h2>Upcoming Training</h2><RouterLink to="/admin/personnel-profile?section=training">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><p class="staff-home__empty">No upcoming training to show.</p></section>
+        <section class="staff-home__panel"><header><h2>Upcoming Training</h2><RouterLink to="/admin/personnel-profile?section=training">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><ul v-if="upcomingTraining.length" class="staff-home__list"><li v-for="course in upcomingTraining" :key="course.id"><RouterLink :to="{ path: '/admin/personnel-profile', query: { section: 'training', course: course.id } }"><strong>{{ course.title }}</strong><small :class="{ 'is-overdue': course.overdue }">{{ course.overdue ? 'Overdue' : course.due_date ? `Due ${new Date(`${course.due_date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : `${course.percent}% done` }}</small></RouterLink></li></ul><p v-else class="staff-home__empty">{{ training ? 'You’re up to date with your training.' : 'No upcoming training to show.' }}</p></section>
         <section class="staff-home__panel"><header><h2>Leave Balance</h2><RouterLink to="/admin/personnel-profile?section=time-management">Apply <AppIcon name="chevron-right" :size="13" /></RouterLink></header><p class="staff-home__empty">Leave balances will appear when available.</p></section>
         <section class="staff-home__panel"><header><h2>Recent Activities</h2></header><p class="staff-home__empty">Your recent activities will appear here.</p></section>
       </div>

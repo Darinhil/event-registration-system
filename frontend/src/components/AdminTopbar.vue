@@ -9,7 +9,7 @@ import { theme, toggleTheme } from '../utils/theme'
 const router = useRouter()
 const route = useRoute()
 const personnelPageTitle = computed(() => ({
-  'my-profile': 'My Profile (5 steps)',
+  'my-profile': 'My Profile',
   compliances: 'Compliances',
   'contract-history': 'Contract History',
   training: 'Staff Online Training',
@@ -23,7 +23,7 @@ const personnelPageTitle = computed(() => ({
   'purchase-request': 'Purchase Request',
   'finance-management': 'Finance Management',
   'my-requests': 'My Requests',
-}[route.query.section] || 'My Profile (5 steps)'))
+}[route.query.section] || 'My Profile'))
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)

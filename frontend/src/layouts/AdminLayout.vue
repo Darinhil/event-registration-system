@@ -84,7 +84,6 @@ const logout = async () => { await auth.logout(); router.push('/login') }
       <section class="sb-section" aria-labelledby="sb-label-workspace">
         <h2 id="sb-label-workspace" class="sb-label">Workspace</h2>
         <ul class="sb-list">
-          <li><RouterLink to="/admin" class="sb-link" exact-active-class="is-active"><AppIcon class="sb-icon" name="layout-grid" :size="18" /><span class="sb-text">Dashboard</span></RouterLink></li>
           <li v-if="hasEventWorkspace" class="sb-group" :class="{ 'is-open': eventMenuOpen, 'has-active': isEventSection }">
             <div class="sb-row">
               <RouterLink to="/admin/events" class="sb-link" :class="{ 'is-active': isEventsActive, 'is-parent-active': isEventSection && !isEventsActive }" :aria-current="isEventsActive ? 'page' : undefined"><AppIcon class="sb-icon" name="calendar" :size="18" /><span class="sb-text">{{ isAdmin ? 'All Events' : 'My Events' }}</span></RouterLink>
@@ -94,6 +93,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
               <li v-for="item in eventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
             </ul>
           </li>
+          <li><RouterLink to="/admin" class="sb-link" exact-active-class="is-active"><AppIcon class="sb-icon" name="layout-grid" :size="18" /><span class="sb-text">Dashboard</span></RouterLink></li>
         </ul>
       </section>
 

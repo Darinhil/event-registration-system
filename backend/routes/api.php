@@ -3,11 +3,14 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CheckInController;
+use App\Http\Controllers\ComplianceController;
+use App\Http\Controllers\ContractController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\SystemSettingsController;
+use App\Http\Controllers\TrainingController;
 use Illuminate\Support\Facades\Route;
 
 // Throttled per IP to slow down password guessing and account spam.
@@ -36,6 +39,20 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/check-ins', [CheckInController::class, 'store']);
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
+    // Personnel portal: a staff member's own compliance requirements.
+    Route::middleware('can:use-personnel-portal')->group(function (): void {
+        Route::get('/me/compliances', [ComplianceController::class, 'index']);
+        Route::post('/me/compliances/{policy}/complete', [ComplianceController::class, 'complete'])->middleware('throttle:30,1');
+        Route::get('/me/training', [TrainingController::class, 'index']);
+        Route::get('/me/training/{course}', [TrainingController::class, 'show']);
+        Route::post('/me/training/{course}/lessons/{lesson}/complete', [TrainingController::class, 'completeLesson']);
+        Route::get('/me/training/{course}/quiz', [TrainingController::class, 'quiz']);
+        Route::post('/me/training/{course}/quiz', [TrainingController::class, 'submitQuiz'])->middleware('throttle:20,1');
+        Route::get('/me/contracts', [ContractController::class, 'mine']);
+        // The owner or a Master Admin; checked in the controller.
+        Route::get('/contracts/{contract}/file', [ContractController::class, 'file']);
+    });
+
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
         Route::match(['get', 'post'], '/check-ins/lookup', [CheckInController::class, 'lookup']);
         Route::post('/check-ins/search', [CheckInController::class, 'search']);
@@ -61,6 +78,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::middleware('can:manage-admin-accounts')->group(function (): void {
             Route::get('/settings', [SystemSettingsController::class, 'show']);
             Route::put('/settings', [SystemSettingsController::class, 'update']);
+            Route::get('/contracts', [ContractController::class, 'index']);
+            Route::post('/contracts', [ContractController::class, 'store']);
+            Route::post('/contracts/{contract}', [ContractController::class, 'update']);
+            Route::delete('/contracts/{contract}', [ContractController::class, 'destroy']);
             Route::get('/admin-accounts', [AdminController::class, 'adminAccounts']);
             Route::post('/admin-accounts', [AdminController::class, 'createAdminAccount']);
             Route::put('/admin-accounts/{user}', [AdminController::class, 'updateAdminAccount']);

@@ -14,6 +14,8 @@
   --sb-active-bg: rgba(52, 211, 153, .14);
   --sb-accent: #34d399;
   --sb-accent-soft: #6ee7b7;
+  --sb-sub-text: #bfd0d6;  /* 8.9:1 on the sidebar background */
+  --sb-sub-icon: #93b1bb;  /* 6.2:1, so outline icons stay legible */
 
   display: flex;
   flex-direction: column;
@@ -225,9 +227,11 @@
 .admin-sidebar .sb-toggle svg { transition: transform .18s ease; }
 .admin-sidebar .sb-group:not(.is-open) .sb-toggle svg { transform: rotate(-90deg); }
 
+/* Sub-items hang off a guide line aligned with the parent icon. They share the
+   top-level states (hover wash, green active tint, accent bar) one step quieter. */
 .admin-sidebar .sb-sublist {
-  gap: 1px;
-  margin: 2px 0 6px 21px;
+  gap: 2px;
+  margin: 2px 0 8px 21px;
   padding-left: 11px;
   border-left: 1px solid rgba(255, 255, 255, .1);
 }
@@ -235,34 +239,37 @@
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: 36px;
+  min-height: 38px;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   padding: 0 10px;
-  border-radius: 7px;
-  color: #a8bec6;
-  font-size: .83rem;
+  border-radius: 8px;
+  color: var(--sb-sub-text);
+  font-size: .845rem;
   font-weight: 500;
+  line-height: 1.25;
   text-decoration: none;
   transition: background-color .15s ease, color .15s ease;
 }
-.admin-sidebar .sb-sublink .sb-icon { color: #7f9ea8; }
-.admin-sidebar .sb-sublink:hover { background: var(--sb-hover); color: #fff; }
-.admin-sidebar .sb-sublink:hover .sb-icon { color: #fff; }
-.admin-sidebar .sb-sublink.is-active { background: rgba(255, 255, 255, .07); color: #fff; font-weight: 600; }
+.admin-sidebar .sb-sublink .sb-icon { color: var(--sb-sub-icon); }
+.admin-sidebar .sb-sublink:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.admin-sidebar .sb-sublink:hover .sb-icon { color: #d7e6ea; }
+.admin-sidebar .sb-sublink:active { background: rgba(255, 255, 255, .1); }
+.admin-sidebar .sb-sublink.is-active { background: var(--sb-active-bg); color: #fff; font-weight: 600; }
 .admin-sidebar .sb-sublink.is-active .sb-icon { color: var(--sb-accent-soft); }
 .admin-sidebar .sb-sublink.is-active::before {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: -12px;
-  width: 2px;
-  border-radius: 2px;
+  top: 9px;
+  bottom: 9px;
+  left: -13px; /* sits on the guide line */
+  width: 3px;
+  border-radius: 3px;
   background: var(--sb-accent);
   content: "";
 }
 .admin-sidebar .sb-hint {
   flex: none;
+  transition: background-color .15s ease, color .15s ease;
   margin-left: auto;
   padding: 1px 7px;
   border-radius: 999px;
@@ -271,6 +278,8 @@
   font-size: .68rem;
   font-weight: 600;
 }
+.admin-sidebar .sb-sublink:hover .sb-hint,
+.admin-sidebar .sb-sublink.is-active .sb-hint { background: rgba(255, 255, 255, .12); color: #d7e6ea; }
 
 /* Footer: signed-in user */
 .admin-sidebar .sb-footer {
