@@ -2,7 +2,12 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Html5Qrcode } from 'html5-qrcode'
 
-const emit = defineEmits(['scan', 'error'])
+// The staff desk scans attendee passes; attendees scan the venue code, so the wording is configurable.
+const props = defineProps({
+	hint: { type: String, default: 'Point the camera at the attendee QR pass.' },
+	showPaste: { type: Boolean, default: true },
+})
+const emit = defineEmits(['scan', 'error', 'ready'])
 const scanner = ref(null)
 const scannerId = `qr-reader-${Math.random().toString(36).slice(2)}`
 let reader
@@ -35,10 +40,11 @@ onMounted(async () => {
 			},
 			() => {},
 		)
+		emit('ready')
 	} catch (error) {
 		const reason = error instanceof Error && error.message.includes('HTTPS')
 			? 'Camera access requires HTTPS (or localhost). Open the site using an HTTPS URL, then allow camera permission.'
-			: 'Camera access is unavailable. Allow camera permission, close other apps using the camera, or enter the attendee code below.'
+			: 'Camera access is unavailable. Allow camera permission in your browser and close other apps using the camera, then try again.'
 		emit('error', reason)
 	}
 })
@@ -49,7 +55,7 @@ onBeforeUnmount(stopCamera)
 <template>
 	<div class="scanner">
 		<div :id="scannerId" ref="scanner" class="camera-reader"></div>
-		<p class="scanner-hint">Point the camera at the attendee QR pass.</p>
-		<input aria-label="Paste QR code text instead of scanning" placeholder="Paste QR payload instead" @change="emit('scan', $event.target.value)" />
+		<p v-if="props.hint" class="scanner-hint">{{ props.hint }}</p>
+		<input v-if="props.showPaste" aria-label="Paste QR code text instead of scanning" placeholder="Paste QR payload instead" @change="emit('scan', $event.target.value)" />
 	</div>
 </template>

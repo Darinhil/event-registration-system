@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
 import FormRenderer from '../../components/FormRenderer.vue'
@@ -12,7 +12,6 @@ const router = useRouter()
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
-const saved = ref(false)
 const registration = ref(null)
 const event = ref(null)
 const formConfig = ref(null)
@@ -31,25 +30,30 @@ const fields = computed(() => {
 })
 const steps = computed(() => formConfig.value?.steps || [])
 const settings = computed(() => formConfig.value?.settings || {})
-const deadlineLabel = computed(() => registration.value?.registration_deadline
-  // A calendar date (closes at the end of that day), not a timestamp.
-  ? `end of ${new Date(`${String(registration.value.registration_deadline).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { dateStyle: 'long' })}`
-  : 'No deadline set')
-const eventDateLabel = computed(() => {
-  if (!event.value?.starts_at) return event.value?.start_date || 'Date to be confirmed'
+// Same event summary as the registration form (RegistrationForm.vue), so both pages read alike.
+const banner = computed(() => event.value?.branding?.image || event.value?.image || '')
+const dateLabel = computed(() => {
+  if (!event.value?.starts_at) return 'Date to be confirmed'
   const start = new Date(event.value.starts_at)
   const end = event.value.ends_at ? new Date(event.value.ends_at) : null
-  const format = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  if (!end || Number.isNaN(end.getTime()) || start.toDateString() === end.toDateString()) return format(start)
-  const sameYear = start.getFullYear() === end.getFullYear()
-  const endLabel = sameYear ? end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: undefined }) : format(end)
-  return `${format(start)} – ${endLabel}`
+  const format = (date) => date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+  if (!end || start.toDateString() === end.toDateString()) return format(start)
+  return `${format(start)} – ${format(end)}`
 })
-const eventTimeLabel = computed(() => event.value?.starts_at
-  ? new Date(event.value.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  : event.value?.start_time || 'Time to be confirmed')
+const timeLabel = computed(() => {
+  if (!event.value?.starts_at) return ''
+  const time = (value) => new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return event.value.ends_at ? `${time(event.value.starts_at)} – ${time(event.value.ends_at)}` : time(event.value.starts_at)
+})
+// The deadline is a calendar date: editing closes at the end of that day.
+const deadlineLabel = computed(() => (registration.value?.registration_deadline
+  ? new Date(`${String(registration.value.registration_deadline).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  : ''))
+const alertEl = ref(null)
 
 const load = async () => {
+  loading.value = true
+  error.value = ''
   try {
     const id = route.params.id
     const registrationResponse = await api.get(`/registrations/${id}`)
@@ -101,9 +105,8 @@ const load = async () => {
     }
     initialValues.value = values
 
-    if (!registration.value.can_edit) error.value = 'Editing is closed for this registration.'
   } catch (requestError) {
-    error.value = requestError.response?.data?.message || 'Registration could not be loaded.'
+    error.value = !requestError.response ? 'We couldn’t reach the server. Check your connection and try again.' : requestError.response.status === 403 || requestError.response.status === 404 ? 'This registration isn’t available.' : requestError.response.data?.message || 'Registration could not be loaded.'
   } finally {
     loading.value = false
   }
@@ -135,7 +138,8 @@ const submit = async (values) => {
       else error.value = Array.isArray(messages) ? messages[0] : String(messages)
     }
     serverErrors.value = mapped
-    if (!error.value) error.value = requestError.response?.data?.message || 'Changes could not be saved.'
+    if (!error.value) error.value = !requestError.response ? 'Your changes weren’t saved because we couldn’t reach the server.' : requestError.response.status >= 500 ? 'Something went wrong on our side. Please try again.' : requestError.response.data?.message || 'Changes could not be saved.'
+    if (!Object.keys(mapped).length) { await nextTick(); alertEl.value?.focus() }
   } finally {
     saving.value = false
   }
@@ -146,53 +150,77 @@ load()
 
 <template>
   <UserLayout>
-    <section class="edit-registration-page">
-      <RouterLink class="back-link" to="/me">← Back to My registrations</RouterLink>
+    <section class="rg-page">
+      <RouterLink class="rg-back" to="/me"><AppIcon name="chevron-left" :size="16" />Back to my registrations</RouterLink>
 
-      <div v-if="loading" class="dynamic-loading">Loading your registration…</div>
-
-      <div v-else-if="registration && event && formConfig" class="edit-registration-card">
-        <header class="edit-registration-header edit-event-hero" :class="{ 'has-image': event.branding?.image || event.image }">
-          <img v-if="event.branding?.image || event.image" :src="event.branding?.image || event.image" :alt="`${event.name} banner`" loading="lazy" decoding="async" />
-          <div class="edit-event-hero-copy">
-            <p class="eyebrow">Event registration · Edit</p>
-            <h1>{{ event.name }}</h1>
-            <p>{{ event.description || 'Update your information for this event.' }}</p>
-            <div class="edit-event-meta">
-              <span><AppIcon name="calendar" :size="16" />{{ eventDateLabel }}</span>
-              <span><AppIcon name="clock" :size="16" />{{ eventTimeLabel }}</span>
-              <span><AppIcon name="pin" :size="16" />{{ event.location || 'Location to be confirmed' }}</span>
-            </div>
-          </div>
-          <span class="edit-deadline" :class="{ closed: !registration.can_edit }">
-            <AppIcon v-if="!registration.can_edit" name="lock" :size="14" />
-            {{ registration.can_edit ? `Editing until ${deadlineLabel}` : 'Editing closed' }}
-          </span>
-        </header>
-
-        <p v-if="error" class="dynamic-form-error" role="alert">{{ error }}</p>
-        <div v-if="saved" class="edit-success">✓ Registration updated successfully.</div>
-
-        <FormRenderer
-          hide-header
-          :fields="fields"
-          :steps="steps"
-          :active-step="step"
-          :form-title="formConfig.form_title"
-          :form-description="formConfig.form_description"
-          :settings="settings"
-          :initial-values="initialValues"
-          :server-errors="serverErrors"
-          submit-label="Save changes"
-          :disabled="!registration.can_edit"
-          @step-change="onStepChange"
-          @submit="submit"
-        />
+      <div v-if="loading" class="rg-layout" role="status" aria-label="Loading your registration">
+        <div class="rg-skel rg-skel--side"></div>
+        <div class="rg-skel rg-skel--form"></div>
       </div>
 
-      <div v-else class="dynamic-empty">
+      <div v-else-if="!registration || !event || !formConfig" class="rg-card rg-state" role="alert">
+        <span class="rg-state__icon is-error"><AppIcon name="alert-circle" :size="26" /></span>
         <h1>{{ error || 'Registration not found' }}</h1>
-        <RouterLink to="/me">Return to My registrations</RouterLink>
+        <div class="rg-state__actions"><button type="button" class="rg-btn" @click="load"><AppIcon name="refresh" :size="16" />Try again</button><RouterLink class="rg-btn rg-btn--primary" to="/me">My registrations</RouterLink></div>
+      </div>
+
+      <div v-else class="rg-layout">
+        <!-- Which event and which registration this is -->
+        <aside class="rg-event" aria-label="Event summary">
+          <img v-if="banner" class="rg-event__banner" :src="banner" alt="" />
+          <div class="rg-event__body">
+            <span v-if="event.category" class="rg-tag">{{ event.category }}</span>
+            <h2>{{ event.name }}</h2>
+            <ul class="rg-facts">
+              <li><AppIcon name="calendar" :size="16" /><span>{{ dateLabel }}</span></li>
+              <li v-if="timeLabel"><AppIcon name="clock" :size="16" /><span>{{ timeLabel }}</span></li>
+              <li><AppIcon name="pin" :size="16" /><span>{{ event.location || 'Location to be confirmed' }}</span></li>
+              <li><AppIcon name="ticket" :size="16" /><span>Registration <strong>{{ registration.registration_code }}</strong></span></li>
+            </ul>
+            <p class="rg-status" :class="registration.can_edit ? 'is-open' : 'is-closed'">
+              <AppIcon :name="registration.can_edit ? 'pen' : 'lock'" :size="16" />
+              <span v-if="registration.can_edit"><strong>Editing open</strong>{{ deadlineLabel ? ` · until ${deadlineLabel}` : '' }}</span>
+              <span v-else><strong>Editing closed</strong></span>
+            </p>
+            <p v-if="event.description" class="rg-event__desc">{{ event.description }}</p>
+          </div>
+        </aside>
+
+        <div class="rg-main">
+          <div v-if="!registration.can_edit" class="rg-card rg-state">
+            <span class="rg-state__icon"><AppIcon name="lock" :size="24" /></span>
+            <h1>Editing is closed</h1>
+            <p>{{ deadlineLabel ? `Changes could be made until ${deadlineLabel}.` : 'The organiser isn’t accepting changes to this registration.' }} Contact the organiser if something needs correcting.</p>
+            <div class="rg-state__actions"><RouterLink class="rg-btn" :to="`/events/${registration.event_id}`">View event</RouterLink><RouterLink class="rg-btn rg-btn--primary" to="/me">My registrations</RouterLink></div>
+          </div>
+
+          <div v-else class="rg-card rg-form">
+            <header class="rg-form__head">
+              <h1>Edit your registration</h1>
+              <p>Update your details for {{ event.name }}. Your registration code and QR pass stay the same.</p>
+            </header>
+
+            <div v-if="error" ref="alertEl" class="rg-alert is-error" role="alert" tabindex="-1">
+              <AppIcon name="alert-circle" :size="20" />
+              <div><strong>Your changes weren’t saved</strong><p>{{ error }}</p></div>
+            </div>
+
+            <FormRenderer
+              hide-header
+              :fields="fields"
+              :steps="steps"
+              :active-step="step"
+              :settings="settings"
+              :initial-values="initialValues"
+              :server-errors="serverErrors"
+              :submitting="saving"
+              submit-label="Save changes"
+              submitting-label="Saving…"
+              @step-change="onStepChange"
+              @submit="submit"
+            />
+          </div>
+        </div>
       </div>
     </section>
   </UserLayout>

@@ -597,13 +597,6 @@ onBeforeUnmount(() => { cameraOn.value = false })
 
             <div v-if="deskLoading" class="ck-qr__box ck-skeleton" />
             <div v-else-if="!selectedEventId || deskError" class="ck-qr__box ck-qr__box--empty"><p>Select an event to see its entrance QR.</p></div>
-            <div v-else-if="baseIsLocal" class="ck-qr__setup" role="note">
-              <AppIcon name="alert-circle" :size="20" />
-              <div>
-                <strong>Public address needed</strong>
-                <p>This page is open at <code>{{ publicBase }}</code>, which phones can’t reach, so no QR is shown. Set <code>VITE_PUBLIC_APP_URL</code> in <code>frontend/.env</code> to your site’s public address (e.g. <code>https://events.example.org</code>) and rebuild, or open this page through that address.</p>
-              </div>
-            </div>
             <div v-else-if="!entranceToken" class="ck-qr__box ck-qr__box--empty">
               <p>This event doesn’t have an entrance QR yet.</p>
               <button type="button" class="ck-btn ck-btn--primary ck-btn--sm" :disabled="regenerating" @click="regenerate">{{ regenerating ? 'Creating…' : 'Create entrance QR' }}</button>
@@ -611,6 +604,14 @@ onBeforeUnmount(() => { cameraOn.value = false })
             <template v-else>
               <div class="ck-qr__box"><QRCodeDisplay :value="entranceUrl" /></div>
               <p class="ck-qr__url" :title="entranceUrl">{{ entranceUrl }}</p>
+              <div v-if="baseIsLocal" class="ck-qr__setup" role="note">
+                <AppIcon name="alert-circle" :size="20" />
+                <div>
+                  <strong>Test mode — this link only works on this computer</strong>
+                  <p>Phones can’t open <code>{{ publicBase }}</code>. To test, open the link here while signed in as a participant. Before printing, set <code>VITE_PUBLIC_APP_URL</code> in <code>frontend/.env</code> to your site’s public address and rebuild.</p>
+                  <a class="ck-btn ck-btn--ghost ck-btn--sm ck-qr__try" :href="entranceUrl" target="_blank" rel="noopener"><AppIcon name="link" :size="16" />Open check-in link</a>
+                </div>
+              </div>
               <div class="ck-qr__actions">
                 <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" @click="printQr"><AppIcon name="file-text" :size="16" />Print</button>
                 <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" @click="downloadQr"><AppIcon name="download" :size="16" />Download</button>
@@ -619,7 +620,7 @@ onBeforeUnmount(() => { cameraOn.value = false })
               <ol class="ck-qr__steps">
                 <li>Print it and place it at the entrance.</li>
                 <li>Participants scan it with their phone camera.</li>
-                <li>They sign in with the account they registered with and tap “Confirm check-in”.</li>
+                <li>They sign in with the account they registered with and tap “Check me in”. Without scanning this code, participants can’t check themselves in.</li>
               </ol>
               <div class="ck-qr__regen">
                 <template v-if="!regenConfirm">

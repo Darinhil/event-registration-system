@@ -20,11 +20,10 @@ const steps = [
         <div class="hp-hero__copy">
           <p class="hp-eyebrow">Live &amp; Learn Cambodia · Events</p>
           <h1 id="hp-title">Make room for <em>the people</em> who make things.</h1>
-          <p class="hp-lede">Register for events with a short form and check in with your QR pass — a calm, simple registration desk.</p>
+          <p class="hp-lede">Register for events with a short form and check in by scanning the QR code at the venue — a calm, simple registration desk.</p>
           <div class="hp-actions">
             <RouterLink v-if="auth.isAuthenticated" class="hp-btn hp-btn--primary" to="/me"><AppIcon name="ticket" :size="17" />My registrations</RouterLink>
             <RouterLink v-else class="hp-btn hp-btn--primary" to="/login">Sign in<AppIcon name="arrow-right" :size="17" /></RouterLink>
-            <RouterLink class="hp-btn hp-btn--ghost" to="/check-in"><AppIcon name="check-circle" :size="17" />Check in at the venue</RouterLink>
           </div>
           <p v-if="!auth.isAuthenticated" class="hp-signup">New here? <RouterLink to="/account/register">Create a free account</RouterLink></p>
         </div>
