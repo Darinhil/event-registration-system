@@ -8,7 +8,22 @@ import { theme, toggleTheme } from '../utils/theme'
 
 const router = useRouter()
 const route = useRoute()
-const personnelPageTitle = computed(() => ({ compliances: 'Compliances', 'contract-history': 'Contract History', training: 'Staff Online Training' }[route.query.section] || 'My Profile (5 steps)'))
+const personnelPageTitle = computed(() => ({
+  'my-profile': 'My Profile (5 steps)',
+  compliances: 'Compliances',
+  'contract-history': 'Contract History',
+  training: 'Staff Online Training',
+  'time-management': 'Time Management',
+  'leave-application': 'Leave Application',
+  'overtime-request': 'Overtime Request',
+  'monthly-timesheet': 'Monthly Timesheet',
+  'other-requests': 'Other Requests',
+  'travel-application': 'Travel Application',
+  'fuel-log-sheet': 'Fuel Log-Sheet',
+  'purchase-request': 'Purchase Request',
+  'finance-management': 'Finance Management',
+  'my-requests': 'My Requests',
+}[route.query.section] || 'My Profile (5 steps)'))
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
