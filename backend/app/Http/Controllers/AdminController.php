@@ -22,6 +22,45 @@ class AdminController extends Controller
     }
 
     /**
+     * Recent activity for the topbar bell: new registrations and check-ins on the
+     * events this user can see. Read-only; "unread" is tracked by the browser.
+     */
+    public function notifications(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $limit = 20;
+        $eventIds = Event::visibleTo($request->user())->select('id');
+        $name = fn (Registration $registration) => $registration->full_name ?: 'Someone';
+
+        $registrations = Registration::whereIn('event_id', $eventIds)->whereNotNull('event_id')
+            ->with('event:id,name')->latest()->latest('id')->limit($limit)
+            ->get(['id', 'event_id', 'full_name', 'event_name', 'created_at'])
+            ->map(fn (Registration $registration) => [
+                'id' => "registration-{$registration->id}",
+                'type' => 'registration',
+                'title' => "{$name($registration)} registered",
+                'event' => $registration->event?->name ?? $registration->event_name,
+                'event_id' => $registration->event_id,
+                'at' => $registration->created_at?->toIso8601String(),
+            ]);
+
+        $checkIns = CheckIn::whereHas('registration', fn ($query) => $query->whereIn('event_id', $eventIds))
+            ->with('registration:id,event_id,full_name,event_name', 'registration.event:id,name')
+            ->latest('checked_in_at')->latest('id')->limit($limit)->get()
+            ->map(fn (CheckIn $checkIn) => [
+                'id' => "check-in-{$checkIn->id}",
+                'type' => 'check_in',
+                'title' => "{$name($checkIn->registration)} checked in",
+                'event' => $checkIn->registration->event?->name ?? $checkIn->registration->event_name,
+                'event_id' => $checkIn->registration->event_id,
+                'at' => ($checkIn->checked_in_at ?? $checkIn->created_at)?->toIso8601String(),
+            ]);
+
+        $items = $registrations->concat($checkIns)->sortByDesc('at')->take($limit)->values();
+
+        return response()->json(['data' => $items]);
+    }
+
+    /**
      * Per-event report: registrations, check-ins, no-shows and attendance rate.
      * Feeds the admin Reports page and its CSV export.
      */

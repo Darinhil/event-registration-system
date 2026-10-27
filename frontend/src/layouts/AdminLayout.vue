@@ -5,6 +5,7 @@ import AppIcon from '../components/AppIcon.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { setThemeActive } from '../utils/theme'
 import api from '../services/api'
 import adminLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
@@ -57,13 +58,16 @@ const profilePhotoSrc = ref(auth.profilePhotoPreview || ''); let profilePhotoReq
 const loadProfilePhoto = async () => { const id = ++profilePhotoRequest; if (!auth.user?.profile_photo) { profilePhotoSrc.value = ''; return } try { const { data } = await api.get('/me/profile-photo', { params: { photo: auth.user.profile_photo }, responseType: 'blob' }); if (id === profilePhotoRequest) profilePhotoSrc.value = auth.setProfilePhotoPreview(data) } catch { if (id === profilePhotoRequest) profilePhotoSrc.value = '' } }
 onMounted(loadProfilePhoto); watch(() => auth.user?.profile_photo, loadProfilePhoto)
 const settings = useSettingsStore()
+// Set during setup (not onMounted) so the first paint already uses the saved theme.
+setThemeActive(true)
+onBeforeUnmount(() => setThemeActive(false))
 onMounted(() => settings.load())
 const logout = async () => { await auth.logout(); router.push('/login') }
 </script>
 
 <template>
   <div class="admin-app-shell" :class="{ 'mobile-menu-open': mobileMenuOpen }"><a class="skip-link" href="#main-content">Skip to content</a><button type="button" class="admin-mobile-menu-toggle" :aria-expanded="mobileMenuOpen" aria-controls="admin-sidebar" aria-label="Toggle navigation" @click="mobileMenuOpen = !mobileMenuOpen"><span></span><span></span><span></span></button><button v-if="mobileMenuOpen" type="button" class="admin-mobile-menu-backdrop" aria-label="Close navigation" @click="mobileMenuOpen = false"></button><aside id="admin-sidebar" class="admin-sidebar">
-    <RouterLink to="/admin" class="admin-brand sb-brand" aria-label="Live &amp; Learn Cambodia — Dashboard"><img class="admin-brand-logo sb-brand-logo" :src="adminLogo" alt="" decoding="async" /></RouterLink>
+    <div class="sb-brand-block"><RouterLink to="/admin" class="admin-brand sb-brand" aria-label="Live &amp; Learn Cambodia — go to Dashboard"><img class="admin-brand-logo sb-brand-logo" :src="adminLogo" alt="" decoding="async" /></RouterLink><p class="sb-brand-caption"><span class="sb-brand-name">{{ settings.loaded ? settings.site_name : '' }}</span><span class="sb-brand-tag">Admin</span></p></div>
     <nav class="sb-nav" aria-label="Admin navigation">
       <section class="sb-section" aria-labelledby="sb-label-workspace">
         <h2 id="sb-label-workspace" class="sb-label">Workspace</h2>

@@ -214,6 +214,12 @@ defineProps({
     <template v-else-if="name === 'copy'">
       <rect x="8" y="8" width="14" height="14" rx="2" /><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2" />
     </template>
+    <template v-else-if="name === 'sun'">
+      <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </template>
+    <template v-else-if="name === 'moon'">
+      <path d="M20.5 14.1A8.5 8.5 0 1 1 9.9 3.5a6.8 6.8 0 0 0 10.6 10.6Z" />
+    </template>
     <template v-else-if="name === 'activity'">
       <path d="M22 12h-2.5a2 2 0 0 0-1.9 1.5l-2.3 8.3a.3.3 0 0 1-.5 0L9.2 2.2a.3.3 0 0 0-.5 0l-2.3 8.3A2 2 0 0 1 4.5 12H2" />
     </template>

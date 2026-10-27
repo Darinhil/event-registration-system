@@ -29,5 +29,6 @@ import './assets/styles/attendance.css'
 import './assets/styles/checkin-desk.css'
 import './assets/styles/reports.css'
 import './assets/styles/sidebar.css'
+import './assets/styles/theme-dark.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

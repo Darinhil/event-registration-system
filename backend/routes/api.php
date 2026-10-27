@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('/events/{event}/cancel', [EventController::class, 'cancel'])->middleware('can:update,event');
         Route::delete('/events/{event}', [EventController::class, 'destroy'])->middleware('can:delete,event');
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/notifications', [AdminController::class, 'notifications']);
         Route::get('/reports', [AdminController::class, 'reports']);
         Route::get('/events/{event}/report-attendees', [AdminController::class, 'eventReportAttendees'])->middleware('can:view,event');
         Route::get('/users', [AdminController::class, 'users']);
