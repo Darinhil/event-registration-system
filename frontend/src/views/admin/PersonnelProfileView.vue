@@ -106,6 +106,10 @@ const purchaseAttachment = ref(null)
 const purchaseSubmitted = ref(false)
 const purchaseTotal = computed(() => purchaseItems.value.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0), 0))
 const addPurchaseItem = () => { purchaseItems.value.push({ description: '', quantity: 1, unitCost: 0 }); purchaseSubmitted.value = false }
+const submitPurchaseRequest = () => {
+  if (purchaseAttachment.value && purchaseAttachment.value.size > 5 * 1024 * 1024) return
+  purchaseSubmitted.value = true
+}
 const requestTypeFilter = ref('all')
 const requestStatusFilter = ref('all')
 const selectedRequest = ref(null)
@@ -352,6 +356,22 @@ const cancelPurchaseRequest = () => {
           <div class="fuel-record-table-wrap"><table class="fuel-record-table"><thead><tr><th>Date</th><th>Mileage (km)</th><th>Liters</th><th>Cost $</th></tr></thead><tbody><tr v-for="(record, index) in fuelRecords" :key="index"><td><input v-model="record.date" type="date" :aria-label="`Fuel record ${index + 1} date`" @input="fuelSubmitted = false" /></td><td><input v-model.number="record.mileage" type="number" min="0" step="1" :aria-label="`Fuel record ${index + 1} mileage`" @input="fuelSubmitted = false" /></td><td><input v-model.number="record.liters" type="number" min="0" step="0.01" :aria-label="`Fuel record ${index + 1} liters`" @input="fuelSubmitted = false" /></td><td><input v-model.number="record.cost" type="number" min="0" step="0.01" :aria-label="`Fuel record ${index + 1} cost`" @input="fuelSubmitted = false" /></td></tr></tbody></table></div>
           <button class="fuel-add-record" type="button" @click="addFuelRecord">+ Add Record</button>
           <div class="fuel-actions"><div class="fuel-totals"><span>Total Fuel: <strong>{{ fuelTotalLiters.toFixed(2).replace(/\.00$/, '') }} L</strong></span><span>Total Cost: <strong>${{ fuelTotalCost.toFixed(2).replace(/\.00$/, '') }}</strong></span></div><span v-if="fuelSubmitted" class="leave-success" role="status">Log-sheet submitted successfully.</span><button type="submit" class="fuel-submit">Submit Log-Sheet</button></div>
+        </form>
+      </section>
+      <section v-else-if="section === 'purchase-request'" class="purchase-page">
+        <div class="purchase-page-heading"><h2>Purchase Request</h2><p>Request items with quantities and estimated unit costs.</p></div>
+        <form class="purchase-card" @submit.prevent="submitPurchaseRequest">
+          <h3>Request Information</h3>
+          <label class="purchase-field purchase-wide">Purpose <b>*</b><textarea v-model="purchasePurpose" rows="2" required @input="purchaseSubmitted = false"></textarea></label>
+          <div class="purchase-form-grid"><label class="purchase-field">Department <b>*</b><input v-model="purchaseDepartment" type="text" required @input="purchaseSubmitted = false" /></label><label class="purchase-field">Required Date <b>*</b><input v-model="purchaseRequiredDate" type="date" required @input="purchaseSubmitted = false" /></label></div>
+          <h3 class="purchase-items-heading">Items</h3>
+          <div class="purchase-items-wrap"><table class="purchase-items-table"><thead><tr><th>Item</th><th>Qty</th><th>Unit Cost $</th><th>Total</th></tr></thead><tbody><tr v-for="(item, index) in purchaseItems" :key="index"><td><input v-model="item.description" type="text" placeholder="Item description" required :aria-label="`Item ${index + 1} description`" @input="purchaseSubmitted = false" /></td><td><input v-model.number="item.quantity" type="number" min="1" step="1" required :aria-label="`Item ${index + 1} quantity`" @input="purchaseSubmitted = false" /></td><td><input v-model.number="item.unitCost" type="number" min="0" step="0.01" required :aria-label="`Item ${index + 1} unit cost`" @input="purchaseSubmitted = false" /></td><td>${{ ((Number(item.quantity) || 0) * (Number(item.unitCost) || 0)).toFixed(2) }}</td></tr></tbody></table></div>
+          <button class="purchase-add-item" type="button" @click="addPurchaseItem">+ Add Item</button>
+          <div class="purchase-total"><span>Total Amount</span><strong>${{ purchaseTotal.toFixed(2) }}</strong></div>
+          <label class="purchase-field purchase-justification">Justification<textarea v-model="purchaseJustification" rows="2" @input="purchaseSubmitted = false"></textarea></label>
+          <label class="purchase-field">Attachment (optional — PDF/image, max 5MB)<span class="purchase-file-control"><input type="file" accept=".pdf,image/*" @change="purchaseAttachment = $event.target.files?.[0] || null; purchaseSubmitted = false" /></span></label>
+          <p v-if="purchaseAttachment && purchaseAttachment.size > 5 * 1024 * 1024" class="leave-error" role="alert">The attachment must be 5MB or smaller.</p>
+          <div class="purchase-actions"><span v-if="purchaseSubmitted" class="leave-success" role="status">Request submitted successfully.</span><small>The P.R. number is assigned by finance after review.</small><button class="purchase-cancel" type="button" @click="cancelPurchaseRequest">Cancel</button><button class="purchase-submit" type="submit">✓ Submit Request</button></div>
         </form>
       </section>
       <section v-else class="other-section"><h2>{{ heading }}</h2><p>{{ heading }} information will appear here.</p></section>
