@@ -27,7 +27,7 @@
   width: 150px;
   right: auto;
   border-radius: 999px;
-  background: linear-gradient(110deg, rgba(8, 127, 118, 0), rgba(8, 127, 118, .18), rgba(37, 99, 235, 0));
+  background: linear-gradient(110deg, rgba(8, 127, 118, 0), rgba(8, 127, 118, .18), rgba(11, 127, 98, 0));
   content: '';
   opacity: 0;
   transform: scaleX(.65);

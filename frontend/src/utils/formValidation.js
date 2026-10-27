@@ -20,7 +20,13 @@ const URL_RE = /^https?:\/\/\S+\.\S+/
 export const validateField = (field, value) => {
   const s = field.settings || {}
   const empty = isAnswerEmpty(value)
-  if (field.required && empty) return `${field.label} is required.`
+  // Labels may already end in "?" or ":"; avoid messages like "...join?."
+  const name = String(field.label || 'this field').replace(/[\s?:.]+$/, '')
+  if (field.required && empty) {
+    if (field.type === 'checkbox' && !s.multiple) return `Please tick “${s.checkbox_text || field.label}” to continue.`
+    if (['select', 'radio', 'yesno', 'country'].includes(field.type) || (field.type === 'checkbox' && s.multiple)) return `Choose an answer for “${name}”.`
+    return `Enter ${name}.`
+  }
   if (empty) return ''
 
   switch (field.type) {

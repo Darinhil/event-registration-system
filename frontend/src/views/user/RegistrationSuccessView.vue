@@ -13,6 +13,7 @@ const registration = ref(null)
 const loading = ref(false)
 const error = ref('')
 let requestVersion = 0
+const justRegistered = computed(() => route.query.new === '1')
 const qrValue = computed(() => registration.value?.qr_token || registration.value?.registration_code || '')
 const statusLabel = computed(() => {
   const status = registration.value?.status || 'confirmed'
@@ -69,9 +70,10 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
     <section class="confirmation-page">
       <div class="confirmation-hero">
         <span class="confirmation-check" aria-hidden="true">{{ registration ? '✓' : 'i' }}</span>
-        <p class="eyebrow">{{ registration ? 'Registration details' : 'Registration confirmation' }}</p>
-        <h1>{{ registration ? (qrValue ? 'Your registration pass' : 'Registration details') : loading ? 'Loading your pass…' : 'Confirmation unavailable' }}</h1>
-        <p v-if="registration">{{ qrValue ? 'Your registration details and event pass are ready below.' : 'Your registration details are ready below.' }}</p>
+        <p class="eyebrow">{{ registration ? (justRegistered ? 'Registration complete' : 'Registration details') : 'Registration confirmation' }}</p>
+        <h1>{{ registration ? (justRegistered ? 'You’re registered!' : qrValue ? 'Your registration pass' : 'Registration details') : loading ? 'Loading your pass…' : 'Confirmation unavailable' }}</h1>
+        <p v-if="registration && justRegistered">Your place is confirmed. Show the QR code below at check-in. You can find this pass any time under <RouterLink to="/me">My registrations</RouterLink> — no confirmation email is sent, so save or download it now.</p>
+        <p v-else-if="registration">{{ qrValue ? 'Your registration details and event pass are ready below.' : 'Your registration details are ready below.' }}</p>
         <p v-else-if="loading" role="status">Retrieving your registration details.</p>
         <p v-else role="alert">{{ error || 'Registration details could not be found.' }}</p>
       </div>

@@ -9,20 +9,35 @@ use Illuminate\Http\Request;
 class SystemSettingsController extends Controller
 {
     private const DEFAULTS = [
-        'site_name' => 'Event Registration System',
+        'site_name' => 'LLC-Event',
         'registration_notice' => '',
         'maintenance_mode' => false,
     ];
 
-    public function show(): JsonResponse
+    /** Current values merged over the defaults. Every key is safe to show publicly. */
+    public static function values(): array
     {
         $settings = self::DEFAULTS;
-        SystemSetting::query()->get()->each(fn (SystemSetting $setting) => $settings[$setting->key] = $setting->value['value'] ?? $setting->value);
-        return response()->json(['data' => $settings]);
+        foreach (SystemSetting::query()->whereIn('key', array_keys(self::DEFAULTS))->get() as $setting) {
+            $settings[$setting->key] = is_array($setting->value) && array_key_exists('value', $setting->value) ? $setting->value['value'] : $setting->value;
+        }
+        $settings['maintenance_mode'] = (bool) $settings['maintenance_mode'];
+        return $settings;
+    }
+
+    public static function maintenanceMode(): bool
+    {
+        return self::values()['maintenance_mode'];
+    }
+
+    public function show(): JsonResponse
+    {
+        return response()->json(['data' => self::values()]);
     }
 
     public function update(Request $request): JsonResponse
     {
+        $request->merge(['site_name' => trim((string) $request->input('site_name')), 'registration_notice' => trim((string) $request->input('registration_notice'))]);
         $data = $request->validate([
             'site_name' => ['required', 'string', 'max:150'],
             'registration_notice' => ['nullable', 'string', 'max:1000'],

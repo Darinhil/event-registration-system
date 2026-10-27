@@ -124,10 +124,10 @@ const reset = () => { registration.value = null; store.reset() }
 .ci-lede { margin: 0; font-size: 0.85rem; }
 .ci-card { display: grid; gap: 16px; padding: 22px; border: 1px solid #dce8f4; border-radius: 13px; background: #fff; }
 .ci-card-head h2 { margin: 4px 0 6px; color: #16345f; font-size: 1.25rem; }
-.ci-kicker { margin: 0; color: #3978d8; font: 600 0.62rem 'DM Mono', monospace; letter-spacing: 0.13em; text-transform: uppercase; }
+.ci-kicker { margin: 0; color: #0b7f62; font: 600 0.62rem 'DM Mono', monospace; letter-spacing: 0.13em; text-transform: uppercase; }
 .ci-meta { margin: 0; color: #7890a8; font-size: 0.75rem; }
 .ci-identity { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid #e4ebf2; border-radius: 10px; background: #f8fafd; }
-.ci-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: #eef5ff; color: #277cf2; font-weight: 700; }
+.ci-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: #ecf8f4; color: #0b7f62; font-weight: 700; }
 .ci-identity div { display: grid; gap: 2px; min-width: 0; }
 .ci-identity strong { color: #16345f; font-size: 0.9rem; }
 .ci-identity small { color: #8295aa; font: 0.68rem 'DM Mono', monospace; }
@@ -140,7 +140,7 @@ const reset = () => { registration.value = null; store.reset() }
 .ci-values dt { color: #8295aa; font-size: 0.72rem; }
 .ci-values dd { margin: 0; color: #365783; font-size: 0.75rem; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
 .ci-confirm { width: 100%; margin: 0; }
-.ci-secondary { width: 100%; text-align: center; color: #277cf2; font-size: 0.75rem; cursor: pointer; }
+.ci-secondary { width: 100%; text-align: center; color: #0b7f62; font-size: 0.75rem; cursor: pointer; }
 .ci-card--success { text-align: center; }
 .ci-card--success h2 { margin: 6px 0 8px; color: #16345f; }
 .ci-success-check { display: grid; place-items: center; width: 54px; height: 54px; margin: 0 auto; border-radius: 50%; background: #dff8eb; color: #0b9b63; font-size: 1.6rem; font-weight: 700; }

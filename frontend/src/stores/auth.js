@@ -64,14 +64,14 @@ export const useAuthStore = defineStore('auth', {
       if (!this.user?.profile_photo) this.clearProfilePhotoPreview()
       localStorage.setItem('event_user', JSON.stringify(this.user))
     },
-    async updateProfile(payload) {
+    async updateProfile(payload, requestOptions = {}) {
       // Invalidate any older /me request so it cannot restore stale profile data.
       profileStateVersion += 1
       this.loading = true
       this.error = null
       try {
         // Let Axios/browser add the multipart boundary automatically.
-        const { data } = await api.post('/me/profile', payload)
+        const { data } = await api.post('/me/profile', payload, requestOptions)
         this.user = normalizeUserPhoto(data.data)
         if (!this.user?.profile_photo) this.clearProfilePhotoPreview()
         localStorage.setItem('event_user', JSON.stringify(this.user))
@@ -95,8 +95,17 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
       }
     },
+    clearSession() {
+      this.clearProfilePhotoPreview()
+      this.user = null
+      this.token = null
+      localStorage.removeItem('event_token')
+      localStorage.removeItem('event_user')
+      // Cached admin data belongs to this account; the next person on this browser must not see it.
+      localStorage.removeItem('event_list')
+    },
     async logout() {
-      try { if (this.token) await api.post('/auth/logout') } finally { this.clearProfilePhotoPreview(); this.user = null; this.token = null; localStorage.removeItem('event_token'); localStorage.removeItem('event_user') }
+      try { if (this.token) await api.post('/auth/logout') } catch { /* the session is cleared locally either way */ } finally { this.clearSession() }
     },
   },
 })

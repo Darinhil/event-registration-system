@@ -81,6 +81,7 @@ class FormBuilderController extends Controller
             'config.steps.*.id' => ['required', 'string', 'max:50'],
             'config.steps.*.name' => ['required', 'string', 'max:80'],
             'fields' => ['present', 'array'],
+            'fields.*.id' => ['nullable'],
             'fields.*.label' => ['required', 'string', 'max:150'],
             'fields.*.description' => ['nullable', 'string', 'max:300'],
             'fields.*.placeholder' => ['nullable', 'string', 'max:150'],
@@ -91,8 +92,6 @@ class FormBuilderController extends Controller
             'fields.*.settings' => ['nullable', 'array'],
         ]);
 
-        $this->assertSafeEdit($event, $data['fields'] ?? []);
-
         DB::transaction(function () use ($event, $data): void {
             $config = $event->form_config ?: $this->defaultConfig();
             $config['form_title'] = $data['form_title'] ?? $config['form_title'] ?? 'Event Registration Form';
@@ -102,19 +101,8 @@ class FormBuilderController extends Controller
             $config['updated_at'] = now()->toIso8601String();
             $event->update(['form_config' => $config]);
 
-            $event->formFields()->delete();
-            foreach ($data['fields'] as $index => $field) {
-                $event->formFields()->create([
-                    'label' => $field['label'],
-                    'description' => $field['description'] ?? null,
-                    'placeholder' => $field['placeholder'] ?? null,
-                    'type' => $field['type'],
-                    'required' => (bool) ($field['required'] ?? false),
-                    'options' => $field['options'] ?? null,
-                    'settings' => $field['settings'] ?? null,
-                    'sort_order' => $index,
-                ]);
-            }
+            // Update fields in place so existing registrations keep their answers.
+            app(\App\Services\FormFieldSync::class)->sync($event, $data['fields']);
         });
 
         return $this->show($request, $event);
@@ -134,32 +122,6 @@ class FormBuilderController extends Controller
                 'registration_link' => $this->registrationLink($event),
             ],
         ]);
-    }
-
-    /** Warn-worthy edit guard: fields changed while registrations exist -> client shows confirmation first. */
-    private function assertSafeEdit(Event $event, array $incoming): void
-    {
-        $registrations = $event->registrations()->count();
-        if ($registrations === 0) {
-            return;
-        }
-
-        $current = $event->formFields()->get(['label', 'type', 'required'])->map(
-            fn ($f) => [$f->label, $f->type, (int) $f->required]
-        )->toJson();
-
-        $next = collect($incoming)->map(
-            fn ($f) => [$f['label'], $f['type'], (int) (bool) ($f['required'] ?? false)]
-        )->toJson();
-
-        // Silently allow identical saves; the frontend is responsible for the
-        // "form has registrations" confirmation before structural edits.
-        if ($current === $next) {
-            return;
-        }
-
-        // Still allow it — but flag it in the response so the UI can inform the admin.
-        $event->form_config = array_merge($event->form_config ?: [], ['last_structural_edit_with_registrations' => now()->toIso8601String()]);
     }
 
     private function registrationLink(Event $event): string

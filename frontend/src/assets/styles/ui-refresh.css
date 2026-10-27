@@ -9,9 +9,9 @@
 /* ---------------- 1. Design tokens ---------------- */
 :root {
   /* Shared brand ramp */
-  --ur-blue: #2563eb;
-  --ur-blue-dark: #1d4ed8;
-  --ur-blue-soft: #eff6ff;
+  --ur-blue: #0b7f62;
+  --ur-blue-dark: #086a51;
+  --ur-blue-soft: #ecf8f4;
   --ur-teal: #0d9488;
   --ur-teal-dark: #0f766e;
 
@@ -49,7 +49,7 @@
 }
 
 /* ---------------- 2. Base refinements ---------------- */
-::selection { background: rgba(37, 99, 235, .16); }
+::selection { background: rgba(11, 127, 98, .16); }
 
 html { scroll-behavior: smooth; }
 
@@ -153,8 +153,8 @@ img { max-width: 100%; }
   padding: 0 20px;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .65);
+  background: linear-gradient(135deg, #0b9a76, #0b7f62);
+  box-shadow: 0 8px 18px -8px rgba(11, 127, 98, .65);
   color: #fff;
   font-size: .86rem;
   font-weight: 700;
@@ -163,8 +163,8 @@ img { max-width: 100%; }
 }
 .primary-button:hover,
 .workflow-primary:hover {
-  background: linear-gradient(135deg, #2f6fe0, #1d4ed8);
-  box-shadow: 0 12px 24px -10px rgba(37, 99, 235, .7);
+  background: linear-gradient(135deg, #2f6fe0, #086a51);
+  box-shadow: 0 12px 24px -10px rgba(11, 127, 98, .7);
 }
 
 .secondary-button {
@@ -252,8 +252,8 @@ img { max-width: 100%; }
 .table-search:focus-within,
 .attendance-table-search:focus-within,
 .reports-search:focus-within {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, .1);
+  border-color: #8fd8c2;
+  box-shadow: 0 0 0 4px rgba(11, 127, 98, .1);
 }
 
 .toolbar-controls select,
@@ -267,12 +267,12 @@ img { max-width: 100%; }
 .toolbar-controls select:focus,
 .attendance-table-toolbar select:focus,
 .reports-tools select:focus {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
+  border-color: #8fd8c2;
+  box-shadow: 0 0 0 3px rgba(11, 127, 98, .1);
   outline: 0;
 }
 .attendance-table-toolbar select.is-active,
-.reports-tools select.is-active { border-color: #93c5fd; background: var(--ur-blue-soft); color: var(--ur-blue); }
+.reports-tools select.is-active { border-color: #8fd8c2; background: var(--ur-blue-soft); color: var(--ur-blue); }
 
 /* ---------------- 6. Cards & panels ---------------- */
 .event-list-panel,
@@ -294,8 +294,8 @@ img { max-width: 100%; }
 .attendance-event-item:hover { border-color: #c3d9f5; background: #f8fbff; }
 .attendance-event-item.active {
   border-color: #bfd8f8;
-  background: linear-gradient(135deg, #eff6ff, #f8fbff);
-  box-shadow: 0 8px 20px -12px rgba(37, 99, 235, .45);
+  background: linear-gradient(135deg, #ecf8f4, #f8fbff);
+  box-shadow: 0 8px 20px -12px rgba(11, 127, 98, .45);
 }
 .attendance-event-tabs button { border-radius: 999px; font-weight: 600; transition: background-color .15s ease, color .15s ease; }
 .attendance-event-tabs button.active { background: var(--ur-blue); color: #fff; }
@@ -356,7 +356,7 @@ img { max-width: 100%; }
   border-color: var(--ur-blue);
   background: var(--ur-blue);
   color: #fff;
-  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .5);
+  box-shadow: 0 6px 14px -6px rgba(11, 127, 98, .5);
 }
 
 /* ---------------- 8. Status pills (one shape everywhere) ---------------- */
@@ -443,9 +443,9 @@ img { max-width: 100%; }
   width: 58px;
   height: 58px;
   border-radius: 18px;
-  border: 1px solid #d7e7fb;
+  border: 1px solid #cdeee3;
   background: linear-gradient(180deg, #f5f9ff, #fff);
-  box-shadow: 0 12px 26px -14px rgba(37, 99, 235, .5);
+  box-shadow: 0 12px 26px -14px rgba(11, 127, 98, .5);
   color: var(--ur-blue);
 }
 
@@ -600,7 +600,7 @@ img { max-width: 100%; }
 }
 .event-card-registration strong { font-size: 1.55rem; }
 .capacity-track { height: 7px; background: #e2ebf4; }
-.capacity-track span { background: linear-gradient(90deg, #2b73dc, #16b981); }
+.capacity-track span { background: linear-gradient(90deg, #0b7f62, #16b981); }
 .event-card-actions {
   flex-wrap: wrap;
   gap: 7px;
@@ -621,7 +621,7 @@ img { max-width: 100%; }
   font-size: .66rem;
 }
 .event-card-actions .event-action-primary { border-color: #17263a; background: #17263a; color: #fff; }
-.event-card-actions a[href$='#qr'] { border-color: #c9def8; background: #edf5ff; }
+.event-card-actions a[href$='#qr'] { border-color: #c9def8; background: #ecf8f4; }
 .event-card-actions .delete-event-action { color: #c24e5e; }
 
 /* Cleaner profile security form */
@@ -778,8 +778,8 @@ img { max-width: 100%; }
 
 /* --- Admin sidebar: same active language as the topbar --- */
 .admin-nav a.is-active {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, .65);
+  background: linear-gradient(135deg, #0b9a76, #0b7f62);
+  box-shadow: 0 8px 18px -8px rgba(11, 127, 98, .65);
 }
 .admin-nav-group { min-width: 0; }
 .admin-nav-group-heading { display: flex; align-items: center; gap: 4px; min-height: 44px; }
@@ -812,7 +812,7 @@ img { max-width: 100%; }
 .admin-personnel-submenu { gap: 4px; margin: 4px 0 5px 23px; padding-left: 12px; }
 .admin-personnel-submenu a { display: flex; align-items: center; gap: 9px; min-height: 39px; padding: 8px 10px; font-size: .76rem; }
 .admin-personnel-submenu a .admin-nav-icon { display: grid; flex: 0 0 18px; width: 18px; height: 18px; place-items: center; background: transparent; color: currentColor; }
-.admin-personnel-submenu a.is-active { background: #2563eb; box-shadow: inset 2px 0 #93c5fd; color: #fff; }
+.admin-personnel-submenu a.is-active { background: #0b7f62; box-shadow: inset 2px 0 #8fd8c2; color: #fff; }
 .admin-brand { color: #fff; }
 
 /* --- Events page --- */
@@ -837,7 +837,7 @@ img { max-width: 100%; }
   gap: 7px;
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #bfe8da;
   border-radius: 10px;
   background: var(--ur-blue-soft);
   color: var(--ur-blue);
@@ -901,7 +901,7 @@ img { max-width: 100%; }
   /* Un-hide every nav item (older rules hid Reports/Settings/Check-in) */
   .admin-nav a:nth-child(n + 4),
   .admin-nav a:nth-child(n + 5) { display: inline-flex; }
-  .admin-nav a.is-active { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+  .admin-nav a.is-active { background: linear-gradient(135deg, #0b9a76, #0b7f62); color: #fff; }
   .admin-nav-group { position: relative; flex: 0 0 auto; }
   .admin-nav-group-heading { gap: 0; }
   .admin-nav-group-heading .admin-nav-group-link { gap: 7px; }
@@ -1094,7 +1094,7 @@ body {
 .nav-link:focus-visible,
 .logout-button:focus-visible,
 .cta-button:focus-visible,
-.nav-user-chip:focus-visible { outline: 3px solid rgba(37, 99, 235, .24); outline-offset: 3px; }
+.nav-user-chip:focus-visible { outline: 3px solid rgba(11, 127, 98, .24); outline-offset: 3px; }
 
 .admin-main-shell main { min-height: calc(100vh - 76px); }
 .admin-sidebar { border-right: 1px solid rgba(255, 255, 255, .04); }
@@ -1135,9 +1135,9 @@ select { cursor: pointer; }
 
 /* ---------------- 12. Product-wide SaaS / HR visual system ---------------- */
 :root {
-  --ur-blue: #2563eb;
-  --ur-blue-dark: #1d4ed8;
-  --ur-blue-soft: #eff6ff;
+  --ur-blue: #0b7f62;
+  --ur-blue-dark: #086a51;
+  --ur-blue-soft: #ecf8f4;
   --ur-teal: #0f766e;
   --ur-teal-dark: #115e59;
   --ur-ink: #172b4d;
@@ -1159,7 +1159,7 @@ body { background: #f7f9fc; color: #334155; }
 button, input, select, textarea { font-family: inherit; }
 
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid rgba(37, 99, 235, .3);
+  outline: 3px solid rgba(11, 127, 98, .3);
   outline-offset: 2px;
 }
 
@@ -1194,7 +1194,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .admin-nav a.is-active {
-  background: #2563eb;
+  background: #0b7f62;
   box-shadow: none;
   color: #fff;
   font-weight: 650;
@@ -1321,7 +1321,7 @@ button, input, select, textarea { font-family: inherit; }
   box-shadow: none;
 }
 
-.metric-blue .metric-icon { background: #2563eb; }
+.metric-blue .metric-icon { background: #0b7f62; }
 .metric-green .metric-icon { background: #16805d; }
 .metric-orange .metric-icon { background: #b7791f; }
 .metric-purple .metric-icon { background: #6554a4; }
@@ -1343,19 +1343,19 @@ button, input, select, textarea { font-family: inherit; }
 .managed-event-card { transition: border-color .14s ease, background-color .14s ease; }
 .managed-event-card:hover { transform: none; border-color: #cbd5e1; box-shadow: none; }
 .event-card-registration { background: #f8fafc; }
-.capacity-track span { background: #2563eb; }
+.capacity-track span { background: #0b7f62; }
 
 .primary-button,
 .workflow-primary {
   border-radius: 8px;
-  background: #2563eb;
+  background: #0b7f62;
   box-shadow: none;
   font-weight: 650;
 }
 
 .primary-button:hover,
 .workflow-primary:hover {
-  background: #1d4ed8;
+  background: #086a51;
   box-shadow: none;
 }
 
@@ -1369,7 +1369,7 @@ button, input, select, textarea { font-family: inherit; }
 .secondary-button:hover {
   border-color: #b9c8d8;
   background: #f8fafc;
-  color: #1d4ed8;
+  color: #086a51;
 }
 
 .export-log-button,
@@ -1406,8 +1406,8 @@ button, input, select, textarea { font-family: inherit; }
 
 .shell > .topbar .nav-link:hover,
 .shell > .topbar .nav-link.router-link-active {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #ecf8f4;
+  color: #086a51;
 }
 
 .shell > .topbar .cta-button {
@@ -1499,10 +1499,10 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .user-events-count {
-  border: 1px solid #dbeafe;
+  border: 1px solid #d5f0e7;
   border-radius: 8px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #ecf8f4;
+  color: #086a51;
   font-weight: 650;
 }
 
@@ -1625,13 +1625,13 @@ button, input, select, textarea { font-family: inherit; }
 .confirmation-pass .button,
 .confirmation-actions .button {
   border-radius: 8px;
-  background: #2563eb;
+  background: #0b7f62;
   box-shadow: none;
 }
 
 .confirmation-pass .button:hover,
 .confirmation-actions .button:hover {
-  background: #1d4ed8;
+  background: #086a51;
 }
 
 .fr-event,
@@ -1650,11 +1650,11 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .fr-submit {
-  background: #2563eb;
+  background: #0b7f62;
   box-shadow: none;
 }
 
-.fr-submit:hover { background: #1d4ed8; }
+.fr-submit:hover { background: #086a51; }
 
 /* Attendee account and registration cards use the same flat surface language. */
 .mi-profile-card,
@@ -1685,7 +1685,7 @@ button, input, select, textarea { font-family: inherit; }
 
 .mi-reg-card::before {
   width: 3px;
-  background: #2563eb;
+  background: #0b7f62;
 }
 
 .mi-reg-card.is-confirmed::before { background: #15803d; }
@@ -1699,7 +1699,7 @@ button, input, select, textarea { font-family: inherit; }
   }
 
   .admin-nav a { border-radius: 8px; }
-  .admin-nav a.is-active { background: #2563eb; }
+  .admin-nav a.is-active { background: #0b7f62; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1713,18 +1713,18 @@ button, input, select, textarea { font-family: inherit; }
   top: 8px;
   left: 8px;
   padding: 10px 14px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #bfe8da;
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, .12);
-  color: #1d4ed8;
+  color: #086a51;
   font-size: .85rem;
   font-weight: 650;
   transform: translateY(-160%);
 }
 
 .skip-link:focus {
-  outline: 3px solid rgba(37, 99, 235, .35);
+  outline: 3px solid rgba(11, 127, 98, .35);
   outline-offset: 2px;
   transform: translateY(0);
 }
@@ -1771,7 +1771,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .user-event-card:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, .4);
+  outline: 3px solid rgba(11, 127, 98, .4);
   outline-offset: 3px;
 }
 
@@ -1780,7 +1780,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .public-event-meta div { min-width: 0; }
-.public-event-meta div > span { color: #2563eb; }
+.public-event-meta div > span { color: #0b7f62; }
 .public-event-meta strong { overflow-wrap: anywhere; }
 
 .edit-event-meta > span {
@@ -2008,7 +2008,7 @@ button, input, select, textarea { font-family: inherit; }
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, #277cf2, #75aaf5);
+  background: linear-gradient(90deg, #0b7f62, #75aaf5);
   content: '';
 }
 .ews-stat small {
@@ -2627,7 +2627,7 @@ button, input, select, textarea { font-family: inherit; }
 .public-event-hero {
   background:
     radial-gradient(1000px 360px at 102% -30%, rgba(45, 212, 191, .22), transparent 62%),
-    radial-gradient(760px 320px at -8% 120%, rgba(37, 99, 235, .16), transparent 58%),
+    radial-gradient(760px 320px at -8% 120%, rgba(11, 127, 98, .16), transparent 58%),
     linear-gradient(140deg, #0c2a33 0%, #0f3d45 55%, #10514f 100%);
 }
 
@@ -2734,7 +2734,7 @@ button, input, select, textarea { font-family: inherit; }
   border-radius: 11px;
 }
 
-.public-event-meta div:nth-child(1) > span { background: #eff6ff; color: #2563eb; }
+.public-event-meta div:nth-child(1) > span { background: #ecf8f4; color: #0b7f62; }
 .public-event-meta div:nth-child(2) > span { background: #f0fdfa; color: #0d9488; }
 .public-event-meta div:nth-child(3) > span { background: #fffbeb; color: #b45309; }
 
@@ -2770,9 +2770,9 @@ button, input, select, textarea { font-family: inherit; }
 
 .public-agenda-day-tabs button.active {
   border-color: transparent;
-  background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(140deg, #0b9a76, #086a51);
   color: #fff;
-  box-shadow: 0 10px 20px -10px rgba(37, 99, 235, .55);
+  box-shadow: 0 10px 20px -10px rgba(11, 127, 98, .55);
 }
 
 .public-agenda-day-tabs button.active > small {
@@ -2801,7 +2801,7 @@ button, input, select, textarea { font-family: inherit; }
   min-height: 50px;
   padding: 0 24px;
   border-radius: 12px;
-  background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(140deg, #0b9a76, #086a51);
 }
 
 .public-event-next-step .primary-button:hover {

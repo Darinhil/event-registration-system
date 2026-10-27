@@ -51,11 +51,18 @@ table { max-width: 100%; }
 }
 
 @media (max-width: 900px) {
-  .admin-mobile-menu-toggle { position: fixed; z-index: 110; top: 14px; left: 14px; display: grid; width: 42px; height: 42px; place-content: center; gap: 4px; padding: 0; border: 1px solid #d5e2ef; border-radius: 10px; background: #fff; color: #173b64; box-shadow: 0 8px 20px rgba(23, 59, 100, .14); }
+  .admin-mobile-menu-toggle { position: fixed; z-index: 110; top: 14px; left: 14px; display: grid; margin: 0; width: 42px; height: 42px; place-content: center; gap: 4px; padding: 0; border: 1px solid #d5e2ef; border-radius: 10px; background: #fff; color: #173b64; box-shadow: 0 8px 20px rgba(23, 59, 100, .14); }
   .admin-mobile-menu-toggle span { display: block; width: 19px; height: 2px; border-radius: 2px; background: currentColor; }
   .admin-mobile-menu-backdrop, .mobile-menu-backdrop { position: fixed; z-index: 90; inset: 0; display: block; border: 0; margin: 0; padding: 0; background: rgba(15, 31, 52, .42); }
-  .admin-sidebar { z-index: 100; width: min(290px, 86vw); transform: translateX(-105%); transition: transform .22s ease; box-shadow: 18px 0 45px rgba(9, 27, 50, .25); }
-  .mobile-menu-open .admin-sidebar { transform: translateX(0); }
+  .admin-sidebar { z-index: 100; width: min(290px, 86vw); transform: translateX(-105%); transition: transform .22s ease; box-shadow: none; }
+  .mobile-menu-open .admin-sidebar { transform: translateX(0); box-shadow: 18px 0 45px rgba(9, 27, 50, .25); }
+  /* main.css still carries an old ≤720px "static top strip" sidebar; keep the off-canvas drawer instead. */
+  .admin-sidebar { position: fixed; top: 0; bottom: 0; left: 0; height: 100dvh; min-height: 0; max-height: none; padding: 68px 14px 18px; }
+  .admin-nav { display: grid; grid-template-columns: none; }
+  .admin-nav a, .admin-nav a:nth-child(n+5) { display: flex; justify-content: flex-start; padding: 11px 14px; font-size: .85rem; }
+  .admin-nav a span.admin-nav-icon { display: inline-grid; }
+  .admin-event-card, .admin-user-card { display: flex; }
+  .admin-top-actions { display: flex; }
   .admin-main-shell { width: 100%; margin-left: 0; }
   .admin-topbar { min-height: 69px; padding: 0 18px 0 72px; }
   .admin-search { width: min(460px, 62%); }
@@ -74,6 +81,9 @@ table { max-width: 100%; }
   .mobile-menu-toggle span { display: block; width: 19px; height: 2px; border-radius: 2px; background: currentColor; }
   .topbar > nav { position: fixed; z-index: 100; top: 0; right: 0; bottom: 0; display: flex; width: min(280px, 84vw); align-items: stretch; justify-content: flex-start; flex-direction: column; gap: 6px; padding: 78px 18px 24px; transform: translateX(105%); transition: transform .22s ease; background: #fff; box-shadow: -18px 0 45px rgba(15, 31, 52, .2); }
   .topbar > nav.is-open { transform: translateX(0); }
+  /* Other styles reposition this menu, so sliding it 105% isn't always enough: hide it fully
+     (and keep its links out of the keyboard tab order) until it is opened. */
+  .topbar > nav:not(.is-open) { visibility: hidden; pointer-events: none; }
   .topbar > nav .nav-link, .topbar > nav .nav-user-chip, .topbar > nav .logout-button, .topbar > nav .cta-button { width: 100%; min-height: 46px; justify-content: flex-start; margin: 0; padding: 12px 14px; border-radius: 9px; font-size: .9rem; }
   .topbar > nav .nav-user-chip { gap: 10px; }
   .topbar > nav .nav-user-name { display: inline; }
@@ -84,7 +94,7 @@ table { max-width: 100%; }
   .admin-search { width: auto; min-width: 0; flex: 1 1 auto; }
   .admin-profile-copy { display: none; }
   .admin-top-actions { gap: 5px; }
-  .metric-grid, .reports-metrics, .dashboard-panels, .reference-stats { grid-template-columns: 1fr; }
+  .metric-grid, .reports-metrics, .dashboard-panels { grid-template-columns: 1fr; }
   .dashboard-panels > :first-child { grid-column: auto; }
   .dashboard-page-heading, .reports-heading, .registrants-heading, .ews-header, .mi-heading, .profile-settings-header { flex-direction: column; align-items: stretch; gap: 14px; }
   .dashboard-page-heading > *, .reports-heading > *, .registrants-heading > *, .ews-header > * { width: 100%; }
@@ -230,7 +240,9 @@ table { max-width: 100%; }
 
  .nav-account-actions { display: contents; }
 
-@media (max-width: 900px) {
+/* Dropdown-style menu: same breakpoint as the menu toggle (760px), otherwise
+   the "dropdown" floats open over the header on 761–900px screens. */
+@media (max-width: 760px) {
 
   .shell > .topbar > nav {
     top: 66px;
@@ -331,7 +343,7 @@ textarea { resize: vertical; }
 
 @media (max-width: 425px) {
   .admin-main-shell main { padding-inline: 12px; }
-  .admin-mobile-menu-toggle { top: 10px; left: 10px; width: 40px; height: 40px; }
+  .admin-mobile-menu-toggle { top: 14px; left: 10px; width: 40px; height: 40px; }
   .admin-topbar { padding-left: 60px; }
   .admin-top-actions { flex: 0 0 auto; }
   .admin-top-avatar { width: 34px; height: 34px; }

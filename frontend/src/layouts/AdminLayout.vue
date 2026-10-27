@@ -1,86 +1,147 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AdminTopbar from '../components/AdminTopbar.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useSettingsStore } from '../stores/settings'
+import { setThemeActive } from '../utils/theme'
 import api from '../services/api'
 import adminLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
 const router = useRouter(); const route = useRoute(); const auth = useAuthStore()
 const isAdmin = computed(() => auth.isAdmin); const roleLabel = computed(() => auth.roleLabel)
 const hasEventWorkspace = computed(() => auth.isAdmin || auth.isEventAdmin)
-const eventMenuOpen = ref(false)
 const mobileMenuOpen = ref(false)
-const personnelPortalOpen = ref(true)
+const PORTAL_KEY = 'admin-nav-portal-open'
+const readPortalPref = () => { try { return localStorage.getItem(PORTAL_KEY) !== '0' } catch { return true } }
+const personnelPortalOpen = ref(readPortalPref())
+watch(personnelPortalOpen, (open) => { try { localStorage.setItem(PORTAL_KEY, open ? '1' : '0') } catch { /* storage unavailable */ } })
+const eventMenuOpen = ref(false)
 const personnelMenuOpen = ref(false)
-const isPersonnelSection = computed(() => route.path === '/admin/personnel-profile')
+const PERSONNEL_PATH = '/admin/personnel-profile'
+const isPersonnelSection = computed(() => route.path === PERSONNEL_PATH)
 const personnelItems = [
-  { id: 'my-profile', label: 'My Profile (5 steps)', icon: 'user' },
-  { id: 'compliances', label: 'Compliances', icon: 'lock' },
-  { id: 'contract-history', label: 'Contract History', icon: 'calendar' },
-  { id: 'training', label: 'Staff Online Training', icon: 'check-circle' },
+  { id: 'my-profile', label: 'My Profile', hint: '5 steps', icon: 'user' },
+  { id: 'compliances', label: 'Compliances', icon: 'shield-check' },
+  { id: 'contract-history', label: 'Contract History', icon: 'file-text' },
+  { id: 'training', label: 'Staff Online Training', icon: 'graduation' },
 ]
 const workspaceItems = [
-  { id: 'time-management', label: 'Time Management', icon: 'clock' },
-  { id: 'other-requests', label: 'Other Requests', icon: 'inbox' },
-  { id: 'finance-management', label: 'Finance Management', icon: 'ticket' },
+  { id: 'time-management', label: 'Time Management', icon: 'clock', children: [
+    { id: 'leave-application', label: 'Leave Application', icon: 'calendar-check' },
+    { id: 'overtime-request', label: 'Overtime Request', icon: 'timer' },
+    { id: 'monthly-timesheet', label: 'Monthly Timesheet', icon: 'calendar' },
+  ] },
+  { id: 'other-requests', label: 'Other Requests', icon: 'send', children: [
+    { id: 'travel-application', label: 'Travel Application', icon: 'plane' },
+    { id: 'fuel-log-sheet', label: 'Fuel Log-sheet', icon: 'fuel' },
+    { id: 'purchase-request', label: 'Purchase Request', icon: 'cart' },
+  ] },
+  { id: 'finance-management', label: 'Finance Management', icon: 'receipt' },
   { id: 'my-requests', label: 'My Requests', icon: 'inbox' },
 ]
-const eventSectionPaths = ['/admin/events', '/admin/users', '/admin/check-ins', '/admin/reports']
-const isEventSection = computed(() => eventSectionPaths.some((path) => route.path === path || route.path.startsWith(`${path}/`)))
-watch(() => route.path, (path) => {
+// Expand/collapse state for the groups above; each opens itself when one of its pages is shown.
+const workspaceOpen = reactive(Object.fromEntries(workspaceItems.filter((item) => item.children).map((item) => [item.id, false])))
+const isChildActive = (item) => !!item.children?.some((child) => isSectionActive(child.id))
+const eventItems = [
+  { to: '/admin/users', label: 'Attendance', icon: 'user-check' },
+  { to: '/admin/check-ins', label: 'Check-in', icon: 'scan' },
+  { to: '/admin/reports', label: 'Reports', icon: 'chart-column' },
+]
+const underPath = (path, base) => path === base || path.startsWith(`${base}/`)
+const isEventsActive = computed(() => underPath(route.path, '/admin/events'))
+const isEventSection = computed(() => isEventsActive.value || eventItems.some((item) => underPath(route.path, item.to)))
+const isSectionActive = (id) => isPersonnelSection.value && route.query.section === id
+const isWorkspaceActive = computed(() => workspaceItems.some((item) => isSectionActive(item.id) || isChildActive(item)))
+const isPersonnelProfileActive = computed(() => isPersonnelSection.value && !isWorkspaceActive.value)
+// Open the group that holds the current page; leave the others as the user left them.
+watch(() => route.fullPath, () => {
   mobileMenuOpen.value = false
-  eventMenuOpen.value = ['/admin/users', '/admin/check-ins', '/admin/reports']
-    .some((itemPath) => path === itemPath || path.startsWith(`${itemPath}/`))
+  if (isEventSection.value) eventMenuOpen.value = true
+  if (isPersonnelProfileActive.value) personnelMenuOpen.value = true
+  if (isPersonnelSection.value) personnelPortalOpen.value = true
+  workspaceItems.forEach((item) => { if (item.children && (isSectionActive(item.id) || isChildActive(item))) workspaceOpen[item.id] = true })
 }, { immediate: true })
-watch(isPersonnelSection, (open) => { personnelMenuOpen.value = open }, { immediate: true })
+const onKeydown = (event) => { if (event.key === 'Escape' && mobileMenuOpen.value) mobileMenuOpen.value = false }
+onMounted(() => window.addEventListener('keydown', onKeydown)); onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+const initials = computed(() => (auth.user?.name || 'Admin').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase())
 const profilePhotoSrc = ref(auth.profilePhotoPreview || ''); let profilePhotoRequest = 0
 const loadProfilePhoto = async () => { const id = ++profilePhotoRequest; if (!auth.user?.profile_photo) { profilePhotoSrc.value = ''; return } try { const { data } = await api.get('/me/profile-photo', { params: { photo: auth.user.profile_photo }, responseType: 'blob' }); if (id === profilePhotoRequest) profilePhotoSrc.value = auth.setProfilePhotoPreview(data) } catch { if (id === profilePhotoRequest) profilePhotoSrc.value = '' } }
 onMounted(loadProfilePhoto); watch(() => auth.user?.profile_photo, loadProfilePhoto)
+const settings = useSettingsStore()
+// Set during setup (not onMounted) so the first paint already uses the saved theme.
+setThemeActive(true)
+onBeforeUnmount(() => setThemeActive(false))
+onMounted(() => settings.load())
 const logout = async () => { await auth.logout(); router.push('/login') }
 </script>
 
 <template>
   <div class="admin-app-shell" :class="{ 'mobile-menu-open': mobileMenuOpen }"><a class="skip-link" href="#main-content">Skip to content</a><button type="button" class="admin-mobile-menu-toggle" :aria-expanded="mobileMenuOpen" aria-controls="admin-sidebar" aria-label="Toggle navigation" @click="mobileMenuOpen = !mobileMenuOpen"><span></span><span></span><span></span></button><button v-if="mobileMenuOpen" type="button" class="admin-mobile-menu-backdrop" aria-label="Close navigation" @click="mobileMenuOpen = false"></button><aside id="admin-sidebar" class="admin-sidebar">
-    <RouterLink to="/admin" class="admin-brand"><img class="admin-brand-logo" :src="adminLogo" alt="Live &amp; Learn Cambodia" decoding="async" /></RouterLink>
-    <nav class="admin-nav" :class="{ 'has-open-submenu': eventMenuOpen || personnelMenuOpen }" aria-label="Admin navigation">
-      <p class="admin-nav-section-label">WORKSPACE</p>
-      <div v-if="hasEventWorkspace" class="admin-nav-group" :class="{ 'is-expanded': eventMenuOpen, 'has-active-child': isEventSection }">
-        <div class="admin-nav-group-heading">
-          <RouterLink to="/admin/events" class="admin-nav-group-link" :class="{ 'is-active': route.path === '/admin/events' || route.path.startsWith('/admin/events/') }">
-            <span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4m10-4v4M3 9h18"/></svg></span>{{ isAdmin ? 'All Events' : 'My Events' }}
-          </RouterLink>
-          <button type="button" class="admin-nav-toggle" :aria-expanded="eventMenuOpen" aria-controls="admin-event-subnav" :aria-label="`${eventMenuOpen ? 'Collapse' : 'Expand'} event navigation`" @click="eventMenuOpen = !eventMenuOpen">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
-          </button>
-        </div>
-        <div v-if="eventMenuOpen" id="admin-event-subnav" class="admin-nav-submenu">
-          <RouterLink to="/admin/users" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m2-9a3 3 0 1 1 0 6m0-6a5 5 0 0 1 4 8"/></svg></span>Attendance</RouterLink>
-          <RouterLink to="/admin/check-ins" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/></svg></span>Check-in</RouterLink>
-          <RouterLink to="/admin/reports" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-4m4 4V8m4 8v-6"/></svg></span>Reports</RouterLink>
-        </div>
-      </div>
-      <RouterLink to="/admin" exact-active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</RouterLink>
-      <button type="button" class="personnel-portal-heading" :aria-expanded="personnelPortalOpen" aria-controls="personnel-portal-menu" @click="personnelPortalOpen = !personnelPortalOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2-4.5-4.4 6.3-.9L12 2.8Z"/></svg><span>Personnel Portal</span><svg class="portal-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
-      <div v-if="personnelPortalOpen" id="personnel-portal-menu" class="personnel-portal-menu">
-      <div class="admin-nav-group" :class="{ 'is-expanded': personnelMenuOpen, 'has-active-child': isPersonnelSection }">
-        <div class="admin-nav-group-heading">
-          <RouterLink to="/admin/personnel-profile" class="admin-nav-group-link" :class="{ 'is-active': isPersonnelSection }"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M19 8h3m-1.5-1.5v3"/></svg></span>Personnel Profile</RouterLink>
-          <button type="button" class="admin-nav-toggle" :aria-expanded="personnelMenuOpen" aria-controls="admin-personnel-subnav" aria-label="Toggle personnel navigation" @click="personnelMenuOpen = !personnelMenuOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
-        </div>
-        <div v-if="personnelMenuOpen" id="admin-personnel-subnav" class="admin-nav-submenu admin-personnel-submenu">
-          <RouterLink v-for="item in personnelItems" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }"><span class="admin-nav-icon" aria-hidden="true"><AppIcon :name="item.icon" :size="17" /></span>{{ item.label }}</RouterLink>
-        </div>
-      </div>
-      <RouterLink v-for="item in workspaceItems" :key="item.id" :to="{ path: '/admin/personnel-profile', query: { section: item.id } }" :class="{ 'is-active': route.query.section === item.id }"><span class="admin-nav-icon" aria-hidden="true"><AppIcon :name="item.icon" :size="17" /></span>{{ item.label }}</RouterLink>
-      </div>
-      <p v-if="isAdmin" class="admin-nav-section-label administration-section-label">ADMINISTRATION</p>
-      <RouterLink v-if="isAdmin" to="/admin/admin-accounts" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0m5-9v6m3-3h-6"/></svg></span>Admin Accounts</RouterLink>
-      <RouterLink v-if="isAdmin" to="/admin/settings" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v2m0 14v2M3 12h2m14 0h2m-3.4-6.6-1.4 1.4M7.8 17.8l-1.4 1.4m0-14.4 1.4 1.4m9.4 9.4 1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg></span>Settings</RouterLink>
-      <RouterLink v-else to="/admin/profile" active-class="is-active"><span class="admin-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span>Profile</RouterLink>
+    <div class="sb-brand-block"><RouterLink to="/admin" class="admin-brand sb-brand" aria-label="Live &amp; Learn Cambodia — go to Dashboard"><img class="admin-brand-logo sb-brand-logo" :src="adminLogo" alt="" decoding="async" /></RouterLink><p class="sb-brand-caption"><span class="sb-brand-name">{{ settings.loaded ? settings.site_name : '' }}</span><span class="sb-brand-tag">Admin</span></p></div>
+    <nav class="sb-nav" aria-label="Admin navigation">
+      <section class="sb-section" aria-labelledby="sb-label-workspace">
+        <h2 id="sb-label-workspace" class="sb-label">Workspace</h2>
+        <ul class="sb-list">
+          <li v-if="hasEventWorkspace" class="sb-group" :class="{ 'is-open': eventMenuOpen, 'has-active': isEventSection }">
+            <div class="sb-row">
+              <RouterLink to="/admin/events" class="sb-link" :class="{ 'is-active': isEventsActive, 'is-parent-active': isEventSection && !isEventsActive }" :aria-current="isEventsActive ? 'page' : undefined"><AppIcon class="sb-icon" name="calendar" :size="18" /><span class="sb-text">{{ isAdmin ? 'All Events' : 'My Events' }}</span></RouterLink>
+              <button type="button" class="sb-toggle" :aria-expanded="eventMenuOpen" aria-controls="sb-events" :aria-label="`${eventMenuOpen ? 'Collapse' : 'Expand'} event pages`" @click="eventMenuOpen = !eventMenuOpen"><AppIcon name="chevron-down" :size="16" /></button>
+            </div>
+            <ul v-show="eventMenuOpen" id="sb-events" class="sb-sublist">
+              <li v-for="item in eventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
+            </ul>
+          </li>
+          <li><RouterLink to="/admin" class="sb-link" exact-active-class="is-active"><AppIcon class="sb-icon" name="layout-grid" :size="18" /><span class="sb-text">Dashboard</span></RouterLink></li>
+        </ul>
+      </section>
+
+      <section class="sb-section" :class="{ 'is-collapsed': !personnelPortalOpen }">
+        <h2 class="sb-label sb-label--toggle">
+          <button type="button" :aria-expanded="personnelPortalOpen" aria-controls="sb-portal" @click="personnelPortalOpen = !personnelPortalOpen"><span>Personnel Portal</span><AppIcon name="chevron-down" :size="14" /></button>
+        </h2>
+        <ul v-show="personnelPortalOpen" id="sb-portal" class="sb-list">
+          <li class="sb-group" :class="{ 'is-open': personnelMenuOpen, 'has-active': isPersonnelProfileActive }">
+            <div class="sb-row">
+              <RouterLink :to="PERSONNEL_PATH" class="sb-link" :class="{ 'is-active': isPersonnelProfileActive && !route.query.section, 'is-parent-active': isPersonnelProfileActive && !!route.query.section }" :aria-current="isPersonnelProfileActive && !route.query.section ? 'page' : undefined"><AppIcon class="sb-icon" name="user" :size="18" /><span class="sb-text">Personnel Profile</span></RouterLink>
+              <button type="button" class="sb-toggle" :aria-expanded="personnelMenuOpen" aria-controls="sb-personnel" :aria-label="`${personnelMenuOpen ? 'Collapse' : 'Expand'} personnel profile pages`" @click="personnelMenuOpen = !personnelMenuOpen"><AppIcon name="chevron-down" :size="16" /></button>
+            </div>
+            <ul v-show="personnelMenuOpen" id="sb-personnel" class="sb-sublist">
+              <li v-for="item in personnelItems" :key="item.id"><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-sublink" :class="{ 'is-active': isSectionActive(item.id) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span><small v-if="item.hint" class="sb-hint">{{ item.hint }}</small></RouterLink></li>
+            </ul>
+          </li>
+          <template v-for="item in workspaceItems" :key="item.id">
+            <li v-if="item.children" class="sb-group" :class="{ 'is-open': workspaceOpen[item.id], 'has-active': isChildActive(item) }">
+              <div class="sb-row">
+                <RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-link" :class="{ 'is-active': isSectionActive(item.id), 'is-parent-active': isChildActive(item) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="18" /><span class="sb-text">{{ item.label }}</span></RouterLink>
+                <button type="button" class="sb-toggle" :aria-expanded="workspaceOpen[item.id]" :aria-controls="`sb-${item.id}`" :aria-label="`${workspaceOpen[item.id] ? 'Collapse' : 'Expand'} ${item.label.toLowerCase()} pages`" @click="workspaceOpen[item.id] = !workspaceOpen[item.id]"><AppIcon name="chevron-down" :size="16" /></button>
+              </div>
+              <ul v-show="workspaceOpen[item.id]" :id="`sb-${item.id}`" class="sb-sublist">
+                <li v-for="child in item.children" :key="child.id"><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: child.id } }" class="sb-sublink" :class="{ 'is-active': isSectionActive(child.id) }" :aria-current="isSectionActive(child.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="child.icon" :size="16" /><span class="sb-text">{{ child.label }}</span></RouterLink></li>
+              </ul>
+            </li>
+            <li v-else><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-link" :class="{ 'is-active': isSectionActive(item.id) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="18" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
+          </template>
+        </ul>
+      </section>
+
+      <section class="sb-section" :aria-labelledby="isAdmin ? 'sb-label-admin' : 'sb-label-account'">
+        <h2 v-if="isAdmin" id="sb-label-admin" class="sb-label">Administration</h2>
+        <h2 v-else id="sb-label-account" class="sb-label">Account</h2>
+        <ul class="sb-list">
+          <li v-if="isAdmin"><RouterLink to="/admin/admin-accounts" class="sb-link" active-class="is-active"><AppIcon class="sb-icon" name="user-plus" :size="18" /><span class="sb-text">Admin Accounts</span></RouterLink></li>
+          <li v-if="isAdmin"><RouterLink to="/admin/settings" class="sb-link" active-class="is-active"><svg class="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.6a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.6a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg><span class="sb-text">Settings</span></RouterLink></li>
+          <li v-else><RouterLink to="/admin/profile" class="sb-link" active-class="is-active"><AppIcon class="sb-icon" name="user" :size="18" /><span class="sb-text">Profile</span></RouterLink></li>
+        </ul>
+      </section>
     </nav>
-    <div class="admin-event-card"><div class="admin-event-thumb">LW</div><div><strong>Live workspace</strong><small>{{ roleLabel }} access</small></div><b>Ready</b></div>
-    <div class="admin-user-card"><RouterLink to="/admin/profile" class="admin-user-link"><span class="admin-avatar"><img v-if="profilePhotoSrc" :src="profilePhotoSrc" alt="" /><span v-else>{{ (auth.user?.name || 'AD').slice(0, 2).toUpperCase() }}</span></span><span><strong>{{ auth.user?.name || 'Admin' }}</strong><small>{{ roleLabel }}</small></span></RouterLink><button type="button" aria-label="Log out" @click="logout">↪</button></div>
-  </aside><div class="admin-main-shell"><AdminTopbar /><main id="main-content" tabindex="-1"><slot /></main></div></div>
+    <div class="sb-footer">
+      <RouterLink to="/admin/profile" class="sb-user" :title="`${auth.user?.name || 'Admin'} — view profile`">
+        <span class="sb-avatar admin-avatar"><img v-if="profilePhotoSrc" :src="profilePhotoSrc" alt="" /><span v-else>{{ initials }}</span></span>
+        <span class="sb-user-copy"><strong>{{ auth.user?.name || 'Admin' }}</strong><small>{{ roleLabel }}</small></span>
+      </RouterLink>
+      <button type="button" class="sb-logout" aria-label="Log out" title="Log out" @click="logout"><AppIcon name="log-out" :size="18" /></button>
+    </div>
+  </aside><div class="admin-main-shell"><AdminTopbar /><main id="main-content" tabindex="-1"><div v-if="settings.maintenance_mode" class="sb-maintenance" role="status"><AppIcon name="alert-circle" :size="18" /><span><strong>Maintenance mode is on.</strong> Attendees can’t submit new registrations.</span><RouterLink v-if="isAdmin && route.path !== '/admin/settings'" to="/admin/settings">Manage</RouterLink></div><slot /></main></div></div>
 </template>

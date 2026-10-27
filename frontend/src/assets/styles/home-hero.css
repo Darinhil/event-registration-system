@@ -24,7 +24,7 @@
   border-radius: 0;
   background:
     radial-gradient(900px 480px at 88% -10%, rgba(13, 148, 136, .34), transparent 60%),
-    radial-gradient(700px 420px at -8% 110%, rgba(37, 99, 235, .2), transparent 55%),
+    radial-gradient(700px 420px at -8% 110%, rgba(11, 127, 98, .2), transparent 55%),
     linear-gradient(140deg, #0c2a33 0%, #103b43 48%, #0d9488 130%);
   color: #fff;
   box-shadow: none;
@@ -148,7 +148,7 @@
   width: fit-content;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #e8f1ff;
+  background: #e8f6f1;
   color: #1d5fd1;
   font-size: .64rem;
   font-style: normal;
@@ -450,8 +450,8 @@
   --hh-icon-bg: #e6faf6;  --hh-icon-fg: #0d9488;
 }
 .home-feature--blue {
-  --hh-accent-a: #3b82f6; --hh-accent-b: #93c5fd;
-  --hh-icon-bg: #e8f1ff;  --hh-icon-fg: #2563eb;
+  --hh-accent-a: #0b9a76; --hh-accent-b: #8fd8c2;
+  --hh-icon-bg: #e8f6f1;  --hh-icon-fg: #0b7f62;
 }
 .home-feature--green {
   --hh-accent-a: #22c55e; --hh-accent-b: #86efac;

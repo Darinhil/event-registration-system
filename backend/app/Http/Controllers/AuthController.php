@@ -11,7 +11,7 @@ class AuthController extends Controller
 {
     public function register(Request $request): \Illuminate\Http\JsonResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'identifier' => ['required', 'string', 'max:150'], 'password' => ['required', 'min:8']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'identifier' => ['required', 'string', 'max:150'], 'password' => ['required', 'string', 'min:8', 'confirmed']]);
         $identifier = trim($data['identifier']);
         $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false;
 
@@ -23,7 +23,7 @@ class AuthController extends Controller
             $account = ['email' => null, 'phone' => $identifier];
         }
 
-        $user = User::create([...$account, 'name' => $data['name'], 'password' => $data['password']]);
+        $user = User::create([...$account, 'name' => $data['name'], 'password' => $data['password'], 'role' => 'attendee']);
         return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('web')->plainTextToken], 201);
     }
 

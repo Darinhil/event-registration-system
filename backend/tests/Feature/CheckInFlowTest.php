@@ -227,6 +227,23 @@ class CheckInFlowTest extends TestCase
         $this->assertCount(2, $response->json('data.suggestions'));
     }
 
+    public function test_desk_search_finds_attendee_by_phone_ignoring_spacing(): void
+    {
+        $event = $this->event();
+        $other = Event::create(['name' => 'Other', 'starts_at' => now()->addWeek(), 'location' => 'X', 'capacity' => 5, 'enabled_fields' => [], 'status' => 'published']);
+        $registration = $this->register(User::factory()->create(), $event, ['full_name' => 'Sokha Leng', 'phone' => '012 345 678', 'registration_code' => 'CTS-001']);
+        $this->register(User::factory()->create(), $other, ['full_name' => 'Elsewhere', 'phone' => '012345678', 'registration_code' => 'OTH-001']);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => '012-345-678'])
+            ->assertOk()
+            ->assertJsonPath('data.registration.id', $registration->id);
+
+        // Short digit runs do not match every phone number.
+        $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => '78'])
+            ->assertStatus(422);
+    }
+
     public function test_desk_search_is_admin_only(): void
     {
         $event = $this->event();
@@ -257,5 +274,56 @@ class CheckInFlowTest extends TestCase
         $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => $code])
             ->assertOk()
             ->assertJsonPath('data.registration.full_name', 'Ravy Sot');
+    }
+
+    public function test_attendee_cannot_check_in_or_look_up_someone_else(): void
+    {
+        $event = $this->event();
+        $registration = $this->register(User::factory()->create(), $event, ['full_name' => 'Someone Else', 'registration_code' => 'CTS-777']);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['credential' => 'CTS-777'])->assertStatus(422);
+        $this->getJson('/api/admin/check-ins/lookup?credential=CTS-777')->assertForbidden();
+        $this->assertDatabaseCount('check_ins', 0);
+    }
+
+    public function test_registration_qr_payload_is_only_given_to_its_owner_or_staff(): void
+    {
+        $owner = User::factory()->create();
+        $registration = $this->register($owner, $this->event());
+
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertUnauthorized();
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertForbidden();
+
+        Sanctum::actingAs($owner);
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertOk()->assertJsonFragment(['payload' => json_encode(['registration_id' => $registration->id, 'qr_token' => $registration->qr_token])]);
+    }
+
+    public function test_non_master_staff_can_only_check_in_to_their_own_events(): void
+    {
+        $officer = User::factory()->create(['role' => 'officer_1']);
+        $own = Event::create([...$this->event()->only(['name', 'starts_at', 'ends_at', 'location', 'capacity', 'status']), 'enabled_fields' => [], 'created_by' => $officer->id]);
+        $foreign = $this->register(User::factory()->create(), $this->event());
+        $mine = $this->register(User::factory()->create(), $own);
+        Sanctum::actingAs($officer);
+
+        $this->postJson('/api/admin/check-ins/lookup', ['qr_token' => $foreign->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['qr_token' => $foreign->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['qr_token' => $mine->qr_token])->assertCreated();
+    }
+
+    public function test_cancelled_events_refuse_check_in(): void
+    {
+        $attendee = User::factory()->create();
+        $event = $this->event();
+        $registration = $this->register($attendee, $event);
+        $event->update(['status' => 'cancelled']);
+        Sanctum::actingAs($attendee);
+
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])->assertStatus(422);
+        $this->assertDatabaseCount('check_ins', 0);
     }
 }

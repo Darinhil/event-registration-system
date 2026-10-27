@@ -1,0 +1,47 @@
+/* =========================================================
+   Admin dark theme  (html[data-theme="dark"], set by utils/theme.js)
+
+   The admin pages are styled by many stylesheets with fixed light colours.
+   Rather than re-colour each one (and risk light-on-light text on pages we
+   miss), the whole page is inverted and hue-rotated back, which keeps every
+   text/background contrast and keeps greens green. contrast(.88) lifts pure
+   black to a soft charcoal. Things that must keep their real colours —
+   the already-dark sidebar, photos, banners, QR codes, the camera — get the
+   exact inverse filter so they render unchanged.
+   ========================================================= */
+html[data-theme="dark"] {
+  --theme-filter: invert(1) hue-rotate(180deg) contrast(.88);
+  --theme-unfilter: contrast(1.13636) hue-rotate(180deg) invert(1);
+  background: #fff; /* becomes the dark canvas behind short pages */
+  filter: var(--theme-filter);
+}
+
+/* Modal dialogs render in the browser's top layer, outside the filtered page, so theme them directly. */
+html[data-theme="dark"] dialog[open] { filter: var(--theme-filter); }
+
+/* Restore real colours */
+html[data-theme="dark"] :is(img, video, canvas, iframe, [style*="background-image"], .admin-sidebar, .qr),
+html[data-theme="dark"] dialog[open] :is(img, video, canvas) {
+  filter: var(--theme-unfilter);
+}
+/* …but never twice, inside something already restored */
+html[data-theme="dark"] :is(.admin-sidebar, .qr, [style*="background-image"]) :is(img, video, canvas, iframe, [style*="background-image"]) {
+  filter: none;
+}
+
+/* Soft shadows would turn into light halos after inversion; flatten them on cards
+   and keep borders doing the separation. Focus rings (outline) are unaffected. */
+html[data-theme="dark"] .admin-main-shell :is([class*="card"], [class*="panel"], .admin-topbar),
+html[data-theme="dark"] dialog[open] {
+  box-shadow: none;
+}
+
+/* Native form controls and scrollbars follow the inverted page, so keep them in their light flavour. */
+html[data-theme="dark"] { color-scheme: light; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { transition: filter .2s ease; }
+}
+
+/* Theme toggle sits beside the notification bell and reuses its button style. */
+.admin-topbar .admin-theme-toggle svg { width: 20px; height: 20px; }

@@ -97,7 +97,10 @@ class AdminReportsTest extends TestCase
         $this->assertNotNull($report, 'Each event should have a report row.');
         $this->assertSame(4, $report['registrations']);
         $this->assertSame(2, $report['checked_in']);
-        $this->assertSame(2, $report['no_show']);
+        $this->assertSame(2, $report['not_checked_in']);
+        // The event is next week, so nobody is a no-show yet.
+        $this->assertNull($report['no_show']);
+        $this->assertFalse($report['has_ended']);
         $this->assertSame(50.0, (float) $report['attendance_rate']);
         $this->assertSame(8.0, (float) $report['capacity_used']);
     }
@@ -112,8 +115,24 @@ class AdminReportsTest extends TestCase
         $report = collect($response->json('data'))->firstWhere('id', $event->id);
         $this->assertSame(0, $report['registrations']);
         $this->assertSame(0, $report['checked_in']);
-        $this->assertSame(0, $report['no_show']);
+        $this->assertNull($report['no_show']);
         $this->assertSame(0.0, (float) $report['attendance_rate']);
+    }
+
+    public function test_no_shows_are_only_counted_after_the_event_ends(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $ended = $this->event(['name' => 'Ended', 'starts_at' => now()->subDays(2), 'ends_at' => now()->subDay()]);
+        $running = $this->event(['name' => 'Running', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour()]);
+        foreach ([$ended, $running] as $event) {
+            User::factory()->count(3)->create()->each(fn (User $attendee) => $this->register($attendee, $event));
+        }
+
+        $rows = collect($this->getJson('/api/admin/reports')->assertOk()->json('data'))->keyBy('name');
+        $this->assertSame(3, $rows['Ended']['no_show']);
+        $this->assertTrue($rows['Ended']['has_ended']);
+        $this->assertNull($rows['Running']['no_show']);
+        $this->assertSame(3, $rows['Running']['not_checked_in']);
     }
 
     public function test_reports_are_ordered_most_recent_start_first(): void

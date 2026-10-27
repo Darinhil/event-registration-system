@@ -14,6 +14,13 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    /** Roles that can sign in to the admin workspace. Keep in sync with frontend/src/stores/auth.js. */
+    public const STAFF_ROLES = ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'];
+
+    public function isStaff(): bool { return in_array($this->role, self::STAFF_ROLES, true); }
+
+    public function isMasterAdmin(): bool { return $this->role === 'admin'; }
+
     /**
      * The attributes that are mass assignable.
      *

@@ -9,9 +9,9 @@
   --ews-ink-soft: #3f5a7d;
   --ews-muted: #64798f;
   --ews-faint: #8fa3b8;
-  --ews-blue: #2563eb;
-  --ews-blue-dark: #1d4ed8;
-  --ews-blue-soft: #eff6ff;
+  --ews-blue: #0b7f62;
+  --ews-blue-dark: #086a51;
+  --ews-blue-soft: #ecf8f4;
   --ews-border: #e2e8f0;
   --ews-border-soft: #edf2f7;
   --ews-surface: #ffffff;
@@ -48,7 +48,7 @@
   color: var(--ews-blue-dark);
   border-color: #bcd4f6;
   background: #fbfdff;
-  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, .35);
+  box-shadow: 0 6px 14px -8px rgba(11, 127, 98, .35);
   transform: translateY(-1px);
 }
 .ews-back a:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(15, 23, 42, .05); }
@@ -101,8 +101,8 @@
 }
 .ews-btn svg { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .ews-btn:active { transform: translateY(1px); }
-.ews-btn--primary { background: var(--ews-blue); color: #fff; box-shadow: 0 8px 18px -10px rgba(37, 99, 235, .65); }
-.ews-btn--primary:hover { background: var(--ews-blue-dark); box-shadow: 0 12px 22px -10px rgba(37, 99, 235, .7); }
+.ews-btn--primary { background: var(--ews-blue); color: #fff; box-shadow: 0 8px 18px -10px rgba(11, 127, 98, .65); }
+.ews-btn--primary:hover { background: var(--ews-blue-dark); box-shadow: 0 12px 22px -10px rgba(11, 127, 98, .7); }
 .ews-btn--ghost { border-color: var(--ews-border); background: var(--ews-surface); color: var(--ews-ink-soft); box-shadow: 0 1px 2px rgba(15, 36, 68, .05); }
 .ews-btn--ghost:hover { border-color: #bfd6f7; background: #f8fbff; color: var(--ews-blue-dark); }
 .ews-btn--danger { border-color: #f3c9cb; background: #fff; color: #b42318; }
@@ -177,7 +177,7 @@
 /* per-action accent hues: icon tiles pick up the same color family as the dashboard stat cards */
 .ews-action[data-icon="eye"]       { --ews-accent: #0ea5e9; }
 .ews-action[data-icon="pencil"]    { --ews-accent: #6366f1; }
-.ews-action[data-icon="clipboard"] { --ews-accent: #2563eb; }
+.ews-action[data-icon="clipboard"] { --ews-accent: #0b7f62; }
 .ews-action[data-icon="users"]     { --ews-accent: #14b8a6; }
 .ews-action[data-icon="check"]     { --ews-accent: #10b981; }
 .ews-action[data-icon="download"]  { --ews-accent: #8b5cf6; }
@@ -403,7 +403,7 @@
 .ews-action:focus-visible,
 .ews-btn:focus-visible,
 .ews-back a:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, .35);
+  outline: 3px solid rgba(11, 127, 98, .35);
   outline-offset: 2px;
 }
 

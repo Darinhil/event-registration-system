@@ -8,6 +8,7 @@ use App\Models\FormField;
 use App\Models\Registration;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -19,6 +20,45 @@ class AdminController extends Controller
         $users = Registration::whereIn('event_id', $eventIds)->distinct()->count('user_id');
 
         return response()->json(['users' => $users, 'registrations' => $registrations, 'check_ins' => $checkIns]);
+    }
+
+    /**
+     * Recent activity for the topbar bell: new registrations and check-ins on the
+     * events this user can see. Read-only; "unread" is tracked by the browser.
+     */
+    public function notifications(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $limit = 20;
+        $eventIds = Event::visibleTo($request->user())->select('id');
+        $name = fn (Registration $registration) => $registration->full_name ?: 'Someone';
+
+        $registrations = Registration::whereIn('event_id', $eventIds)->whereNotNull('event_id')
+            ->with('event:id,name')->latest()->latest('id')->limit($limit)
+            ->get(['id', 'event_id', 'full_name', 'event_name', 'created_at'])
+            ->map(fn (Registration $registration) => [
+                'id' => "registration-{$registration->id}",
+                'type' => 'registration',
+                'title' => "{$name($registration)} registered",
+                'event' => $registration->event?->name ?? $registration->event_name,
+                'event_id' => $registration->event_id,
+                'at' => $registration->created_at?->toIso8601String(),
+            ]);
+
+        $checkIns = CheckIn::whereHas('registration', fn ($query) => $query->whereIn('event_id', $eventIds))
+            ->with('registration:id,event_id,full_name,event_name', 'registration.event:id,name')
+            ->latest('checked_in_at')->latest('id')->limit($limit)->get()
+            ->map(fn (CheckIn $checkIn) => [
+                'id' => "check-in-{$checkIn->id}",
+                'type' => 'check_in',
+                'title' => "{$name($checkIn->registration)} checked in",
+                'event' => $checkIn->registration->event?->name ?? $checkIn->registration->event_name,
+                'event_id' => $checkIn->registration->event_id,
+                'at' => ($checkIn->checked_in_at ?? $checkIn->created_at)?->toIso8601String(),
+            ]);
+
+        $items = $registrations->concat($checkIns)->sortByDesc('at')->take($limit)->values();
+
+        return response()->json(['data' => $items]);
     }
 
     /**
@@ -38,11 +78,15 @@ class AdminController extends Controller
             'name' => $event->name,
             'location' => $event->location,
             'starts_at' => $event->starts_at?->toIso8601String(),
+            'ends_at' => $event->ends_at?->toIso8601String(),
             'status' => $event->status,
             'capacity' => $event->capacity,
             'registrations' => $event->registrations_count,
             'checked_in' => $event->checked_in_count,
-            'no_show' => max($event->registrations_count - $event->checked_in_count, 0),
+            'not_checked_in' => max($event->registrations_count - $event->checked_in_count, 0),
+            // A no-show only exists once the event is over; before that people may still arrive.
+            'has_ended' => $this->eventHasEnded($event),
+            'no_show' => $this->eventHasEnded($event) ? max($event->registrations_count - $event->checked_in_count, 0) : null,
             'attendance_rate' => $event->registrations_count > 0
                 ? round($event->checked_in_count / $event->registrations_count * 1000) / 10
                 : 0.0,
@@ -51,6 +95,13 @@ class AdminController extends Controller
                 : 0.0,
         ])]);
     }
+    private function eventHasEnded(Event $event): bool
+    {
+        $end = $event->ends_at ?? $event->starts_at;
+
+        return $end !== null && $end->isPast();
+    }
+
     /**
      * Attendee-level report for one event: every registration with its check-in
      * state, filterable by check-in status and search term. Unpaginated so the
@@ -64,7 +115,7 @@ class AdminController extends Controller
         $formFields = FormField::where('event_id', $event->id)->orderBy('sort_order')->get();
 
         $attendees = $event->registrations()
-            ->with(['user:id,name,email,phone', 'checkIn.staff:id,name'])
+            ->with(['user:id,name,email,phone', 'checkIn.staff:id,name', 'event:id,form_config'])
             ->when($checkIn === 'in', fn ($query) => $query->whereHas('checkIn'))
             ->when($checkIn === 'out', fn ($query) => $query->whereDoesntHave('checkIn'))
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
@@ -193,7 +244,7 @@ class AdminController extends Controller
 
     public function adminAccounts(): JsonResponse
     {
-        return response()->json(['data' => User::whereIn('role', ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'])->latest()->get()]);
+        return response()->json(['data' => User::whereIn('role', User::STAFF_ROLES)->latest()->get()]);
     }
 
     public function createAdminAccount(\Illuminate\Http\Request $request): JsonResponse
@@ -202,7 +253,7 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'in:admin,event_admin,manager,officer_3,officer_2,officer_1,officer_0'],
+            'role' => ['required', Rule::in(User::STAFF_ROLES)],
         ]);
         $user = User::create($data);
         return response()->json(['data' => $user], 201);
@@ -210,16 +261,18 @@ class AdminController extends Controller
 
     public function updateAdminAccount(\Illuminate\Http\Request $request, User $user): JsonResponse
     {
-        abort_unless(in_array($user->role, ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'], true), 404);
-        $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:100'], 'role' => ['sometimes', 'required', 'in:admin,event_admin,manager,officer_3,officer_2,officer_1,officer_0'], 'password' => ['sometimes', 'nullable', 'string', 'min:8']]);
+        abort_unless($user->isStaff(), 404);
+        $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:100'], 'role' => ['sometimes', 'required', Rule::in(User::STAFF_ROLES)], 'password' => ['sometimes', 'nullable', 'string', 'min:8']]);
         if (array_key_exists('password', $data) && ! $data['password']) unset($data['password']);
+        // Only Master Admins reach this route, so blocking self-demotion also guarantees one always remains.
+        abort_if(isset($data['role']) && $data['role'] !== $user->role && $request->user()->is($user), 422, 'You cannot change your own role.');
         $user->update($data);
         return response()->json(['data' => $user->fresh()]);
     }
 
     public function deleteAdminAccount(\Illuminate\Http\Request $request, User $user): JsonResponse
     {
-        abort_unless(in_array($user->role, ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'], true), 404);
+        abort_unless($user->isStaff(), 404);
         abort_if($request->user()->is($user), 422, 'You cannot delete your own account.');
         $user->delete();
         return response()->json(['message' => 'Admin account deleted.']);

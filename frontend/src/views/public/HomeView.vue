@@ -4,65 +4,42 @@ import AppIcon from '../../components/AppIcon.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const auth = useAuthStore()
+
+// Events are not listed here: attendees open the event link shared by the organizer.
+const steps = [
+  { icon: 'link', title: 'Open your event link', text: 'Your organizer shares a link or QR code for the event.' },
+  { icon: 'calendar-check', title: 'Register once', text: 'Fill in a short form. Your QR pass is ready straight away.' },
+  { icon: 'qr-code', title: 'Show your pass', text: 'Scan it at the door, or check yourself in at the venue.' },
+]
 </script>
 
 <template>
   <UserLayout>
-    <section class="home-hero">
-      <h1>Make room for <em>the people</em> who make things.</h1>
-      <p class="home-lede">
-        A calm, simple registration desk for a day of useful conversations,
-        practical ideas, and good company.
-      </p>
+    <section class="hp-hero" aria-labelledby="hp-title">
+      <div class="hp-hero__inner">
+        <div class="hp-hero__copy">
+          <p class="hp-eyebrow">Live &amp; Learn Cambodia · Events</p>
+          <h1 id="hp-title">Make room for <em>the people</em> who make things.</h1>
+          <p class="hp-lede">Register for events with a short form and check in with your QR pass — a calm, simple registration desk.</p>
+          <div class="hp-actions">
+            <RouterLink v-if="auth.isAuthenticated" class="hp-btn hp-btn--primary" to="/me"><AppIcon name="ticket" :size="17" />My registrations</RouterLink>
+            <RouterLink v-else class="hp-btn hp-btn--primary" to="/login">Sign in<AppIcon name="arrow-right" :size="17" /></RouterLink>
+            <RouterLink class="hp-btn hp-btn--ghost" to="/check-in"><AppIcon name="check-circle" :size="17" />Check in at the venue</RouterLink>
+          </div>
+          <p v-if="!auth.isAuthenticated" class="hp-signup">New here? <RouterLink to="/account/register">Create a free account</RouterLink></p>
+        </div>
 
-      <div class="home-hero-actions">
-        <RouterLink class="home-cta" :to="auth.isAuthenticated ? '/me' : '/login'">
-          {{ auth.isAuthenticated ? 'My information' : 'Sign in' }}
-          <AppIcon name="arrow-right" :size="18" />
-        </RouterLink>
-        <RouterLink class="home-ghost" to="/check-in">
-          <AppIcon name="check-circle" :size="18" />
-          Check in
-        </RouterLink>
+        <aside class="hp-how" aria-labelledby="hp-how-title">
+          <h2 id="hp-how-title">How it works</h2>
+          <ol>
+            <li v-for="(step, index) in steps" :key="step.title">
+              <span class="hp-how__icon" aria-hidden="true"><AppIcon :name="step.icon" :size="19" /></span>
+              <div><strong><span class="hp-how__num">{{ index + 1 }}.</span> {{ step.title }}</strong><p>{{ step.text }}</p></div>
+            </li>
+          </ol>
+          <p class="hp-how__note"><AppIcon name="info" :size="15" />Looking for an event? Use the link from your organizer.</p>
+        </aside>
       </div>
-
-      <div class="home-stats">
-        <div>
-          <strong>1 pass</strong>
-          <span>All your events</span>
-        </div>
-        <div>
-          <strong>&lt; 10 sec</strong>
-          <span>QR check-in</span>
-        </div>
-        <div>
-          <strong>100% free</strong>
-          <span>For attendees</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="home-features">
-      <article class="home-feature home-feature--teal">
-        <span class="home-feature-num">01</span>
-        <div class="home-feature-icon"><AppIcon name="ticket" :size="22" /></div>
-        <h2>Register once</h2>
-        <p>Keep your event details and access pass in one place.</p>
-      </article>
-
-      <article class="home-feature home-feature--blue">
-        <span class="home-feature-num">02</span>
-        <div class="home-feature-icon"><AppIcon name="check-circle" :size="22" /></div>
-        <h2>Arrive lightly</h2>
-        <p>Show your QR pass at the door and get moving.</p>
-      </article>
-
-      <article class="home-feature home-feature--green">
-        <span class="home-feature-num">03</span>
-        <div class="home-feature-icon"><AppIcon name="clock" :size="22" /></div>
-        <h2>Stay present</h2>
-        <p>Spend less time at the desk and more time in the room.</p>
-      </article>
     </section>
   </UserLayout>
 </template>

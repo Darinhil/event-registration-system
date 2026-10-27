@@ -2,40 +2,31 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 // Keep the initial bundle small. Admin tools, the QR scanner, and form builder
-// are only downloaded when the user navigates to them.
-const views = import.meta.glob('../views/**/*.vue')
-
-const lazy = (path) => {
-  const loadView = views[path]
-
-  if (!loadView) {
-    throw new Error(`View not found: ${path}`)
-  }
-
-  return loadView
-}
-const HomeView = lazy('../views/public/HomeView.vue')
-const RegistrationView = lazy('../views/public/RegistrationView.vue')
-const EventView = lazy('../views/public/EventView.vue')
-const RegistrationSuccessView = lazy('../views/user/RegistrationSuccessView.vue')
-const MyInformationView = lazy('../views/user/MyInformationView.vue')
-const EditRegistrationView = lazy('../views/user/EditRegistrationView.vue')
-const CheckInView = lazy('../views/user/CheckInView.vue')
-const DashboardView = lazy('../views/admin/DashboardView.vue')
-const UsersView = lazy('../views/admin/UsersView.vue')
-const UserDetailView = lazy('../views/admin/UserDetailView.vue')
-const CheckInsView = lazy('../views/admin/CheckInsView.vue')
-const AuthView = lazy('../views/public/AuthView.vue')
-const EventSetupView = lazy('../views/admin/EventSetupView.vue')
-const FormBuilderView = lazy('../views/admin/FormBuilderView.vue')
-const EventsView = lazy('../views/admin/EventsView.vue')
-const EventDetailsView = lazy('../views/admin/EventDetailsView.vue')
-const EventRegistrantsView = lazy('../views/admin/EventRegistrantsView.vue')
-const AdminProfileView = lazy('../views/admin/AdminProfileView.vue')
-const PersonnelProfileView = lazy('../views/admin/PersonnelProfileView.vue')
-const ReportsView = lazy('../views/admin/ReportsView.vue')
-const AdminAccountsView = lazy('../views/admin/AdminAccountsView.vue')
-const SystemSettingsView = lazy('../views/admin/SystemSettingsView.vue')
+// are only downloaded when the user navigates to them. Each import() must use a
+// literal path: Vite cannot bundle a path passed in through a variable, which
+// left the production build without any pages.
+const HomeView = () => import('../views/public/HomeView.vue')
+const RegistrationView = () => import('../views/public/RegistrationView.vue')
+const EventView = () => import('../views/public/EventView.vue')
+const RegistrationSuccessView = () => import('../views/user/RegistrationSuccessView.vue')
+const MyInformationView = () => import('../views/user/MyInformationView.vue')
+const EditRegistrationView = () => import('../views/user/EditRegistrationView.vue')
+const CheckInView = () => import('../views/user/CheckInView.vue')
+const DashboardView = () => import('../views/admin/DashboardView.vue')
+const UsersView = () => import('../views/admin/UsersView.vue')
+const UserDetailView = () => import('../views/admin/UserDetailView.vue')
+const CheckInsView = () => import('../views/admin/CheckInsView.vue')
+const AuthView = () => import('../views/public/AuthView.vue')
+const EventSetupView = () => import('../views/admin/EventSetupView.vue')
+const FormBuilderView = () => import('../views/admin/FormBuilderView.vue')
+const EventsView = () => import('../views/admin/EventsView.vue')
+const EventDetailsView = () => import('../views/admin/EventDetailsView.vue')
+const EventRegistrantsView = () => import('../views/admin/EventRegistrantsView.vue')
+const AdminProfileView = () => import('../views/admin/AdminProfileView.vue')
+const PersonnelProfileView = () => import('../views/admin/PersonnelProfileView.vue')
+const ReportsView = () => import('../views/admin/ReportsView.vue')
+const AdminAccountsView = () => import('../views/admin/AdminAccountsView.vue')
+const SystemSettingsView = () => import('../views/admin/SystemSettingsView.vue')
 
 const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView }, { path: '/events', redirect: '/me', meta: { auth: true } },
@@ -66,4 +57,4 @@ router.beforeEach((to) => {
   }
 })
 
-  export default router
+export default router

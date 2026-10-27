@@ -50,6 +50,6 @@ onBeforeUnmount(stopCamera)
 	<div class="scanner">
 		<div :id="scannerId" ref="scanner" class="camera-reader"></div>
 		<p class="scanner-hint">Point the camera at the attendee QR pass.</p>
-		<input placeholder="Paste QR payload instead" @change="emit('scan', $event.target.value)" />
+		<input aria-label="Paste QR code text instead of scanning" placeholder="Paste QR payload instead" @change="emit('scan', $event.target.value)" />
 	</div>
 </template>
