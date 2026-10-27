@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AdminTopbar from '../components/AdminTopbar.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -28,11 +28,22 @@ const personnelItems = [
   { id: 'training', label: 'Staff Online Training', icon: 'graduation' },
 ]
 const workspaceItems = [
-  { id: 'time-management', label: 'Time Management', icon: 'clock' },
-  { id: 'other-requests', label: 'Other Requests', icon: 'send' },
+  { id: 'time-management', label: 'Time Management', icon: 'clock', children: [
+    { id: 'leave-application', label: 'Leave Application', icon: 'calendar-check' },
+    { id: 'overtime-request', label: 'Overtime Request', icon: 'timer' },
+    { id: 'monthly-timesheet', label: 'Monthly Timesheet', icon: 'calendar' },
+  ] },
+  { id: 'other-requests', label: 'Other Requests', icon: 'send', children: [
+    { id: 'travel-application', label: 'Travel Application', icon: 'plane' },
+    { id: 'fuel-log-sheet', label: 'Fuel Log-sheet', icon: 'fuel' },
+    { id: 'purchase-request', label: 'Purchase Request', icon: 'cart' },
+  ] },
   { id: 'finance-management', label: 'Finance Management', icon: 'receipt' },
   { id: 'my-requests', label: 'My Requests', icon: 'inbox' },
 ]
+// Expand/collapse state for the groups above; each opens itself when one of its pages is shown.
+const workspaceOpen = reactive(Object.fromEntries(workspaceItems.filter((item) => item.children).map((item) => [item.id, false])))
+const isChildActive = (item) => !!item.children?.some((child) => isSectionActive(child.id))
 const eventItems = [
   { to: '/admin/users', label: 'Attendance', icon: 'user-check' },
   { to: '/admin/check-ins', label: 'Check-in', icon: 'scan' },
@@ -42,7 +53,7 @@ const underPath = (path, base) => path === base || path.startsWith(`${base}/`)
 const isEventsActive = computed(() => underPath(route.path, '/admin/events'))
 const isEventSection = computed(() => isEventsActive.value || eventItems.some((item) => underPath(route.path, item.to)))
 const isSectionActive = (id) => isPersonnelSection.value && route.query.section === id
-const isWorkspaceActive = computed(() => workspaceItems.some((item) => isSectionActive(item.id)))
+const isWorkspaceActive = computed(() => workspaceItems.some((item) => isSectionActive(item.id) || isChildActive(item)))
 const isPersonnelProfileActive = computed(() => isPersonnelSection.value && !isWorkspaceActive.value)
 // Open the group that holds the current page; leave the others as the user left them.
 watch(() => route.fullPath, () => {
@@ -50,6 +61,7 @@ watch(() => route.fullPath, () => {
   if (isEventSection.value) eventMenuOpen.value = true
   if (isPersonnelProfileActive.value) personnelMenuOpen.value = true
   if (isPersonnelSection.value) personnelPortalOpen.value = true
+  workspaceItems.forEach((item) => { if (item.children && (isSectionActive(item.id) || isChildActive(item))) workspaceOpen[item.id] = true })
 }, { immediate: true })
 const onKeydown = (event) => { if (event.key === 'Escape' && mobileMenuOpen.value) mobileMenuOpen.value = false }
 onMounted(() => window.addEventListener('keydown', onKeydown)); onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
@@ -99,7 +111,18 @@ const logout = async () => { await auth.logout(); router.push('/login') }
               <li v-for="item in personnelItems" :key="item.id"><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-sublink" :class="{ 'is-active': isSectionActive(item.id) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span><small v-if="item.hint" class="sb-hint">{{ item.hint }}</small></RouterLink></li>
             </ul>
           </li>
-          <li v-for="item in workspaceItems" :key="item.id"><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-link" :class="{ 'is-active': isSectionActive(item.id) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="18" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
+          <template v-for="item in workspaceItems" :key="item.id">
+            <li v-if="item.children" class="sb-group" :class="{ 'is-open': workspaceOpen[item.id], 'has-active': isChildActive(item) }">
+              <div class="sb-row">
+                <RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-link" :class="{ 'is-active': isSectionActive(item.id), 'is-parent-active': isChildActive(item) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="18" /><span class="sb-text">{{ item.label }}</span></RouterLink>
+                <button type="button" class="sb-toggle" :aria-expanded="workspaceOpen[item.id]" :aria-controls="`sb-${item.id}`" :aria-label="`${workspaceOpen[item.id] ? 'Collapse' : 'Expand'} ${item.label.toLowerCase()} pages`" @click="workspaceOpen[item.id] = !workspaceOpen[item.id]"><AppIcon name="chevron-down" :size="16" /></button>
+              </div>
+              <ul v-show="workspaceOpen[item.id]" :id="`sb-${item.id}`" class="sb-sublist">
+                <li v-for="child in item.children" :key="child.id"><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: child.id } }" class="sb-sublink" :class="{ 'is-active': isSectionActive(child.id) }" :aria-current="isSectionActive(child.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="child.icon" :size="16" /><span class="sb-text">{{ child.label }}</span></RouterLink></li>
+              </ul>
+            </li>
+            <li v-else><RouterLink :to="{ path: PERSONNEL_PATH, query: { section: item.id } }" class="sb-link" :class="{ 'is-active': isSectionActive(item.id) }" :aria-current="isSectionActive(item.id) ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="18" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
+          </template>
         </ul>
       </section>
 

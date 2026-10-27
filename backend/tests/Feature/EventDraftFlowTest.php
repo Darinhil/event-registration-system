@@ -164,4 +164,15 @@ class EventDraftFlowTest extends TestCase
         Sanctum::actingAs(User::factory()->create(['role' => 'event_admin']));
         $this->putJson("/api/admin/events/{$id}", ['name' => 'Hijacked', 'status' => 'draft'])->assertForbidden();
     }
+
+    public function test_svg_banners_are_served_sandboxed(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+        $event = Event::create(['name' => 'Expo', 'starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHour(), 'location' => 'Hall', 'capacity' => 10, 'status' => 'published', 'enabled_fields' => [], 'branding' => ['image' => 'data:image/svg+xml;base64,'.base64_encode($svg)]]);
+
+        $response = $this->get("/api/events/{$event->id}/banner")->assertOk();
+
+        $this->assertStringContainsString('sandbox', $response->headers->get('Content-Security-Policy'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+    }
 }

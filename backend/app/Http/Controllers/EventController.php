@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\RegistrationResource;
@@ -31,16 +32,15 @@ class EventController extends Controller
         if (! preg_match('/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/s', $image, $matches)) return response()->json(['message' => 'Invalid banner image.'], 422);
         $contents = base64_decode($matches[2], true);
         abort_if($contents === false, 422, 'Invalid banner image.');
-        return response($contents)->header('Content-Type', $matches[1])->header('Cache-Control', 'private, max-age=3600');
+        // Organisers can upload SVG; the sandbox CSP stops any script in it from running if the URL is opened directly.
+        return response($contents)->header('Content-Type', $matches[1])->header('Cache-Control', 'private, max-age=3600')
+            ->header('X-Content-Type-Options', 'nosniff')->header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
     }
     public function show(Request $request, Event $event)
     {
         // These routes are public, so the auth middleware never runs; check the token directly
         // so organisers can open their own drafts and closed events for editing.
-        $user = $request->user('sanctum');
-        $staff = in_array($user?->role, ['admin', 'event_admin'], true);
-        if ($staff) abort_unless($user->can('view', $event), 403);
-        else abort_unless($event->status === 'published' && $event->ends_at?->isFuture(), 404);
+        $staff = $this->authorizePublicView($request->user('sanctum'), $event);
         $registered = $event->registrations()->count();
         $data = $event->load('creator:id,name')->only(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'creator']);
         if ($staff) {
@@ -49,13 +49,23 @@ class EventController extends Controller
         $closedReason = app(\App\Services\RegistrationService::class)->closedReason($event);
         return response()->json(['data' => $data, 'registered' => $registered, 'remaining' => max(0, $event->capacity - $registered), 'registration' => ['open' => $closedReason === null, 'reason' => $closedReason]]);
     }
+    /**
+     * Attendees and guests only see live events; staff see any event they manage
+     * (drafts and closed events included). Returns whether the viewer is staff.
+     */
+    private function authorizePublicView(?User $user, Event $event): bool
+    {
+        if ($user?->isStaff()) {
+            abort_unless($user->can('view', $event), 403);
+            return true;
+        }
+        abort_unless($event->status === 'published' && $event->ends_at?->isFuture(), 404);
+        return false;
+    }
     /** Full public form config — the exact fields/steps/settings the admin built. */
     public function form(Request $request, Event $event)
     {
-        $user = $request->user('sanctum');
-        $staff = in_array($user?->role, ['admin', 'event_admin'], true);
-        if ($staff) abort_unless($user->can('view', $event), 403);
-        else abort_unless($event->status === 'published' && $event->ends_at?->isFuture(), 404);
+        $this->authorizePublicView($request->user('sanctum'), $event);
         $payload = app(FormBuilderController::class)->publicPayload($event);
         $closedReason = app(\App\Services\RegistrationService::class)->closedReason($event);
         $payload['registration_open'] = $closedReason === null;
@@ -91,6 +101,7 @@ class EventController extends Controller
         return [
             'status' => ['sometimes', 'string', 'in:draft,published'],
             'name' => $creating ? ['required', 'string', 'max:150'] : ['sometimes', 'required', 'string', 'max:150'],
+            'category' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
             'starts_at' => [...$required, 'date', ...($creating && ! $draft ? ['after:now'] : [])],
             'ends_at' => [...$required, 'date', 'after:starts_at'],
@@ -110,7 +121,6 @@ class EventController extends Controller
     {
         $draft = $request->input('status') === 'draft';
         $data = $request->validate($this->eventRules($draft, true));
-        $data['category'] = $request->input('category');
         $data['status'] = $draft ? 'draft' : 'published';
         $data['enabled_fields'] ??= [];
         $fields = $request->input('form_fields', []);
@@ -129,7 +139,6 @@ class EventController extends Controller
         $draft = $target === 'draft';
         $publishing = $event->status === 'draft' && $target === 'published';
         $data = $request->validate($this->eventRules($draft, $publishing));
-        if ($request->has('category')) $data['category'] = $request->input('category');
         if ($publishing) $data['status'] = 'published';
         else unset($data['status']);
         $fields = $request->input('form_fields');

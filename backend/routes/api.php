@@ -10,14 +10,16 @@ use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\SystemSettingsController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/admin/login', [AuthController::class, 'adminLogin']);
+// Throttled per IP to slow down password guessing and account spam.
+Route::middleware('throttle:10,1')->group(function (): void {
+    Route::post('/auth/register', [AuthController::class, 'register']);
+    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/admin/login', [AuthController::class, 'adminLogin']);
+});
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/events/{event}/banner', [EventController::class, 'banner']);
 Route::get('/events/{event}', [EventController::class, 'show']);
 Route::get('/events/{event}/form', [EventController::class, 'form']);
-Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
 Route::get('/settings', [SystemSettingsController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
@@ -25,17 +27,17 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/me', [UserController::class, 'show']);
     Route::get('/me/profile-photo', [UserController::class, 'profilePhoto']);
     Route::post('/me/profile', [UserController::class, 'updateProfile']);
-    Route::patch('/me/password', [UserController::class, 'updatePassword']);
+    Route::patch('/me/password', [UserController::class, 'updatePassword'])->middleware('throttle:10,1');
     Route::post('/registrations', [RegistrationController::class, 'store']);
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
+    Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
     Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
-    Route::get('/check-ins/lookup', [CheckInController::class, 'lookup']);
     Route::post('/check-ins', [CheckInController::class, 'store']);
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
-        Route::post('/check-ins/lookup', [CheckInController::class, 'lookup']);
+        Route::match(['get', 'post'], '/check-ins/lookup', [CheckInController::class, 'lookup']);
         Route::post('/check-ins/search', [CheckInController::class, 'search']);
         Route::get('/events', [EventController::class, 'adminIndex']);
         Route::get('/events/{event}/banner', [EventController::class, 'banner'])->middleware('can:view,event');

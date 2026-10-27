@@ -1,1 +1,0 @@
-<template><span class="spinner" aria-label="Loading"></span></template>

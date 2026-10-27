@@ -27,6 +27,7 @@ const rememberMe = ref(Boolean(rememberedIdentifier))
 const loginPasswordVisible = ref(false)
 const loginErrors = reactive({})
 const loginFormError = ref('')
+const sessionExpired = computed(() => route.query.expired === '1' && !loginFormError.value)
 
 const validateLogin = () => {
   Object.keys(loginErrors).forEach((key) => delete loginErrors[key])
@@ -53,6 +54,7 @@ const login = async () => {
   } catch (error) {
     loginFormError.value = !error.response
       ? 'We couldn’t reach the server. Check your connection and try again.'
+      : error.response.status === 429 ? 'Too many sign-in attempts. Wait a minute, then try again.'
       : /invalid credentials/i.test(auth.error || '') ? 'That email or phone and password don’t match an account.' : (auth.error || 'Unable to sign in.')
     focus('login-password')
   }
@@ -100,7 +102,7 @@ const signup = async () => {
     } else if (errors.password) {
       signupErrors.password = [errors.password].flat()[0]; focus('signup-password')
     } else {
-      signupFormError.value = !error.response ? 'We couldn’t reach the server. Check your connection and try again.' : (auth.error || 'Unable to create your account.')
+      signupFormError.value = !error.response ? 'We couldn’t reach the server. Check your connection and try again.' : error.response.status === 429 ? 'Too many attempts. Wait a minute, then try again.' : (auth.error || 'Unable to create your account.')
     }
   }
 }
@@ -136,6 +138,7 @@ const clearSignup = (key) => { delete signupErrors[key]; signupFormError.value =
               <h1 id="au-title">Welcome back</h1>
               <p>Sign in to see your registrations and event passes.</p>
             </header>
+            <div v-if="sessionExpired" class="au-alert au-alert--info" role="status"><AppIcon name="info" :size="18" /><span>Your session has expired. Sign in again to continue.</span></div>
             <div v-if="loginFormError" class="au-alert" role="alert"><AppIcon name="alert-circle" :size="18" /><span>{{ loginFormError }}</span></div>
             <form class="au-form" novalidate :aria-busy="auth.loading" @submit.prevent="login">
               <div class="au-field">

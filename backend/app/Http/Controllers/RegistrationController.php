@@ -18,7 +18,7 @@ class RegistrationController extends Controller
     public function store(RegistrationRequest $request): JsonResponse { return response()->json(['data' => new RegistrationResource($this->registrations->create($request->user(), $request->validated()))], 201); }
     public function show(Request $request, Registration $registration): RegistrationResource
     {
-        abort_unless($request->user()->id === $registration->user_id || $request->user()->role === 'admin', 403);
+        $this->authorizeView($request, $registration);
 
         $registration->load('checkIn', 'event');
         $registration->append_form_values();
@@ -54,5 +54,19 @@ class RegistrationController extends Controller
 
         return response()->json(['message' => 'Registration deleted successfully.']);
     }
-    public function qr(Registration $registration): JsonResponse { return response()->json(['payload' => $this->qr->payload($registration)]); }
+    public function qr(Request $request, Registration $registration): JsonResponse
+    {
+        // The payload carries the qr_token, which is the check-in credential.
+        $this->authorizeView($request, $registration);
+
+        return response()->json(['payload' => $this->qr->payload($registration)]);
+    }
+
+    /** The attendee who owns the registration, or staff who can view its event. */
+    private function authorizeView(Request $request, Registration $registration): void
+    {
+        $user = $request->user();
+        $event = $registration->event;
+        abort_unless($user->id === $registration->user_id || ($user->isStaff() && $event && $user->can('view', $event)), 403);
+    }
 }

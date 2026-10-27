@@ -354,6 +354,7 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 
 .au-alert { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 16px; padding: 11px 13px; border: 1px solid #f3c1bb; border-radius: 11px; background: #fef6f5; color: #b42318; font-size: .9rem; line-height: 1.4; }
 .au-alert svg { margin-top: 1px; }
+.au-alert--info { border-color: #b9dcd3; background: #eef7f4; color: #0f5c4b; }
 
 .au-form { display: grid; gap: 16px; }
 .au-field { display: grid; gap: 6px; }

@@ -275,4 +275,55 @@ class CheckInFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.registration.full_name', 'Ravy Sot');
     }
+
+    public function test_attendee_cannot_check_in_or_look_up_someone_else(): void
+    {
+        $event = $this->event();
+        $registration = $this->register(User::factory()->create(), $event, ['full_name' => 'Someone Else', 'registration_code' => 'CTS-777']);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['credential' => 'CTS-777'])->assertStatus(422);
+        $this->getJson('/api/admin/check-ins/lookup?credential=CTS-777')->assertForbidden();
+        $this->assertDatabaseCount('check_ins', 0);
+    }
+
+    public function test_registration_qr_payload_is_only_given_to_its_owner_or_staff(): void
+    {
+        $owner = User::factory()->create();
+        $registration = $this->register($owner, $this->event());
+
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertUnauthorized();
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertForbidden();
+
+        Sanctum::actingAs($owner);
+        $this->getJson("/api/registrations/{$registration->id}/qr")->assertOk()->assertJsonFragment(['payload' => json_encode(['registration_id' => $registration->id, 'qr_token' => $registration->qr_token])]);
+    }
+
+    public function test_non_master_staff_can_only_check_in_to_their_own_events(): void
+    {
+        $officer = User::factory()->create(['role' => 'officer_1']);
+        $own = Event::create([...$this->event()->only(['name', 'starts_at', 'ends_at', 'location', 'capacity', 'status']), 'enabled_fields' => [], 'created_by' => $officer->id]);
+        $foreign = $this->register(User::factory()->create(), $this->event());
+        $mine = $this->register(User::factory()->create(), $own);
+        Sanctum::actingAs($officer);
+
+        $this->postJson('/api/admin/check-ins/lookup', ['qr_token' => $foreign->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['qr_token' => $foreign->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['qr_token' => $mine->qr_token])->assertCreated();
+    }
+
+    public function test_cancelled_events_refuse_check_in(): void
+    {
+        $attendee = User::factory()->create();
+        $event = $this->event();
+        $registration = $this->register($attendee, $event);
+        $event->update(['status' => 'cancelled']);
+        Sanctum::actingAs($attendee);
+
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])->assertStatus(422);
+        $this->assertDatabaseCount('check_ins', 0);
+    }
 }

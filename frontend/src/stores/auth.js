@@ -95,8 +95,17 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
       }
     },
+    clearSession() {
+      this.clearProfilePhotoPreview()
+      this.user = null
+      this.token = null
+      localStorage.removeItem('event_token')
+      localStorage.removeItem('event_user')
+      // Cached admin data belongs to this account; the next person on this browser must not see it.
+      localStorage.removeItem('event_list')
+    },
     async logout() {
-      try { if (this.token) await api.post('/auth/logout') } finally { this.clearProfilePhotoPreview(); this.user = null; this.token = null; localStorage.removeItem('event_token'); localStorage.removeItem('event_user') }
+      try { if (this.token) await api.post('/auth/logout') } catch { /* the session is cleared locally either way */ } finally { this.clearSession() }
     },
   },
 })

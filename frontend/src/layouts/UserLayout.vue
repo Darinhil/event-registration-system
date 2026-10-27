@@ -37,7 +37,7 @@ const logout = async () => {
                 <img v-if="auth.profilePhotoPreview || auth.user?.profile_photo" :src="auth.profilePhotoPreview || auth.user?.profile_photo" alt="" />
                 <svg v-else viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="24" r="10" fill="#fff"/><path d="M17 49c1.3-9.2 7.2-14 15-14s13.7 5.8 15 14" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="6"/></svg>
               </span>
-              <span class="nav-user-name">User</span>
+              <span class="nav-user-name" :title="auth.user?.name">{{ auth.user?.name?.trim().split(' ')[0] || 'Account' }}</span>
             </RouterLink>
             <button class="logout-button" type="button" @click="logout">Logout</button>
           </div>

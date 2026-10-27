@@ -44,7 +44,8 @@ class CheckInController extends Controller
             if ($request->filled('event_id') && ! $user->registrations()->where('event_id', $request->integer('event_id'))->exists()) abort(404);
             throw ValidationException::withMessages(['qr_token' => 'Registration not found.']);
         }
-        if ($user->role !== 'admin' && $registration->user_id !== $user->id) abort(403);
+        $canView = $registration->user_id === $user->id || ($user->isStaff() && $registration->event && $user->can('view', $registration->event));
+        abort_unless($canView, 403);
         $registration->load('event')->append_form_values();
         return new RegistrationResource($registration);
     }
@@ -53,7 +54,7 @@ class CheckInController extends Controller
     {
         $data = $request->validate(['event_id' => ['required', 'integer', 'exists:events,id'], 'query' => ['required', 'string', 'max:100']]);
         $event = Event::findOrFail($data['event_id']);
-        abort_unless($request->user()->role === 'admin' || $event->created_by === $request->user()->id, 403);
+        abort_unless($request->user()->can('view', $event), 403);
         $query = trim($data['query']);
         // Phone numbers are matched with spaces/dashes ignored so "012 345 678" finds "012345678".
         $digits = preg_replace('/[^0-9+]/', '', $query);
