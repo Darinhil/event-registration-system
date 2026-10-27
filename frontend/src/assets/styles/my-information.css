@@ -29,6 +29,27 @@
   margin: 10px 0 26px;
 }
 
+.mi-edit-profile-link {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid #b8e3d7;
+  border-radius: 10px;
+  background: #effaf6;
+  color: #0f725e;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .15s, transform .15s;
+}
+
+.mi-edit-profile-link:hover {
+  transform: translateY(-1px);
+  background: #e2f5ee;
+}
+
 .mi-heading-copy .mi-kicker {
   display: inline-flex;
   align-items: center;

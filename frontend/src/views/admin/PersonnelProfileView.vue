@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import PersonnelProfileForm from '../../components/personnel/PersonnelProfileForm.vue'
 import ComplianceCenter from '../../components/personnel/ComplianceCenter.vue'
+import FinanceManagement from '../../components/FinanceManagement.vue'
 import ContractHistory from '../../components/personnel/ContractHistory.vue'
 import TrainingCenter from '../../components/personnel/TrainingCenter.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -130,7 +131,7 @@ const cancelPurchaseRequest = () => {
 <template>
   <AdminLayout>
     <div class="profile-workspace" :class="{ 'is-profile-form': section === 'my-profile' || !sectionLabels[section] }">
-      <div v-if="sectionLabels[section] && !['compliances', 'contract-history', 'training', 'time-management', 'leave-application', 'overtime-request', 'monthly-timesheet', 'other-requests', 'travel-application', 'fuel-log-sheet', 'purchase-request', 'my-requests'].includes(section)" class="profile-page-top"><div><h1>{{ heading }}</h1><p>{{ '' }}</p></div></div>
+      <div v-if="sectionLabels[section] && !['compliances', 'contract-history', 'training', 'finance-management', 'time-management', 'leave-application', 'overtime-request', 'monthly-timesheet', 'other-requests', 'travel-application', 'fuel-log-sheet', 'purchase-request', 'my-requests'].includes(section)" class="profile-page-top"><div><h1>{{ heading }}</h1><p>{{ '' }}</p></div></div>
 
       <section v-if="section === 'my-requests'" class="my-requests-page">
         <header class="my-requests-heading"><div><h2>My Requests</h2><p>All your submissions with their approval workflow status.</p></div><div class="my-requests-filters"><label><span class="sr-only">Filter by type</span><select v-model="requestTypeFilter"><option value="all">All types</option><option v-for="type in [...new Set(myRequests.map((request) => request.type))]" :key="type" :value="type">{{ type }}</option></select></label><label><span class="sr-only">Filter by status</span><select v-model="requestStatusFilter"><option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label></div></header>
@@ -215,6 +216,7 @@ const cancelPurchaseRequest = () => {
           <div class="fuel-actions"><div class="fuel-totals"><span>Total Fuel: <strong>{{ fuelTotalLiters.toFixed(2).replace(/\.00$/, '') }} L</strong></span><span>Total Cost: <strong>${{ fuelTotalCost.toFixed(2).replace(/\.00$/, '') }}</strong></span></div><span v-if="fuelSubmitted" class="leave-success" role="status">Log-sheet submitted successfully.</span><button type="submit" class="fuel-submit">Submit Log-Sheet</button></div>
         </form>
       </section>
+      <FinanceManagement v-else-if="section === 'finance-management'" />
       <section v-else class="other-section"><h2>{{ heading }}</h2><p>{{ heading }} information will appear here.</p></section>
     </div>
   </AdminLayout>

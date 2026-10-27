@@ -6,6 +6,10 @@ import { useSettingsStore } from '../stores/settings'
 import AppIcon from '../components/AppIcon.vue'
 import logo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
+// Onboarding pages (the /me profile steps) use a full-screen layout without the top bar.
+const props = defineProps({
+  onboarding: { type: Boolean, default: false },
+})
 const router = useRouter()
 const auth = useAuthStore()
 const mobileMenuOpen = ref(false)
@@ -19,9 +23,9 @@ const logout = async () => {
 
 </script>
 <template>
-  <div class="shell" :class="{ 'mobile-menu-open': mobileMenuOpen }">
+  <div class="shell" :class="{ 'mobile-menu-open': mobileMenuOpen, 'onboarding-shell': props.onboarding }">
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <header class="topbar">
+    <header v-if="!props.onboarding" class="topbar">
       <RouterLink to="/" class="brand">
         <img :src="logo" alt="Live & Learn Cambodia" />
       </RouterLink>
@@ -99,4 +103,5 @@ const logout = async () => {
     white-space: nowrap;
   }
 }
+.shell.onboarding-shell { min-height: 100vh; background: #f5f7fc; }
 </style>

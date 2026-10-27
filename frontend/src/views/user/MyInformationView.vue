@@ -89,6 +89,7 @@ const cancelRegistration = async (registration) => {
           <h1>My information</h1>
           <p>Your profile and the events you’ve registered for.</p>
         </div>
+        <RouterLink class="mi-edit-profile-link" to="/me/personal-information">Edit personal information</RouterLink>
       </header>
 
       <div v-if="profileError" class="my-banner is-error" role="alert">

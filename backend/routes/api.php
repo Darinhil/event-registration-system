@@ -8,6 +8,7 @@ use App\Http\Controllers\ContractController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FinanceVoucherController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\SystemSettingsController;
 use App\Http\Controllers\TrainingController;
@@ -68,6 +69,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('/events/{event}/close', [EventController::class, 'close'])->middleware('can:update,event');
         Route::patch('/events/{event}/cancel', [EventController::class, 'cancel'])->middleware('can:update,event');
         Route::delete('/events/{event}', [EventController::class, 'destroy'])->middleware('can:delete,event');
+        Route::get('/finance-vouchers', [FinanceVoucherController::class, 'index']);
+        Route::post('/finance-vouchers', [FinanceVoucherController::class, 'store']);
+        Route::get('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'show']);
+        Route::put('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'update']);
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/notifications', [AdminController::class, 'notifications']);
         Route::get('/reports', [AdminController::class, 'reports']);

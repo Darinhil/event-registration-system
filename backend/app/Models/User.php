@@ -32,6 +32,9 @@ class User extends Authenticatable
         'phone',
         'username',
         'profile_photo',
+        'personal_information',
+        'professional_qualifications',
+        'family_information',
         'password',
         'role',
     ];
@@ -56,11 +59,24 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'personal_information' => 'array',
+            'professional_qualifications' => 'array',
+            'family_information' => 'array',
         ];
     }
 
     public function registrations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Registration::class);
+    }
+
+    public function staffContracts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StaffContract::class);
+    }
+
+    public function financeVouchers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(FinanceVoucher::class);
     }
 }
