@@ -111,12 +111,7 @@ table { max-width: 100%; }
   .ews-header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ews-header-actions .ews-btn { width: 100%; }
   .ews-details { padding-inline: 16px; }
-  .fb-header-row { flex-wrap: wrap; }
-  .fb-header-title, .fb-header-actions { flex: 1 1 100%; }
-  .fb-header-actions { justify-content: flex-start; }
-  .fb-page-foot { flex-direction: column; align-items: stretch; }
-  .fb-page-foot > * { width: 100%; }
-  .fb-modal, .fb-modal--wide, .field-modal--builder, .agenda-edit-modal { width: calc(100% - 24px); max-height: calc(100dvh - 24px); border-radius: 14px; }
+  .field-modal--builder, .agenda-edit-modal { width: calc(100% - 24px); max-height: calc(100dvh - 24px); border-radius: 14px; }
   .field-modal--builder .field-modal-header, .field-modal--builder .field-modal-body, .field-modal--builder .field-modal-footer, .agenda-edit-modal > header, .agenda-edit-body, .agenda-edit-modal > footer { padding-inline: 18px; }
   .field-modal--builder .field-modal-footer, .agenda-edit-modal > footer { flex-wrap: wrap; }
   .field-modal--builder .field-modal-footer > *, .agenda-edit-modal > footer > * { flex: 1 1 130px; min-width: 0; }
@@ -157,9 +152,6 @@ table { max-width: 100%; }
   .step-card { padding-inline: 14px; }
   .step-actions { flex-direction: column; }
   .step-actions button { width: 100%; }
-  .fb-palette, .fb-settings { width: min(310px, 92vw); }
-  .fb-field-card, .fb-field-card.is-w25, .fb-field-card.is-w33, .fb-field-card.is-w50 { grid-template-columns: 18px minmax(0, 1fr) auto; }
-  .fb-field-card .fb-field-meta { grid-column: 2 / -1; }
   .ews-header-actions { grid-template-columns: 1fr; }
   .ews-qr-frame { padding: 12px; }
   .ews-qr-frame canvas, .ews-qr-frame img { width: min(100%, 230px) !important; height: auto !important; }
@@ -357,7 +349,5 @@ textarea { resize: vertical; }
   .auth-card-login, .auth-card-signup { border-radius: 16px !important; }
   .auth-tabs-row { gap: 6px; }
   .auth-tab { min-width: 0; flex: 1 1 0; padding-inline: 8px; }
-  .fb-shell { padding-inline: 10px; }
-  .fb-header-actions .fb-btn, .fb-page-foot .fb-btn { width: 100%; justify-content: center; }
   .agenda-edit-modal > footer button, .field-modal--builder .field-modal-footer button { min-height: 44px; }
 }

@@ -25,7 +25,7 @@ class CheckInController extends Controller
 
     public function store(CheckInRequest $request): \Illuminate\Http\JsonResponse
     {
-        try { $checkIn = $this->checkIns->checkIn($request->string('credential')->toString(), $request->user()); }
+        try { $checkIn = $this->checkIns->checkIn($request->string('credential')->toString(), $request->user(), $request->input('entrance_token')); }
         catch (ValidationException $exception) { if ($request->filled('qr_token')) throw ValidationException::withMessages(['qr_token' => $exception->getMessage()]); throw $exception; }
         return response()->json(['message' => 'Checked in successfully.', 'check_in' => $checkIn], 201);
     }

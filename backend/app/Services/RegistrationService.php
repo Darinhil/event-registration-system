@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Registration;
 use App\Models\User;
 use App\Models\Event;
+use App\Support\FormConditions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
@@ -117,6 +118,9 @@ class RegistrationService
         if (! is_array($formData)) return [];
         $allowed = collect($fields)->reject(fn ($field) => $field->type === 'heading')->map(fn ($field) => (string) $field->id)->all();
         $formData = array_intersect_key($formData, array_flip($allowed));
+        // Drop answers to questions a condition hid (e.g. stale values after changing an earlier answer).
+        $byId = FormConditions::index($fields);
+        $formData = array_filter($formData, fn ($key) => ! isset($byId[(string) $key]) || FormConditions::visible($byId[(string) $key], $byId, $formData), ARRAY_FILTER_USE_KEY);
         foreach ($formData as $key => $value) {
             if ($value instanceof UploadedFile) continue;
             if (is_array($value)) {

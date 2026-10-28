@@ -12,6 +12,7 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { COUNTRIES } from '../utils/formFieldTypes'
 import { validateFields } from '../utils/formValidation'
+import { isFieldVisible } from '../utils/formConditions'
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -39,8 +40,10 @@ const formEl = ref(null)
 /* ---------------- Step logic ---------------- */
 const hasSteps = computed(() => props.steps.length > 1)
 const currentStep = computed(() => Math.min(Math.max(props.activeStep, 0), props.steps.length - 1))
+// Conditional questions appear as soon as the answer they depend on is given.
+const shownFields = computed(() => props.fields.filter((field) => isFieldVisible(field, props.fields, values)))
 const stepFields = computed(() =>
-  hasSteps.value ? props.fields.filter((field) => Number(field.settings?.step ?? 0) === currentStep.value) : props.fields
+  hasSteps.value ? shownFields.value.filter((field) => Number(field.settings?.step ?? 0) === currentStep.value) : shownFields.value
 )
 const nextStep = () => emit('step-change', Math.min(currentStep.value + 1, props.steps.length - 1))
 const prevStep = () => { stepErrors.value = {}; summaryVisible.value = false; emit('step-change', Math.max(currentStep.value - 1, 0)) }

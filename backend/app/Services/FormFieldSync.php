@@ -21,6 +21,7 @@ class FormFieldSync
         $existing = $event->formFields()->get()->keyBy('id');
         $unmatched = $existing->keys()->flip();
         $keep = [];
+        $idMap = []; // client id => saved id, so conditions can point at fields created in this save
 
         foreach (array_values($incoming) as $index => $field) {
             $attributes = [
@@ -42,7 +43,9 @@ class FormFieldSync
             } else {
                 $keep[] = $event->formFields()->create($attributes)->id;
             }
+            if (isset($field['id']) && $field['id'] !== '') $idMap[(string) $field['id']] = end($keep);
         }
+        $this->remapConditions($keep, $idMap);
 
         $removed = $existing->except($keep);
         if ($removed->isEmpty()) return;
@@ -56,6 +59,18 @@ class FormFieldSync
             $event->forceFill(['form_config' => $config])->save();
         }
         FormField::whereIn('id', $removed->keys())->delete();
+    }
+
+    /** Point show_if conditions at the saved ids of their source fields. */
+    private function remapConditions(array $keep, array $idMap): void
+    {
+        foreach (FormField::whereIn('id', $keep)->get() as $model) {
+            $settings = $model->settings ?? [];
+            $source = $settings['show_if']['field'] ?? null;
+            if ($source === null || $source === '' || ! isset($idMap[(string) $source]) || (string) $idMap[(string) $source] === (string) $source) continue;
+            $settings['show_if']['field'] = $idMap[(string) $source];
+            $model->update(['settings' => $settings]);
+        }
     }
 
     /**

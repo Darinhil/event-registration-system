@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Event;
+use App\Support\FormConditions;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,9 +28,14 @@ class RegistrationRequest extends FormRequest
         // Editing keeps previously uploaded files when no new file is sent.
         $isUpdate = $this->route('registration') !== null;
 
+        $fieldsById = FormConditions::index($event?->formFields ?? []);
+        $answers = is_array($this->input('form_data')) ? $this->input('form_data') : [];
+
         foreach ($event?->formFields ?? [] as $field) {
             if ($field->type === 'heading') continue;
             $key = "form_data.{$field->id}";
+            // Questions hidden by a condition were never asked, so they can't be required.
+            if (! FormConditions::visible($field, $fieldsById, $answers)) { $rules[$key] = ['exclude']; continue; }
             $required = $field->required ? 'required' : 'nullable';
             $settings = $field->settings ?? [];
             $options = is_array($field->options) && $field->options !== [] ? $field->options : null;

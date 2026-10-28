@@ -206,3 +206,4 @@
   .ck-spinner, .ck-skeleton { animation: none; }
   .ck-progress span { transition: none; }
 }
+.ck-qr__try { margin-top: 10px; color: #33475c; }

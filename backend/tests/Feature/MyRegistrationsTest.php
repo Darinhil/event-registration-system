@@ -15,6 +15,19 @@ class MyRegistrationsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_form_answers_keep_their_field_ids_for_editing(): void
+    {
+        $user = User::factory()->create();
+        $registration = $this->registration($user);
+        $registration->update(['form_data' => ['1' => 'Dara Chan', '2' => 'dara@example.com', '3' => 'L']]);
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/registrations/{$registration->id}")->assertOk()
+            ->assertJsonPath('data.form_data.1', 'Dara Chan')
+            ->assertJsonPath('data.form_data.2', 'dara@example.com')
+            ->assertJsonPath('data.form_data.3', 'L');
+    }
+
     private function registration(User $user, array $event = []): Registration
     {
         $model = Event::create(array_merge(['name' => 'Forum', 'starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(8), 'location' => 'Phnom Penh', 'capacity' => 10, 'enabled_fields' => [], 'status' => 'published'], $event));
