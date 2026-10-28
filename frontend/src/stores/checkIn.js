@@ -61,12 +61,12 @@ export const useCheckInStore = defineStore('checkIn', {
         this.searchLoading = false
       }
     },
-    async submit(credential) {
+    async submit(credential, entranceToken) {
       this.loading = true
       this.checkingIn = true
       this.error = null
       try {
-        this.result = (await checkIn(credential)).data
+        this.result = (await checkIn(credential, entranceToken)).data
         return this.result
       } catch (error) {
         this.error = error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Check-in failed.'

@@ -79,7 +79,7 @@
 .fr-empty p{font-size:12px}
 
 /* Preview overrides (builder preview frame) */
-.fb-preview-page .fr-form{max-width:none}
+
 
 @media (max-width:640px){
   .fr-w25,.fr-w33,.fr-w50{width:100%}

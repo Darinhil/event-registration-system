@@ -8,8 +8,11 @@ use App\Http\Controllers\ContractController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FinanceVoucherController;
 use App\Http\Controllers\FormBuilderController;
+use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\SystemSettingsController;
+use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\TrainingController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +51,24 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/me/training/{course}/lessons/{lesson}/complete', [TrainingController::class, 'completeLesson']);
         Route::get('/me/training/{course}/quiz', [TrainingController::class, 'quiz']);
         Route::post('/me/training/{course}/quiz', [TrainingController::class, 'submitQuiz'])->middleware('throttle:20,1');
+        Route::get('/me/overtime', [OvertimeController::class, 'index']);
+        Route::post('/me/overtime', [OvertimeController::class, 'store'])->middleware('throttle:30,1');
+        Route::get('/me/overtime/supervisors', [OvertimeController::class, 'supervisors']);
+        Route::get('/me/overtime/approvals', [OvertimeController::class, 'approvals']);
+        Route::post('/overtime/{overtime}/cancel', [OvertimeController::class, 'cancel']);
+        Route::post('/overtime/{overtime}/decision', [OvertimeController::class, 'decide']);
+        Route::prefix('/me/timesheets/{year}/{month}')->whereNumber(['year', 'month'])->group(function (): void {
+            Route::get('/', [TimesheetController::class, 'show']);
+            Route::put('/', [TimesheetController::class, 'save'])->middleware('throttle:60,1');
+            Route::post('/submit', [TimesheetController::class, 'submit']);
+            Route::post('/recall', [TimesheetController::class, 'recall']);
+            Route::post('/attachments', [TimesheetController::class, 'uploadAttachment'])->middleware('throttle:30,1');
+        });
+        Route::get('/me/timesheet-approvals', [TimesheetController::class, 'approvals']);
+        Route::get('/timesheets/{timesheet}', [TimesheetController::class, 'review']);
+        Route::get('/timesheets/{timesheet}/attachments/{day}', [TimesheetController::class, 'attachment'])->whereNumber('day');
+        Route::post('/timesheets/{timesheet}/decision', [TimesheetController::class, 'decide']);
+        Route::post('/timesheets/{timesheet}/process', [TimesheetController::class, 'process']);
         Route::get('/me/contracts', [ContractController::class, 'mine']);
         // The owner or a Master Admin; checked in the controller.
         Route::get('/contracts/{contract}/file', [ContractController::class, 'file']);
@@ -68,6 +89,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('/events/{event}/close', [EventController::class, 'close'])->middleware('can:update,event');
         Route::patch('/events/{event}/cancel', [EventController::class, 'cancel'])->middleware('can:update,event');
         Route::delete('/events/{event}', [EventController::class, 'destroy'])->middleware('can:delete,event');
+        Route::get('/finance-vouchers', [FinanceVoucherController::class, 'index']);
+        Route::post('/finance-vouchers', [FinanceVoucherController::class, 'store']);
+        Route::get('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'show']);
+        Route::put('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'update']);
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/notifications', [AdminController::class, 'notifications']);
         Route::get('/reports', [AdminController::class, 'reports']);

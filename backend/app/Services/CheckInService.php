@@ -38,10 +38,20 @@ class CheckInService
         return $registration;
     }
 
-    public function checkIn(string $credential, User $user): CheckIn
+    /**
+     * Staff check people in from the desk. Attendees checking themselves in must
+     * also present the event's entrance token, which only the QR poster at the
+     * venue carries — so self check-in proves they are actually there.
+     */
+    public function checkIn(string $credential, User $user, ?string $entranceToken = null): CheckIn
     {
         $registration = $this->findRegistration($credential, $user, allowOwner: true);
         if ($registration->event?->status === 'cancelled') { throw ValidationException::withMessages(['credential' => 'This event was cancelled, so check-in is closed.']); }
+        $atDesk = $user->isStaff() && $registration->event && $user->can('view', $registration->event);
+        $venueToken = (string) $registration->event?->check_in_qr_token;
+        if (! $atDesk && ($venueToken === '' || ! is_string($entranceToken) || ! hash_equals($venueToken, $entranceToken))) {
+            throw ValidationException::withMessages(['entrance_token' => 'Scan the check-in QR code at the event entrance to check in.']);
+        }
         if ($registration->checkIn()->exists()) { throw ValidationException::withMessages(['credential' => 'This registration is already checked in.']); }
         $checkIn = $registration->checkIn()->create(['checked_in_at' => now(), 'checked_in_by' => $user->id]);
         $registration->update(['status' => 'checked_in']);

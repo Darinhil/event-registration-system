@@ -1275,10 +1275,7 @@ button, input, select, textarea { font-family: inherit; }
 .aa-card,
 .profile-settings-card,
 .ews-card,
-.ews-side-card,
-.fb-palette,
-.fb-settings,
-.fb-form-header-card {
+.ews-side-card {
   border-color: #e2e8f0;
   border-radius: 11px;
   box-shadow: none;
@@ -1373,7 +1370,6 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .export-log-button,
-.fb-btn--primary,
 .ews-btn--primary { box-shadow: none; }
 
 .ews-action,

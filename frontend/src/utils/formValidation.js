@@ -3,6 +3,7 @@
  * Single source of truth used by the public registration form and the
  * "edit registration" page, mirroring the backend's dynamic rules.
  */
+import { isFieldVisible } from './formConditions'
 
 /** True when a field answer has no content (also counts unchecked boxes). */
 export const isAnswerEmpty = (value) =>
@@ -120,6 +121,8 @@ export const buildSubmission = (fields, values) => {
   const out = {}
   for (const field of fields) {
     if (field.type === 'heading') continue
+    // Questions hidden by a condition weren't asked, so their stale answers aren't sent.
+    if (!isFieldVisible(field, fields, values)) continue
     const value = values[field.id]
     if (field.type === 'checkbox' && !(field.settings || {}).multiple) {
       out[field.id] = value === true || value === 'true' || (Array.isArray(value) && value[0] === true)
