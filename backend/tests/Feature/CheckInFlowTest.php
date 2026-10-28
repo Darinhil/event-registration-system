@@ -113,13 +113,14 @@ class CheckInFlowTest extends TestCase
         $event = $this->event();
         $registration = $this->register($attendee, $event, ['full_name' => 'Sokha Leng']);
         Sanctum::actingAs($attendee);
+        $entrance = $event->checkInQrToken();
 
-        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token, 'entrance_token' => $entrance])
             ->assertCreated()
             ->assertJsonPath('check_in.registration_id', $registration->id);
 
         // A second scan of the same token must not create a duplicate.
-        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token, 'entrance_token' => $entrance])
             ->assertStatus(422)
             ->assertJsonValidationErrors('qr_token');
 
@@ -134,6 +135,46 @@ class CheckInFlowTest extends TestCase
         $this->assertSame(0, $payload['summary']['remaining']);
         $this->assertSame('Sokha Leng', $payload['check_ins'][0]['name']);
         $this->assertSame('Sokha Leng', $payload['recent_registrations'][0]['name']);
+    }
+
+    public function test_attendee_self_check_in_requires_scanning_the_entrance_qr(): void
+    {
+        $attendee = User::factory()->create();
+        $event = $this->event();
+        $other = $this->event();
+        $registration = $this->register($attendee, $event);
+        $otherToken = $other->checkInQrToken();
+        Sanctum::actingAs($attendee);
+
+        // No entrance token: the event has none yet, and none was sent.
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])
+            ->assertStatus(422)->assertJsonValidationErrors('entrance_token');
+
+        $token = $event->checkInQrToken();
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])
+            ->assertStatus(422)->assertJsonValidationErrors('entrance_token');
+        // Another event's poster doesn't count.
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token, 'entrance_token' => $otherToken])
+            ->assertStatus(422)->assertJsonValidationErrors('entrance_token');
+        $this->assertDatabaseCount('check_ins', 0);
+
+        // A replaced poster stops working.
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $this->postJson("/api/admin/events/{$event->id}/check-in-qr")->assertOk();
+        Sanctum::actingAs($attendee);
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token, 'entrance_token' => $token])
+            ->assertStatus(422)->assertJsonValidationErrors('entrance_token');
+
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token, 'entrance_token' => $event->fresh()->check_in_qr_token])
+            ->assertCreated();
+    }
+
+    public function test_staff_desk_check_in_does_not_need_the_entrance_qr(): void
+    {
+        $registration = $this->register(User::factory()->create(), $this->event());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])->assertCreated();
     }
 
     public function test_event_check_in_log_requires_admin(): void
@@ -323,7 +364,7 @@ class CheckInFlowTest extends TestCase
         $event->update(['status' => 'cancelled']);
         Sanctum::actingAs($attendee);
 
-        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token])->assertStatus(422);
+        $this->postJson('/api/check-ins', ['qr_token' => $registration->qr_token, 'entrance_token' => $event->checkInQrToken()])->assertStatus(422);
         $this->assertDatabaseCount('check_ins', 0);
     }
 }
