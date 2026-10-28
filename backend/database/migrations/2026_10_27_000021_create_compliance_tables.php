@@ -8,36 +8,44 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Some installs already have these tables (created outside this migration), so only create
+        // what is missing and never touch an existing table or its data.
+
         // Policies every staff member must confirm. requirement_type decides how:
         // "acknowledgement" (read and confirm) or "declaration" (answer a question).
-        Schema::create('compliance_policies', function (Blueprint $table): void {
-            $table->id();
-            $table->string('title', 150);
-            $table->string('category', 80);
-            $table->text('description');
-            $table->string('requirement_type', 30)->default('acknowledgement');
-            $table->text('statement');
-            $table->string('document_url', 500)->nullable();
-            $table->unsignedSmallInteger('validity_months')->nullable(); // null = never needs renewing
-            $table->boolean('is_active')->default(true);
-            $table->unsignedSmallInteger('sort_order')->default(0);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('compliance_policies')) {
+            Schema::create('compliance_policies', function (Blueprint $table): void {
+                $table->id();
+                $table->string('title', 150);
+                $table->string('category', 80);
+                $table->text('description');
+                $table->string('requirement_type', 30)->default('acknowledgement');
+                $table->text('statement');
+                $table->string('document_url', 500)->nullable();
+                $table->unsignedSmallInteger('validity_months')->nullable(); // null = never needs renewing
+                $table->boolean('is_active')->default(true);
+                $table->unsignedSmallInteger('sort_order')->default(0);
+                $table->timestamps();
+            });
+        }
 
         // One row per completion, never updated: renewing adds a new row, so HR keeps the full history.
-        Schema::create('compliance_records', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('compliance_policy_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('completed_at');
-            $table->timestamp('expires_at')->nullable();
-            $table->json('response')->nullable();
-            $table->string('signature', 150);
-            $table->timestamps();
-            $table->index(['user_id', 'compliance_policy_id', 'completed_at']);
-        });
+        if (! Schema::hasTable('compliance_records')) {
+            Schema::create('compliance_records', function (Blueprint $table): void {
+                $table->id();
+                $table->foreignId('compliance_policy_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+                $table->timestamp('completed_at');
+                $table->timestamp('expires_at')->nullable();
+                $table->json('response')->nullable();
+                $table->string('signature', 150);
+                $table->timestamps();
+                $table->index(['user_id', 'compliance_policy_id', 'completed_at']);
+            });
+        }
 
         // The policies the portal already listed, so existing installs keep the same requirements.
+        // Each one is inserted only if no policy with that title exists, so re-running never duplicates.
         $now = now();
         $policies = [
             ['Adult Safeguarding (PSEAH)', 'Safeguarding', 'Protection from sexual exploitation, abuse and harassment of adults we work with.', 'acknowledgement', 'I confirm that I have read and understood the Adult Safeguarding (PSEAH) policy.'],
@@ -46,15 +54,23 @@ return new class extends Migration {
             ['Code of Conduct', 'Ethics & Conduct', 'The standards of behaviour expected from every member of staff.', 'acknowledgement', 'I confirm that I have read and understood the Code of Conduct policy.'],
             ['Conflict of Interest', 'Ethics & Conduct', 'Declare any personal, financial or family interest that could affect your work decisions.', 'declaration', 'I declare that I have no undisclosed conflict of interest.'],
         ];
-        DB::table('compliance_policies')->insert(array_map(fn (array $policy, int $index) => [
-            'title' => $policy[0], 'category' => $policy[1], 'description' => $policy[2], 'requirement_type' => $policy[3], 'statement' => $policy[4],
-            'validity_months' => 12, 'is_active' => true, 'sort_order' => $index, 'created_at' => $now, 'updated_at' => $now,
-        ], $policies, array_keys($policies)));
+        foreach ($policies as $index => $policy) {
+            if (DB::table('compliance_policies')->where('title', $policy[0])->exists()) {
+                continue;
+            }
+
+            DB::table('compliance_policies')->insert([
+                'title' => $policy[0], 'category' => $policy[1], 'description' => $policy[2], 'requirement_type' => $policy[3], 'statement' => $policy[4],
+                'validity_months' => 12, 'is_active' => true, 'sort_order' => $index, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('compliance_records');
-        Schema::dropIfExists('compliance_policies');
+        // Intentionally does not drop anything. On some installs these tables existed before this
+        // migration ran, and rollback cannot tell whether this migration created them, so dropping
+        // them could destroy pre-existing compliance history. up() is safe to re-run, so a
+        // rollback followed by migrate still works. Use migrate:fresh to rebuild a dev database.
     }
 };
