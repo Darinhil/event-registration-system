@@ -1390,6 +1390,8 @@ const completeCompliance = async (item) => {
 .training-assignment-modal .training-assignment-person>input[type="checkbox"]:checked{border-color:#08796d;background:#08796d}
 .training-assignment-modal .training-assignment-person>input[type="checkbox"]:checked:after{width:8px;height:4px;transform:rotate(-45deg) translate(1px,-1px);border-bottom:2px solid #fff;border-left:2px solid #fff;content:""}
 .training-assignment-modal .training-assignment-person>input[type="checkbox"]:focus-visible{outline:3px solid rgba(8,121,109,.2);outline-offset:2px}
+.training-editor-modal .training-staff-list label{display:flex;align-items:center;gap:9px;min-width:0}
+.training-editor-modal .training-staff-list input[type="checkbox"]{display:block!important;flex:0 0 16px;box-sizing:border-box;width:16px!important;min-width:16px!important;max-width:16px;height:16px!important;min-height:16px!important;margin:0!important;padding:0!important;accent-color:#08796d}
 .training-person-avatar{display:grid;box-sizing:border-box;width:32px;height:32px;place-items:center;border-radius:50%;background:#edf3f8;color:#4b6886;font-size:11px;font-weight:750}
 .training-person-details{display:grid;flex:1;gap:3px;min-width:0}.training-person-details strong{overflow:hidden;color:#2d425b;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.training-person-details small{overflow:hidden;color:#8493a4;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 .training-role-pill{padding:4px 7px;border-radius:99px;background:#f1f4f8;color:#6e7e91;font-size:8px;text-transform:capitalize;white-space:nowrap}

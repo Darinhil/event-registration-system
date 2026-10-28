@@ -1228,6 +1228,9 @@ button, input, select, textarea { font-family: inherit; }
 
 .admin-topbar .admin-search:hover { border-color: #cbd5e1; background: #fff; }
 .admin-topbar .admin-top-avatar { box-shadow: 0 0 0 1px #e2e8f0; }
+.admin-topbar .profile-menu-trigger { height: 44px; min-height: 44px; gap: 8px; }
+.admin-topbar .admin-top-avatar { flex: 0 0 34px; width: 34px; height: 34px; }
+.admin-topbar .admin-avatar-fallback { font-size: .65rem; }
 
 .admin-topbar .profile-menu-trigger:hover {
   border-color: #e2e8f0;
