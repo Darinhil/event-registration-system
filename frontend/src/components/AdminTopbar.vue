@@ -6,7 +6,12 @@ import api from '../services/api'
 
 const router = useRouter()
 const route = useRoute()
-const personnelPageTitle = computed(() => ({ compliances: 'Compliances', 'contract-history': 'Contract History', training: 'Staff Online Training' }[route.query.section] || 'My Profile (5 steps)'))
+const personnelPageTitle = computed(() => ({
+  'my-profile': 'My Profile (5 steps)',
+  compliances: 'Compliances',
+  'contract-history': 'Contract History',
+  training: 'Staff Online Training',
+}[route.query.section] || 'Personnel Profile'))
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
