@@ -8,7 +8,7 @@ import AppIcon from '../../components/AppIcon.vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import {
   FIELD_CATEGORIES, TYPE_META, FIELD_ICONS, FIELD_WIDTHS, OPTION_TYPES,
-  addNonBinaryGenderOption, createField, createSteps, isLegacyStarterForm, starterFields, slugify, baseFieldSettings,
+  addNonBinaryGenderOption, choiceLabel, createField, createSteps, isLegacyStarterForm, starterFields, slugify, baseFieldSettings,
 } from '../../utils/formFieldTypes'
 import { conditionAnswers, conditionOf, isConditionSource } from '../../utils/formConditions'
 import { copyText } from '../../utils/clipboard'
@@ -809,7 +809,7 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
                 <p v-if="field.description" class="fb-card-desc">{{ field.description }}</p>
                 <div v-if="field.type !== 'heading'" class="fb-mock" aria-hidden="true">
                   <div v-if="field.type === 'radio' || field.type === 'yesno' || (['select', 'checkbox'].includes(field.type) && field.settings?.multiple)" class="fb-mock-choices">
-                    <span v-for="option in (field.type === 'yesno' ? ['Yes', 'No'] : (field.options || []).slice(0, 4))" :key="option" class="fb-mock-choice"><i :class="field.type === 'radio' || field.type === 'yesno' ? 'is-round' : ''"></i>{{ option }}</span>
+                    <span v-for="option in (field.type === 'yesno' ? ['Yes', 'No'] : (field.options || []).slice(0, 4))" :key="option" class="fb-mock-choice"><i :class="field.type === 'radio' || field.type === 'yesno' ? 'is-round' : ''"></i>{{ choiceLabel(field, option) }}</span>
                     <span v-if="field.type !== 'yesno' && (field.options || []).length > 4" class="fb-mock-more">+{{ field.options.length - 4 }} more</span>
                   </div>
                   <div v-else-if="field.type === 'checkbox'" class="fb-mock-choices"><span class="fb-mock-choice"><i></i>{{ field.settings?.checkbox_text || field.label }}</span></div>

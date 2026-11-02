@@ -10,22 +10,20 @@ use App\Http\Resources\RegistrationResource;
 
 class EventController extends Controller
 {
-    public function index(Request $request) { return Event::query()->where('status', 'published')->where('ends_at', '>', now())->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'status', 'created_by'])->with('creator:id,name')->withCount('registrations')->latest('starts_at')->get()->filter(fn (Event $event) => $event->registrations_count < $event->capacity)->values(); }
+    public function index(Request $request) { return Event::query()->where('status', 'published')->where('ends_at', '>', now())->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'form_config', 'status', 'created_by', 'updated_at'])->with('creator:id,name')->withCount('registrations')->latest('starts_at')->get()->filter(fn (Event $event) => $event->registrations_count < $event->registrationLimit())->each(fn (Event $event) => $event->withBannerLink()->makeHidden('form_config'))->values(); }
     public function adminIndex(Request $request)
     {
-        // Include branding in the admin card list so the banner renders
-        // immediately. The endpoint still exists as a fallback for clients
-        // that receive a lightweight cached response.
         return Event::visibleTo($request->user())
-            ->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'status', 'created_by'])
+            ->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'status', 'created_by', 'updated_at'])
             ->withCount('registrations')
             ->latest('starts_at')
-            ->get();
+            ->get()
+            ->each(fn (Event $event) => $event->withBannerLink());
     }
     public function banner(Request $request, Event $event): \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
     {
-        // Public route: resolve the bearer token explicitly so staff can see their drafts' banners.
-        if (! $request->user('sanctum') && $event->status !== 'published') abort(404);
+        // Public route: staff reach their drafts' banners with a token or through the signed link in their event list.
+        if (! $request->hasValidSignature() && ! $request->user('sanctum') && $event->status !== 'published') abort(404);
         $image = $event->branding['image'] ?? null;
         if (! $image) return response()->json(['message' => 'This event has no banner.'], 404);
         if (! str_starts_with($image, 'data:')) return response()->json(['image' => $image]);
@@ -47,7 +45,7 @@ class EventController extends Controller
             $data['check_in_qr_token'] = $event->check_in_qr_token;
         }
         $closedReason = app(\App\Services\RegistrationService::class)->closedReason($event);
-        return response()->json(['data' => $data, 'registered' => $registered, 'remaining' => max(0, $event->capacity - $registered), 'registration' => ['open' => $closedReason === null, 'reason' => $closedReason]]);
+        return response()->json(['data' => $data, 'registered' => $registered, 'remaining' => max(0, $event->registrationLimit() - $registered),'registration' => ['open' => $closedReason === null, 'reason' => $closedReason]]);
     }
     /**
      * Attendees and guests only see live events; staff see any event they manage
@@ -73,10 +71,20 @@ class EventController extends Controller
 
         return response()->json(['data' => $payload]);
     }
-    public function registrants(Event $event) { return RegistrationResource::collection($event->registrations()->with('checkIn')->latest()->paginate(25)); }
+    public function registrants(Event $event) { return RegistrationResource::collection($event->registrations()->with('checkIn', 'event')->latest()->paginate(25)); }
     public function regenerateCheckInQr(Event $event): \Illuminate\Http\JsonResponse { $event->update(['check_in_qr_token' => (string) \Illuminate\Support\Str::uuid()]); return response()->json(['data' => ['check_in_qr_token' => $event->fresh()->check_in_qr_token]]); }
-    public function close(Event $event) { $event->update(['status' => 'closed']); return response()->json(['data' => $event->fresh()]); }
-    public function cancel(Event $event) { $event->update(['status' => 'cancelled']); return response()->json(['data' => $event->fresh()]); }
+    public function close(Event $event)
+    {
+        abort_unless($event->status === 'published', 422, 'Only a published event can be closed.');
+        $event->update(['status' => 'closed']);
+        return response()->json(['data' => $event->fresh()]);
+    }
+    public function cancel(Event $event)
+    {
+        abort_if(in_array($event->status, ['draft', 'cancelled'], true), 422, 'Only a published or closed event can be cancelled.');
+        $event->update(['status' => 'cancelled']);
+        return response()->json(['data' => $event->fresh()]);
+    }
     public function destroy(Event $event)
     {
         DB::transaction(function () use ($event): void {

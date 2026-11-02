@@ -24,8 +24,8 @@ const details = computed(() => [
 ])
 const detailsHelp = computed(() => {
   if (!isStaff.value) return 'These come from your account. To change the details on an event registration, open it from My information.'
-  if (auth.isAdmin) return 'Self-service editing of these details isn’t available yet.'
-  return 'These are managed by your organization. Ask a Master Admin if something needs to change.'
+  if (auth.isAdmin) return 'Another Master Admin can edit these in Admin Accounts.'
+  return 'Ask a Master Admin if something needs to change.'
 })
 
 /* ---------- Profile photo ---------- */
@@ -147,7 +147,7 @@ const changePassword = async () => {
     await auth.updatePassword({ ...password })
     Object.assign(password, { current_password: '', new_password: '', new_password_confirmation: '' })
     Object.keys(visible).forEach((key) => (visible[key] = false))
-    passwordDone.value = 'Password changed. Use your new password the next time you sign in.'
+    passwordDone.value = 'Password changed.'
   } catch (error) {
     const errors = error.response?.data?.errors || {}
     Object.entries(errors).forEach(([key, messages]) => { if (fieldMap[key]) passwordErrors[key] = [messages].flat()[0] })
@@ -175,7 +175,6 @@ onBeforeRouteLeave(() => (!(selectedPhoto.value || passwordDirty.value) || windo
       <header class="pf-header">
         <RouterLink v-if="!isStaff" class="pf-back" to="/me"><AppIcon name="chevron-left" :size="16" />My information</RouterLink>
         <h1 id="pf-title">Profile settings</h1>
-        <p>Change your photo and password, and check the details on your account.</p>
       </header>
 
       <!-- Identity + photo -->
@@ -227,7 +226,7 @@ onBeforeRouteLeave(() => (!(selectedPhoto.value || passwordDirty.value) || windo
             <span class="pf-card__icon" aria-hidden="true"><AppIcon name="lock" :size="18" /></span>
             <div>
               <h2 id="pf-password-title">Change password</h2>
-              <p>You’ll stay signed in on this device after changing it.</p>
+              <p>You stay signed in here. Other devices are signed out.</p>
             </div>
           </header>
 

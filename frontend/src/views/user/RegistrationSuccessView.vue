@@ -6,6 +6,7 @@ import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import { useRegistrationStore } from '../../stores/registration'
 import { getRegistration } from '../../services/registrationService'
+import { buildPassImage } from '../../utils/passImage'
 
 const route = useRoute()
 const store = useRegistrationStore()
@@ -88,9 +89,9 @@ const downloadQr = () => {
   if (!canvas || !registration.value) return
   const anchor = document.createElement('a')
   anchor.download = `${fileSafe(code.value)}-pass.png`
-  anchor.href = canvas.toDataURL('image/png')
+  anchor.href = buildPassImage(canvas, registration.value.event_name, code.value).toDataURL('image/png')
   anchor.click()
-  flash('QR code downloaded')
+  flash('Pass downloaded')
 }
 const copyCode = async () => {
   try { await navigator.clipboard.writeText(String(code.value)); flash('Registration ID copied') } catch { flash('Couldn’t copy — select the ID and copy it manually') }
@@ -189,7 +190,6 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
             <div class="rp-row rp-actions">
               <button v-if="startsAt && status.key === 'ok'" type="button" class="rp-btn rp-btn--ghost" @click="addToCalendar"><AppIcon name="calendar-plus" :size="16" />Add to calendar</button>
               <RouterLink v-if="registration.can_edit && status.key === 'ok'" class="rp-btn rp-btn--ghost" :to="`/registration/${registration.id}/edit`"><AppIcon name="pen" :size="16" />Edit details</RouterLink>
-              <RouterLink class="rp-btn rp-btn--ghost" :to="`/events/${registration.event_id}`"><AppIcon name="info" :size="16" />Event page</RouterLink>
             </div>
           </div>
 

@@ -86,7 +86,7 @@ const loadEvents = async () => {
 
 const deleteEvent = async (event) => {
   openMenuId.value = null
-  if (!event.id || !window.confirm(`Delete “${event.name}”? This cannot be undone.`)) return
+  if (!event.id || !window.confirm(`Delete “${event.name}” and all of its registrations and check-ins? This can’t be undone.`)) return
   deletingId.value = event.id
   error.value = ''
   try {
@@ -160,7 +160,6 @@ onBeforeUnmount(() => {
       <header class="ev-header">
         <div>
           <h1>Events</h1>
-          <p>Create, publish and manage registrations for your events.</p>
         </div>
         <RouterLink class="rd-button rd-button--primary" to="/admin/events/new"><AppIcon name="plus" :size="17" />Create event</RouterLink>
       </header>
@@ -239,7 +238,7 @@ onBeforeUnmount(() => {
               <div class="ev-menu">
                 <button type="button" class="ev-btn ev-btn--icon" :aria-expanded="openMenuId === event.id" aria-haspopup="menu" :aria-label="`More actions for ${event.name}`" @click="toggleMenu(event.id)"><AppIcon name="more" :size="18" /></button>
                 <div v-if="openMenuId === event.id" class="ev-menu__panel" role="menu">
-                  <RouterLink role="menuitem" :to="`/admin/events/${event.id}#qr`"><AppIcon name="qr-code" :size="16" />QR Pass</RouterLink>
+                  <RouterLink role="menuitem" :to="`/admin/events/${event.id}#qr`"><AppIcon name="qr-code" :size="16" />Registration QR</RouterLink>
                   <hr />
                   <button type="button" role="menuitem" class="is-danger" :disabled="deletingId === event.id" @click="deleteEvent(event)"><AppIcon name="trash" :size="16" />{{ deletingId === event.id ? 'Deleting…' : 'Delete event' }}</button>
                 </div>
@@ -276,7 +275,7 @@ onBeforeUnmount(() => {
                       <button type="button" class="ev-btn ev-btn--icon" :aria-expanded="openMenuId === event.id" aria-haspopup="menu" :aria-label="`More actions for ${event.name}`" @click="toggleMenu(event.id)"><AppIcon name="more" :size="18" /></button>
                       <div v-if="openMenuId === event.id" class="ev-menu__panel" role="menu">
                         <RouterLink role="menuitem" :to="`/admin/events/${event.id}/registrants`"><AppIcon name="users" :size="16" />Registrants</RouterLink>
-                        <RouterLink role="menuitem" :to="`/admin/events/${event.id}#qr`"><AppIcon name="qr-code" :size="16" />QR Pass</RouterLink>
+                        <RouterLink role="menuitem" :to="`/admin/events/${event.id}#qr`"><AppIcon name="qr-code" :size="16" />Registration QR</RouterLink>
                         <hr />
                         <button type="button" role="menuitem" class="is-danger" :disabled="deletingId === event.id" @click="deleteEvent(event)"><AppIcon name="trash" :size="16" />{{ deletingId === event.id ? 'Deleting…' : 'Delete event' }}</button>
                       </div>

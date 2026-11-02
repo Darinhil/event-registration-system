@@ -14,6 +14,7 @@ import { buildSubmission } from '../utils/formValidation'
 
 const route = useRoute(); const router = useRouter(); const store = useRegistrationStore()
 const eventId = computed(() => route.params.eventId)
+const DEFAULT_DESCRIPTION = 'Register for this event by completing the form below.'
 const event = ref(null)
 const form = ref({ fields: [], steps: [], settings: {} })
 const registration = ref({ open: true, reason: null })
@@ -177,7 +178,7 @@ const onSubmit = async (values) => {
         <div v-else class="rg-card rg-form">
           <header class="rg-form__head">
             <h1>Register for {{ event.name }}</h1>
-            <p>{{ form.description || 'Fill in your details below. It only takes a minute.' }}</p>
+            <p v-if="form.description && form.description !== DEFAULT_DESCRIPTION">{{ form.description }}</p>
           </header>
 
           <div v-if="alert" ref="alertEl" class="rg-alert" :class="`is-${alert.tone}`" role="alert" tabindex="-1">

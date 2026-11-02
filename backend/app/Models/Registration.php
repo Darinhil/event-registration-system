@@ -25,6 +25,16 @@ class Registration extends Model
 
     public function checkIn(): HasOne { return $this->hasOne(CheckIn::class); }
 
+    /** Organisers allow edits per event, until the deadline. An event that is over or cancelled is a closed record. */
+    public function isEditable(): bool
+    {
+        $event = $this->event;
+        if (! $event || ! ($event->form_config['settings']['allow_user_edit'] ?? false)) return false;
+        if ($event->status === 'cancelled' || $event->ends_at?->isPast()) return false;
+
+        return ! $event->registrationClosesAt()?->isPast();
+    }
+
     /**
      * Attach "form_values": the answers the user submitted on the registration form,
      * resolved from form_data (keyed by field id) into label => value pairs. Only

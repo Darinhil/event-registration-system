@@ -4,8 +4,9 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import DateInput from '../../components/DateInput.vue'
 import api from '../../services/api'
-import { addNonBinaryGenderOption, isLegacyStarterForm, starterFields } from '../../utils/formFieldTypes'
+import { addNonBinaryGenderOption, choiceLabel, isLegacyStarterForm, starterFields } from '../../utils/formFieldTypes'
 import { copyText } from '../../utils/clipboard'
 
 const route = useRoute(); const router = useRouter()
@@ -741,7 +742,7 @@ onBeforeUnmount(() => {
             <div class="es-section__head"><h3>Date, time &amp; location</h3><p>Times use your device’s time zone.</p></div>
             <div class="es-grid es-grid--4">
               <label class="es-field"><span class="es-label">Start date <em aria-hidden="true">*</em></span>
-                <input v-model="event.start_date" v-bind="fieldAttrs('start_date')" type="date" required />
+                <DateInput v-model="event.start_date" v-bind="fieldAttrs('start_date')" required />
                 <small v-if="errors.start_date" id="ev-start_date-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.start_date }}</small>
               </label>
               <label class="es-field"><span class="es-label">Start time <em aria-hidden="true">*</em></span>
@@ -749,7 +750,7 @@ onBeforeUnmount(() => {
                 <small v-if="errors.start_time" id="ev-start_time-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.start_time }}</small>
               </label>
               <label class="es-field"><span class="es-label">End date <em aria-hidden="true">*</em></span>
-                <input v-model="event.end_date" v-bind="fieldAttrs('end_date')" type="date" :min="event.start_date || undefined" required />
+                <DateInput v-model="event.end_date" v-bind="fieldAttrs('end_date')" :min="event.start_date || undefined" required />
                 <small v-if="errors.end_date" id="ev-end_date-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.end_date }}</small>
               </label>
               <label class="es-field"><span class="es-label">End time <em aria-hidden="true">*</em></span>
@@ -759,7 +760,7 @@ onBeforeUnmount(() => {
             </div>
             <p v-if="eventDuration" class="es-duration" aria-live="polite"><AppIcon name="clock" :size="15" />{{ eventDuration }} · {{ scheduleSummary }}</p>
             <label class="es-field"><span class="es-label">Location <em aria-hidden="true">*</em></span>
-              <input v-model="event.location" v-bind="fieldAttrs('location')" maxlength="200" placeholder="e.g. PNC Campus, Phnom Penh" required />
+              <input v-model="event.location" v-bind="fieldAttrs('location')" maxlength="200" placeholder="e.g. Live &amp; Learn Cambodia, Phnom Penh" required />
               <small v-if="errors.location" id="ev-location-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.location }}</small>
             </label>
           </section>
@@ -768,11 +769,11 @@ onBeforeUnmount(() => {
             <div class="es-section__head"><h3>Registration</h3><p>When people can sign up, and how many.</p></div>
             <div class="es-grid es-grid--3">
               <label class="es-field"><span class="es-label">Registration opens</span>
-                <input v-model="event.registration_start" v-bind="fieldAttrs('registration_start')" type="date" :max="event.deadline || undefined" />
+                <DateInput v-model="event.registration_start" v-bind="fieldAttrs('registration_start')" :max="event.deadline || undefined" />
                 <small class="es-hint">Leave empty to open when you publish.</small>
               </label>
               <label class="es-field"><span class="es-label">Registration deadline <em aria-hidden="true">*</em></span>
-                <input v-model="event.deadline" v-bind="fieldAttrs('deadline')" type="date" :min="event.registration_start || undefined" :max="event.end_date || undefined" required />
+                <DateInput v-model="event.deadline" v-bind="fieldAttrs('deadline')" :min="event.registration_start || undefined" :max="event.end_date || undefined" required />
                 <small v-if="errors.deadline" id="ev-deadline-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.deadline }}</small>
                 <small v-else class="es-hint">Closes at the end of this day.</small>
               </label>
@@ -864,7 +865,7 @@ onBeforeUnmount(() => {
                   <label>{{ field.label }} <em v-if="field.required">*</em></label>
                   <select v-if="field.type === 'Select'" tabindex="-1"><option value="">Select {{ field.label.toLowerCase() }}</option><option v-for="option in field.options || []" :key="option">{{ option }}</option></select>
                   <textarea v-else-if="field.type === 'Text area'" rows="2" tabindex="-1" :placeholder="fieldPlaceholder(field)"></textarea>
-                  <div v-else-if="['Radio', 'Checkbox'].includes(field.type)" class="preview-choice-group"><label v-for="option in field.options || []" :key="option"><input :type="field.type === 'Radio' ? 'radio' : 'checkbox'" tabindex="-1" :name="`builder-preview-${field.id}`" />{{ option }}</label></div>
+                  <div v-else-if="['Radio', 'Checkbox'].includes(field.type)" class="preview-choice-group"><label v-for="option in field.options || []" :key="option"><input :type="field.type === 'Radio' ? 'radio' : 'checkbox'" tabindex="-1" :name="`builder-preview-${field.id}`" />{{ choiceLabel(field, option) }}</label></div>
                   <div v-else-if="field.type === 'Yes/No'" class="preview-choice-group"><label v-for="option in ['Yes', 'No']" :key="option"><input type="radio" tabindex="-1" :name="`builder-preview-${field.id}`" />{{ option }}</label></div>
                   <input v-else :type="fieldInputType(field.type)" tabindex="-1" :placeholder="fieldPlaceholder(field)" />
                 </div>

@@ -10,15 +10,10 @@ const RegistrationView = () => import('../views/public/RegistrationView.vue')
 const EventView = () => import('../views/public/EventView.vue')
 const RegistrationSuccessView = () => import('../views/user/RegistrationSuccessView.vue')
 const MyInformationView = () => import('../views/user/MyInformationView.vue')
-const PersonalInformationView = () => import('../views/user/PersonalInformationView.vue')
-const ProfessionalQualificationsView = () => import('../views/user/ProfessionalQualificationsView.vue')
-const FamilyInformationView = () => import('../views/user/FamilyInformationView.vue')
-const SupportingDocumentsView = () => import('../views/user/SupportingDocumentsView.vue')
 const EditRegistrationView = () => import('../views/user/EditRegistrationView.vue')
 const CheckInView = () => import('../views/user/CheckInView.vue')
 const DashboardView = () => import('../views/admin/DashboardView.vue')
 const UsersView = () => import('../views/admin/UsersView.vue')
-const UserDetailView = () => import('../views/admin/UserDetailView.vue')
 const CheckInsView = () => import('../views/admin/CheckInsView.vue')
 const AuthView = () => import('../views/public/AuthView.vue')
 const EventSetupView = () => import('../views/admin/EventSetupView.vue')
@@ -32,32 +27,58 @@ const ReportsView = () => import('../views/admin/ReportsView.vue')
 const AdminAccountsView = () => import('../views/admin/AdminAccountsView.vue')
 const SystemSettingsView = () => import('../views/admin/SystemSettingsView.vue')
 
-const router = createRouter({ history: createWebHistory(), routes: [
-  { path: '/', component: HomeView }, { path: '/login', component: AuthView }, { path: '/account/register', component: AuthView }, { path: '/events', redirect: '/me', meta: { auth: true } },
-  { path: '/register', redirect: '/me' }, { path: '/events/:eventId', component: EventView }, { path: '/events/:eventId/register', component: RegistrationView, meta: { auth: true } },
-  { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } }, { path: '/check-in', component: CheckInView, meta: { auth: true } }, { path: '/me', component: MyInformationView, meta: { auth: true } }, { path: '/me/personal-information', component: PersonalInformationView, meta: { auth: true } }, { path: '/me/professional-qualifications', component: ProfessionalQualificationsView, meta: { auth: true } }, { path: '/me/family-information', component: FamilyInformationView, meta: { auth: true } }, { path: '/me/supporting-documents', component: SupportingDocumentsView, meta: { auth: true } }, { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
-  { path: '/profile', component: AdminProfileView, meta: { auth: true } },
-  { path: '/admin', component: DashboardView, meta: { auth: true, staff: true } }, { path: '/admin/events', component: EventsView, meta: { auth: true, staff: true } }, { path: '/admin/events/new', component: EventSetupView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/edit', component: EventSetupView, meta: { auth: true, staff: true } },  { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { auth: true, staff: true } }, { path: '/admin/events/:id', component: EventDetailsView, meta: { auth: true, staff: true } },
-  { path: '/admin/users', component: UsersView, meta: { auth: true, staff: true } }, { path: '/admin/users/:id', component: UserDetailView, meta: { auth: true, staff: true } },
-  { path: '/admin/check-ins', component: CheckInsView, meta: { auth: true, staff: true } },
-  { path: '/admin/personnel-profile', component: PersonnelProfileView, meta: { auth: true, staff: true } },
-  { path: '/admin/reports', component: ReportsView, meta: { auth: true, staff: true } },
-  { path: '/admin/admin-accounts', component: AdminAccountsView, meta: { auth: true, staff: true, adminOnly: true } },
-  { path: '/admin/settings', component: SystemSettingsView, meta: { auth: true, staff: true, adminOnly: true } },
-  { path: '/admin/profile', component: AdminProfileView, meta: { auth: true, staff: true } },
-] })
+// `events` marks the event workspace: Master Admins and Event Admins only (see the sidebar).
+const staff = { auth: true, staff: true }
+const eventStaff = { ...staff, events: true }
+
+const router = createRouter({
+  history: createWebHistory(),
+  // The hash is how the event list links to a section of the event page.
+  scrollBehavior: (to, from, saved) => saved || (to.hash ? { el: to.hash } : to.path !== from.path ? { top: 0 } : undefined),
+  routes: [
+    { path: '/', component: HomeView },
+    { path: '/login', component: AuthView },
+    { path: '/account/register', component: AuthView },
+    { path: '/events', redirect: '/me' },
+    { path: '/register', redirect: '/me' },
+    { path: '/events/:eventId', component: EventView },
+    { path: '/events/:eventId/register', component: RegistrationView, meta: { auth: true, signupFirst: true } },
+    { path: '/registration/success', component: RegistrationSuccessView, meta: { auth: true } },
+    { path: '/registration/:id/edit', component: EditRegistrationView, meta: { auth: true } },
+    { path: '/check-in', component: CheckInView, meta: { auth: true } },
+    { path: '/me', component: MyInformationView, meta: { auth: true } },
+    { path: '/profile', component: AdminProfileView, meta: { auth: true } },
+    { path: '/admin', component: DashboardView, meta: staff },
+    { path: '/admin/events', component: EventsView, meta: eventStaff },
+    { path: '/admin/events/new', component: EventSetupView, meta: eventStaff },
+    { path: '/admin/events/:id/edit', component: EventSetupView, meta: eventStaff },
+    { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: eventStaff },
+    { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: eventStaff },
+    { path: '/admin/events/:id', component: EventDetailsView, meta: eventStaff },
+    { path: '/admin/users', component: UsersView, meta: eventStaff },
+    { path: '/admin/check-ins', component: CheckInsView, meta: eventStaff },
+    { path: '/admin/reports', component: ReportsView, meta: eventStaff },
+    { path: '/admin/personnel-profile', component: PersonnelProfileView, meta: staff },
+    { path: '/admin/admin-accounts', component: AdminAccountsView, meta: { ...staff, adminOnly: true } },
+    { path: '/admin/settings', component: SystemSettingsView, meta: { ...staff, adminOnly: true } },
+    { path: '/admin/profile', component: AdminProfileView, meta: staff },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
+  ],
+})
+
+const homeAfterSignIn = (auth, requested) => (auth.canAccessAdmin
+  ? (requested.startsWith('/admin') ? requested : '/admin')
+  : (requested && !requested.startsWith('/admin') ? requested : '/me'))
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
   if (to.meta.staff && !auth.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
   if (to.meta.staff && !auth.canAccessAdmin) return '/'
   if (to.meta.adminOnly && !auth.isAdmin) return '/admin'
-  if (to.meta.auth && !auth.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
-  if (to.path === '/login' && auth.isAuthenticated) {
-    const requestedPath = typeof to.query.redirect === 'string' ? to.query.redirect : ''
-    return auth.canAccessAdmin
-      ? (requestedPath.startsWith('/admin') ? requestedPath : '/admin')
-      : (requestedPath && !requestedPath.startsWith('/admin') ? requestedPath : '/me')
+  if (to.meta.events && !auth.canManageEvents) return '/admin'
+  if (to.meta.auth && !auth.isAuthenticated) return { path: to.meta.signupFirst ? '/account/register' : '/login', query: { redirect: to.fullPath } }
+  if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated) {
+    return homeAfterSignIn(auth, typeof to.query.redirect === 'string' ? to.query.redirect : '')
   }
 })
 

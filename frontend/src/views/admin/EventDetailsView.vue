@@ -7,7 +7,7 @@ import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import api from '../../services/api'
 import { getEventCheckInSummary, getEventReportAttendees } from '../../services/adminService'
 import { copyText } from '../../utils/clipboard'
-import { capacityProgress, checkInProgress, publicationStatus, registrationState, scheduleLabels, toCsv, toLocalParts } from '../../utils/eventStats'
+import { capacityProgress, checkInProgress, downloadCsv, publicationStatus, registrationState, scheduleLabels, toLocalParts } from '../../utils/eventStats'
 
 const route = useRoute()
 const eventId = computed(() => route.params.id)
@@ -111,13 +111,7 @@ const exportRegistrants = async () => {
       const checkedAt = toLocalParts(row.checked_in_at)
       return [row.registration_code || row.id, row.name, row.email, row.phone, row.status, checkedAt.value ? `${checkedAt.date} ${checkedAt.time}` : '', row.checked_in_by, ...profileKeys.map((key) => row.profile?.[key]), ...answerLabels.map((label) => { const value = row.form_answers?.[label]; return Array.isArray(value) ? value.join('; ') : value })]
     })
-    // BOM so Excel opens Khmer and other non-Latin text correctly.
-    const blob = new Blob(['﻿', toCsv(header, rows)], { type: 'text/csv;charset=utf-8' })
-    const anchor = document.createElement('a')
-    anchor.href = URL.createObjectURL(blob)
-    anchor.download = `${(event.value?.name || 'event').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'event'}-registrants-${toLocalParts(new Date().toISOString()).date}.csv`
-    anchor.click()
-    setTimeout(() => URL.revokeObjectURL(anchor.href), 1000)
+    downloadCsv(`${(event.value?.name || 'event').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'event'}-registrants-${toLocalParts(new Date().toISOString()).date}.csv`, header, rows)
     notify(`Exported ${attendees.length} ${attendees.length === 1 ? 'registrant' : 'registrants'}.`)
   } catch (requestError) {
     notify(requestError.response?.data?.message || 'Export failed. Please try again.', 'error')
@@ -130,8 +124,8 @@ const exportRegistrants = async () => {
 const pendingAction = ref(null)
 const statusBusy = ref(false)
 const statusActions = {
-  close: { title: 'Close this event?', body: 'New registrations stop and the event is marked as closed. Existing registrations and check-ins are kept.', confirm: 'Close event', done: 'Event closed.', status: 'closed' },
-  cancel: { title: 'Cancel this event?', body: 'The event is marked as cancelled and attendees can no longer register. Registrations stay in the system. This can’t be undone from this page.', confirm: 'Cancel event', done: 'Event cancelled.', status: 'cancelled' },
+  close: { title: 'Close this event?', body: 'New registrations stop and the event is marked as closed. Existing registrations and check-ins are kept. This can’t be undone.', confirm: 'Close event', done: 'Event closed.', status: 'closed' },
+  cancel: { title: 'Cancel this event?', body: 'Attendees can no longer register or check in. Registrations are kept. This can’t be undone.', confirm: 'Cancel event', done: 'Event cancelled.', status: 'cancelled' },
 }
 const askStatusChange = (action) => { pendingAction.value = action; nextTick(() => document.getElementById('ed-dialog-cancel')?.focus()) }
 const confirmStatusChange = async () => {
@@ -161,13 +155,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 /* ---------- Management actions ---------- */
 const actionGroups = computed(() => [
-  { key: 'event', label: 'Event', actions: [
-    { key: 'preview', label: 'Preview event page', description: isDraft.value ? 'See it as attendees will once published' : 'Open the page attendees see', icon: 'eye', href: link.value },
-    { key: 'edit', label: 'Edit event', description: 'Details, schedule, agenda and form', icon: 'pen', to: `/admin/events/${eventId.value}/edit` },
-  ] },
   { key: 'registration', label: 'Registration', actions: [
-    { key: 'form', label: 'Manage registration form', description: 'Advanced field and step settings', icon: 'file-text', to: `/admin/events/${eventId.value}/form-builder` },
-    { key: 'registrants', label: 'View registrants', description: registered.value ? 'Review everyone who signed up' : 'No one has registered yet', icon: 'users', to: `/admin/events/${eventId.value}/registrants`, badge: number(registered.value) },
+    { key: 'form', label: 'Manage registration form', description: 'Fields, steps and settings', icon: 'file-text', to: `/admin/events/${eventId.value}/form-builder` },
+    { key: 'registrants', label: 'View registrants', description: registered.value ? 'Everyone who signed up' : 'No one has registered yet', icon: 'users', to: `/admin/events/${eventId.value}/registrants`, badge: number(registered.value) },
   ] },
   { key: 'attendance', label: 'Attendance', actions: [
     { key: 'checkin', label: 'Check in participants', description: 'Scan passes or search by code', icon: 'scan', to: { path: '/admin/check-ins', query: { event: eventId.value } } },
@@ -207,7 +197,6 @@ const actionGroups = computed(() => [
                 <span class="ed-badge" :class="`is-${status.tone}`"><i aria-hidden="true"></i>{{ status.label }}</span>
               </div>
               <p v-if="event.description" class="ed-desc">{{ event.description }}</p>
-              <p class="ed-meta"><span><AppIcon name="calendar" :size="15" />{{ schedule.date }}</span><span><AppIcon name="pin" :size="15" />{{ event.location || 'Location to be confirmed' }}</span><span v-if="event.category"><AppIcon name="type" :size="15" />{{ event.category }}</span></p>
             </div>
           </div>
           <div class="ed-header__actions">
@@ -232,16 +221,6 @@ const actionGroups = computed(() => [
                 <div><dt>Checked in</dt><dd><strong>{{ checkedIn === null ? '—' : number(checkIns.checkedIn) }}</strong><small v-if="checkedIn === null">Couldn’t load check-ins</small><small v-else-if="checkIns.percent !== null">{{ checkIns.percent }}% of registered</small><small v-else>No registrations yet</small></dd></div>
                 <div><dt>Spots left</dt><dd><strong>{{ capacity.capacity ? number(capacity.remaining) : '—' }}</strong><small v-if="capacity.over">{{ number(capacity.registered - capacity.capacity) }} over capacity</small><small v-else-if="capacity.full">Event is full</small><small v-else-if="capacity.capacity">{{ 100 - capacity.bar }}% available</small><small v-else>Unlimited</small></dd></div>
               </dl>
-              <div class="ed-bars">
-                <div class="ed-bar" :class="{ 'is-high': capacity.bar >= 80 && !capacity.full, 'is-full': capacity.full }">
-                  <div class="ed-bar__label"><span>Capacity used</span><b>{{ capacity.percent === null ? 'No limit' : `${capacity.percent}%` }}</b></div>
-                  <div class="ed-bar__track" role="progressbar" aria-label="Capacity used" :aria-valuenow="capacity.bar" aria-valuemin="0" aria-valuemax="100" :aria-valuetext="capacity.percent === null ? 'No capacity limit' : `${capacity.registered} of ${capacity.capacity} spots, ${capacity.percent}%`"><i :style="{ width: `${capacity.bar}%` }"></i></div>
-                </div>
-                <div class="ed-bar is-checkin">
-                  <div class="ed-bar__label"><span>Checked in</span><b>{{ checkedIn === null ? '—' : checkIns.percent === null ? '0%' : `${checkIns.percent}%` }}</b></div>
-                  <div class="ed-bar__track" role="progressbar" aria-label="Check-in progress" :aria-valuenow="checkIns.bar" aria-valuemin="0" aria-valuemax="100" :aria-valuetext="`${checkIns.checkedIn} of ${checkIns.registered} registered attendees checked in`"><i :style="{ width: `${checkIns.bar}%` }"></i></div>
-                </div>
-              </div>
               <div v-if="!registered && !isDraft" class="ed-empty">
                 <AppIcon name="users" :size="18" />
                 <span>No registrations yet. Share the registration link to start collecting sign-ups.</span>
@@ -251,13 +230,12 @@ const actionGroups = computed(() => [
 
             <!-- C. Event details -->
             <section class="ed-card" aria-labelledby="ed-details">
-              <header class="ed-card__head"><h2 id="ed-details">Event details</h2><RouterLink class="es-link" :to="`/admin/events/${event.id}/edit`"><AppIcon name="pen" :size="14" />Edit</RouterLink></header>
+              <header class="ed-card__head"><h2 id="ed-details">Event details</h2></header>
               <dl class="ed-dl">
                 <div><dt><AppIcon name="calendar" :size="16" />Date</dt><dd>{{ schedule.date }}</dd></div>
                 <div><dt><AppIcon name="clock" :size="16" />Time</dt><dd>{{ schedule.time }}</dd></div>
                 <div><dt><AppIcon name="pin" :size="16" />Location</dt><dd>{{ event.location || 'To be confirmed' }}</dd></div>
                 <div><dt><AppIcon name="type" :size="16" />Category</dt><dd>{{ event.category || 'Not set' }}</dd></div>
-                <div><dt><AppIcon name="check-circle" :size="16" />Registration</dt><dd><span class="ed-reg" :class="`is-${registration.tone}`"><i aria-hidden="true"></i>{{ registration.label }}</span><small>{{ registration.detail }}</small></dd></div>
                 <div><dt><AppIcon name="timer" :size="16" />Sign-up window</dt><dd>{{ registrationWindow }}</dd></div>
               </dl>
             </section>
@@ -270,12 +248,7 @@ const actionGroups = computed(() => [
                   <h3 :id="`ed-group-${group.key}`">{{ group.label }}</h3>
                   <ul>
                     <li v-for="action in group.actions" :key="action.key">
-                      <a v-if="action.href" class="ed-action" :href="action.href" target="_blank" rel="noreferrer">
-                        <span class="ed-action__icon"><AppIcon :name="action.icon" :size="18" /></span>
-                        <span class="ed-action__copy"><strong>{{ action.label }}</strong><small>{{ action.description }}</small></span>
-                        <AppIcon name="arrow-up-right" :size="16" class="ed-action__go" /><span class="sr-only"> (opens in a new tab)</span>
-                      </a>
-                      <RouterLink v-else-if="action.to" class="ed-action" :to="action.to">
+                      <RouterLink v-if="action.to" class="ed-action" :to="action.to">
                         <span class="ed-action__icon"><AppIcon :name="action.icon" :size="18" /></span>
                         <span class="ed-action__copy"><strong>{{ action.label }}</strong><small>{{ action.description }}</small></span>
                         <span v-if="action.badge" class="ed-count">{{ action.badge }}</span>
@@ -292,8 +265,8 @@ const actionGroups = computed(() => [
             </section>
 
             <!-- Status changes -->
-            <section v-if="event.status === 'published' || (event.status !== 'cancelled' && !isDraft)" class="ed-card ed-danger" aria-labelledby="ed-status">
-              <div><h2 id="ed-status">Event status</h2><p>Close the event when it’s over, or cancel it if it won’t take place. Registrations are always kept.</p></div>
+            <section v-if="event.status !== 'cancelled' && !isDraft" class="ed-card ed-danger" aria-labelledby="ed-status">
+              <div><h2 id="ed-status">Event status</h2></div>
               <div class="ed-danger__actions">
                 <button v-if="event.status === 'published'" type="button" class="es-btn" @click="askStatusChange('close')"><AppIcon name="lock" :size="16" />Close event</button>
                 <button type="button" class="es-btn es-btn--danger" @click="askStatusChange('cancel')"><AppIcon name="x" :size="16" />Cancel event</button>
@@ -302,13 +275,12 @@ const actionGroups = computed(() => [
           </div>
 
           <!-- E. Sharing -->
-          <aside class="ed-side" aria-labelledby="ed-share">
+          <aside id="qr" class="ed-side" aria-labelledby="ed-share">
             <section class="ed-card ed-share">
               <h2 id="ed-share">Share registration</h2>
               <p v-if="isDraft" class="ed-share__warn"><AppIcon name="alert-circle" :size="15" />The link works for attendees once the event is published.</p>
               <p v-else-if="registration.tone !== 'ok'" class="ed-share__warn"><AppIcon name="info" :size="15" />Registration is {{ registration.label.toLowerCase() }}. {{ registration.detail }}</p>
               <div class="ed-qr" :class="{ 'is-muted': isDraft }"><QRCodeDisplay :value="link" /></div>
-              <p class="ed-share__hint">Scanning opens the event page, where attendees register.</p>
               <div class="ed-link">
                 <input :value="link" readonly aria-label="Registration link" @focus="$event.target.select()" />
                 <button type="button" class="es-btn es-btn--sm es-btn--primary" @click="copyLink"><AppIcon :name="copied ? 'check' : 'copy'" :size="15" />{{ copied ? 'Copied' : 'Copy' }}</button>

@@ -29,16 +29,10 @@
 /* Fields */
 .fr-fields{display:flex;flex-wrap:wrap;gap:14px 16px}
 .fr-field{min-width:0}
-.fr-w25{width:calc(25% - 13px)}
-.fr-w33{width:calc(33.333% - 11px)}
-.fr-w50{width:calc(50% - 8px)}
-.fr-w100{width:100%}
 .fr-label{display:grid;gap:6px}
 .fr-label-text{font-size:12px;font-weight:700;color:#334155}
 .fr-required{color:#dc2626;font-style:normal}
 .fr-field-help{color:#64748b;font-size:11px;font-weight:400;line-height:1.45}
-.fr-select-wrap{position:relative}
-.fr-select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;font-size:12px}
 .fr-label select{appearance:none;-webkit-appearance:none}
 .fr-label input,.fr-label select,.fr-label textarea{width:100%;min-height:42px;padding:9px 12px;border:1px solid #d7dfe8;border-radius:9px;background:#fff;color:#16345f;font-size:13px;outline:0;transition:border-color .15s,box-shadow .15s}
 .fr-label input:focus,.fr-label select:focus,.fr-label textarea:focus{border-color:#7cc9b2;box-shadow:0 0 0 3px rgba(11, 127, 98,.12)}
@@ -82,7 +76,14 @@
 
 
 @media (max-width:640px){
-  .fr-w25,.fr-w33,.fr-w50{width:100%}
   .fr-choices--grid{grid-template-columns:1fr}
   .fr-nav{flex-direction:row}
 }
+
+.fr-w25 { width:calc(25% - 13px) }
+.fr-w33 { width:calc(33.333% - 11px) }
+.fr-w50 { width:calc(50% - 8px) }
+.fr-w100 { width:100% }
+.fr-select-wrap { position:relative }
+.fr-select-wrap::after { content:'▾'; position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#94a3b8; pointer-events:none; font-size:12px }
+@media (max-width:640px) { .fr-w25, .fr-w33, .fr-w50 { width:100% } }

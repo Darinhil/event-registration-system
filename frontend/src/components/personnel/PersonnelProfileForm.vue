@@ -1,15 +1,15 @@
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
 import ProfileField from './ProfileField.vue'
 import { useAuthStore } from '../../stores/auth'
+import { cancelRequest, deletePersonnelDocument, getMyRequests, getPersonnelProfile, savePersonnelProfile, submitRequest, uploadPersonnelDocument } from '../../services/staffRequestService'
 
 const auth = useAuthStore()
 
 /* ---------- Record ---------- */
-// The personnel portal has no API yet. The only details "on record" are the ones
-// on the sign-in account; those are locked and changed through a request to HR.
+// The name on the sign-in account is locked; HR changes it through a request.
 const nameParts = String(auth.user?.name || '').trim().split(/\s+/).filter(Boolean)
 const record = { firstName: nameParts[0] || '', surname: nameParts.slice(1).join(' ') }
 const isLocked = (key) => Boolean(record[key])
@@ -53,6 +53,50 @@ const declarationItems = [
   { key: 'updates', text: 'I will tell HR promptly if any of these details change.' },
   { key: 'consent', text: 'I consent to Live & Learn Cambodia keeping and using this information for employment purposes.' },
 ]
+
+/* ---------- Saving ---------- */
+const loading = ref(true)
+const loadError = ref('')
+const saving = ref(false)
+const saveError = ref('')
+const savedAt = ref(null)
+const submittedAt = ref(null)
+// Everything but the locked name and the files, which are saved on their own.
+const payload = () => { const { firstName: _first, surname: _last, documents: _documents, ...rest } = form; return JSON.parse(JSON.stringify(rest)) }
+const apply = (data) => {
+  submittedAt.value = data.submitted_at
+  form.documents = { ...data.documents }
+}
+const load = async () => {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const [{ data: profile }, { data: requests }] = await Promise.all([getPersonnelProfile(), getMyRequests()])
+    if (profile.data.profile) Object.assign(form, profile.data.profile)
+    apply(profile.data)
+    finished.value = Boolean(profile.data.submitted_at)
+    changeRequests.value = requests.data.filter((item) => item.type === 'profile_change' && item.status !== 'cancelled')
+  } catch {
+    loadError.value = 'We couldn’t load your profile. Check your connection and try again.'
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+const save = async (submit = false) => {
+  saving.value = true
+  saveError.value = ''
+  try {
+    apply((await savePersonnelProfile(payload(), submit)).data.data)
+    savedAt.value = new Date()
+    return true
+  } catch (error) {
+    saveError.value = Object.values(error.response?.data?.errors || {}).flat()[0] || error.response?.data?.message || 'Your changes weren’t saved. Check your connection and try again.'
+    return false
+  } finally {
+    saving.value = false
+  }
+}
 
 const steps = [
   { title: 'Personal information', short: 'qualifications', icon: 'user', hint: 'Identity and contact details', description: 'Your legal name, identity and how we can reach you.' },
@@ -151,13 +195,12 @@ const focusFirstError = async () => { await nextTick(); formEl.value?.querySelec
 const next = async () => {
   attempted[step.value] = true
   if (errorCount(step.value)) return focusFirstError()
-  if (step.value < steps.length - 1) return show(step.value + 1)
+  if (step.value < steps.length - 1) { await save(); return show(step.value + 1) }
   // Finishing checks every section and sends the person to the first one that needs work.
   steps.forEach((_, index) => { attempted[index] = true })
   const firstIncomplete = steps.findIndex((_, index) => errorCount(index) > 0)
   if (firstIncomplete >= 0) { await show(firstIncomplete); return focusFirstError() }
-  finished.value = true
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  if (await save(true)) finished.value = true
 }
 const reviewAgain = () => { finished.value = false; show(0) }
 
@@ -175,6 +218,7 @@ const shareTotal = computed(() => form.beneficiaries.reduce((sum, row) => sum + 
 
 /* ---------- Documents ---------- */
 const fileErrors = reactive({})
+const uploading = ref('')
 const ALLOWED = ['pdf', 'jpg', 'jpeg', 'png']
 const fileSize = (bytes) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`)
 const pickFile = (key, event) => {
@@ -185,9 +229,18 @@ const pickFile = (key, event) => {
   const extension = file.name.split('.').pop().toLowerCase()
   if (!ALLOWED.includes(extension)) { fileErrors[`doc.${key}`] = 'Use a PDF, JPG or PNG file.'; return }
   if (file.size > 5 * 1024 * 1024) { fileErrors[`doc.${key}`] = `This file is ${fileSize(file.size)}. The limit is 5 MB.`; return }
-  form.documents[key] = { name: file.name, size: file.size }
+  uploading.value = key
+  uploadPersonnelDocument(key, file)
+    .then(({ data }) => apply(data.data))
+    .catch((error) => { fileErrors[`doc.${key}`] = Object.values(error.response?.data?.errors || {}).flat()[0] || 'The upload didn’t finish. Try again.' })
+    .finally(() => { uploading.value = '' })
 }
-const removeFile = (key) => { delete form.documents[key]; delete fileErrors[`doc.${key}`] }
+const removeFile = (key) => {
+  delete fileErrors[`doc.${key}`]
+  deletePersonnelDocument(key)
+    .then(({ data }) => apply(data.data))
+    .catch(() => { fileErrors[`doc.${key}`] = 'We couldn’t remove this file. Try again.' })
+}
 const uploadedCount = computed(() => Object.keys(form.documents).length)
 
 /* ---------- Change requests for locked fields ---------- */
@@ -205,15 +258,28 @@ const openRequest = async (key) => {
   document.getElementById('pp-request-value')?.focus()
 }
 const closeRequest = () => { const key = draft.key; draft.key = ''; nextTick(() => document.getElementById(`pp-${key}`)?.focus()) }
-const submitRequest = () => {
+const sendChangeRequest = async () => {
   draft.tried = true
   if (draftErrors.value.value || draftErrors.value.reason) return
   const field = basicFields.find((item) => item.key === draft.key)
-  changeRequests.value.unshift({ id: Date.now(), field: field.label, value: draft.value.trim(), reason: draft.reason.trim(), status: 'Pending', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })
-  flash.value = `Change request for “${field.label}” added below.`
-  closeRequest()
+  try {
+    const { data } = await submitRequest({ type: 'profile_change', details: { field: field.label, value: draft.value.trim(), reason: draft.reason.trim() } })
+    changeRequests.value.unshift(data.data)
+    flash.value = `Change request for “${field.label}” sent to HR.`
+    closeRequest()
+  } catch (error) {
+    flash.value = ''
+    saveError.value = error.response?.data?.message || 'Your request wasn’t sent. Check your connection and try again.'
+  }
 }
-const withdrawRequest = (id) => { changeRequests.value = changeRequests.value.filter((item) => item.id !== id) }
+const withdrawRequest = async (id) => {
+  try {
+    await cancelRequest(id)
+    changeRequests.value = changeRequests.value.filter((item) => item.id !== id)
+  } catch (error) {
+    saveError.value = Object.values(error.response?.data?.errors || {}).flat()[0] || 'We couldn’t withdraw this request.'
+  }
+}
 
 const reviewItems = computed(() => [
   ['Name', [form.firstName, form.surname].filter(Boolean).join(' ') || '—'],
@@ -224,6 +290,7 @@ const reviewItems = computed(() => [
   ['Emergency contacts', String(form.contacts.filter((row) => filled(row.name)).length)],
   ['Documents uploaded', `${uploadedCount.value} of ${documentSlots.length}`],
 ])
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 </script>
 
 <template>
@@ -231,7 +298,7 @@ const reviewItems = computed(() => [
     <header class="pp-head">
       <div>
         <h1>Personnel Profile</h1>
-        <p>Keep your HR record up to date. Fields marked <span class="pp-req">*</span> are required.</p>
+        <p v-if="savedAt && !finished">Saved at {{ savedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) }}</p>
       </div>
       <div class="pp-progress" role="group" aria-label="Profile progress">
         <div class="pp-progress__text"><strong>{{ finished ? steps.length : completedCount }} of {{ steps.length }}</strong> sections complete</div>
@@ -239,13 +306,18 @@ const reviewItems = computed(() => [
       </div>
     </header>
 
-    <!-- No backend yet: say so plainly rather than letting staff think details were saved. -->
-    <p class="pp-note" role="note"><AppIcon name="info" :size="18" /><span><strong>Preview.</strong> The personnel portal isn’t connected yet. Nothing you enter here is saved or sent to HR.</span></p>
+    <p v-if="saveError" class="pp-alert" role="alert"><AppIcon name="alert-circle" :size="18" />{{ saveError }}</p>
 
-    <section v-if="finished" class="pp-card pp-done" aria-labelledby="pp-done-title">
+    <div v-if="loading" class="pp-card pp-done" role="status">Loading your profile…</div>
+    <section v-else-if="loadError" class="pp-card pp-done" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="pp-btn pp-btn--ghost" @click="load"><AppIcon name="refresh" :size="16" />Try again</button>
+    </section>
+
+    <section v-else-if="finished" class="pp-card pp-done" aria-labelledby="pp-done-title">
       <span class="pp-done__icon"><AppIcon name="check" :size="30" /></span>
-      <h2 id="pp-done-title">Your profile is complete</h2>
-      <p>All five sections are filled in. In the live portal this is where your profile would go to HR for review — this preview doesn’t save or send it.</p>
+      <h2 id="pp-done-title">Your profile was submitted to HR</h2>
+      <p v-if="submittedAt">Submitted on {{ fmtDate(submittedAt) }}. If you change anything, submit it again.</p>
       <div class="pp-done__actions">
         <button type="button" class="pp-btn pp-btn--ghost" @click="reviewAgain"><AppIcon name="pen" :size="16" />Review my answers</button>
         <RouterLink to="/admin" class="pp-btn pp-btn--primary">Go to dashboard<AppIcon name="arrow-right" :size="16" /></RouterLink>
@@ -303,15 +375,15 @@ const reviewItems = computed(() => [
                   <p class="pp-request-panel__current">Currently on record: <strong>{{ form[field.key] }}</strong></p>
                   <div class="pp-grid">
                     <ProfileField label="Correct value" field-id="pp-request-value" required :error="draft.tried ? draftErrors.value : ''">
-                      <input id="pp-request-value" v-model="draft.value" :aria-invalid="draft.tried && draftErrors.value ? 'true' : undefined" @keydown.enter.prevent="submitRequest" />
+                      <input id="pp-request-value" v-model="draft.value" :aria-invalid="draft.tried && draftErrors.value ? 'true' : undefined" @keydown.enter.prevent="sendChangeRequest" />
                     </ProfileField>
                     <ProfileField label="Reason" field-id="pp-request-reason" required :error="draft.tried ? draftErrors.reason : ''">
-                      <input id="pp-request-reason" v-model="draft.reason" placeholder="e.g. Spelling on my ID card" :aria-invalid="draft.tried && draftErrors.reason ? 'true' : undefined" @keydown.enter.prevent="submitRequest" />
+                      <input id="pp-request-reason" v-model="draft.reason" placeholder="e.g. Spelling on my ID card" :aria-invalid="draft.tried && draftErrors.reason ? 'true' : undefined" @keydown.enter.prevent="sendChangeRequest" />
                     </ProfileField>
                   </div>
                   <div class="pp-request-panel__actions">
                     <button type="button" class="pp-btn pp-btn--ghost pp-btn--sm" @click="closeRequest">Cancel</button>
-                    <button type="button" class="pp-btn pp-btn--primary pp-btn--sm" @click="submitRequest"><AppIcon name="send" :size="15" />Send request</button>
+                    <button type="button" class="pp-btn pp-btn--primary pp-btn--sm" @click="sendChangeRequest"><AppIcon name="send" :size="15" />Send request</button>
                   </div>
                 </div>
               </template>
@@ -425,14 +497,14 @@ const reviewItems = computed(() => [
               <span class="pp-doc__icon"><AppIcon :name="form.documents[slot.key] ? 'check' : 'file-text'" :size="18" /></span>
               <div class="pp-doc__body">
                 <strong>{{ slot.label }}<span v-if="slot.required" class="pp-req" aria-hidden="true"> *</span><span v-else class="pp-optional">Optional</span></strong>
-                <small v-if="form.documents[slot.key]">{{ form.documents[slot.key].name }} · {{ fileSize(form.documents[slot.key].size) }}</small>
+                <small v-if="form.documents[slot.key]">{{ form.documents[slot.key].name }}<template v-if="form.documents[slot.key].size"> · {{ fileSize(form.documents[slot.key].size) }}</template></small>
                 <small v-else>{{ slot.hint }}</small>
                 <p v-if="fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`)" :id="`pp-doc-${slot.key}-error`" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`) }}</p>
               </div>
               <div class="pp-doc__actions">
                 <button v-if="form.documents[slot.key]" type="button" class="pp-icon-btn" :aria-label="`Remove ${slot.label}`" @click="removeFile(slot.key)"><AppIcon name="trash" :size="16" /></button>
                 <label class="pp-btn pp-btn--ghost pp-btn--sm pp-upload">
-                  <AppIcon name="upload" :size="15" />{{ form.documents[slot.key] ? 'Replace' : 'Upload' }}
+                  <AppIcon name="upload" :size="15" />{{ uploading === slot.key ? 'Uploading…' : form.documents[slot.key] ? 'Replace' : 'Upload' }}
                   <input :id="`pp-doc-${slot.key}`" type="file" accept=".pdf,.jpg,.jpeg,.png" class="sr-only" :aria-label="`Upload ${slot.label}`" :aria-invalid="err(`doc.${slot.key}`) ? 'true' : undefined" :aria-describedby="err(`doc.${slot.key}`) ? `pp-doc-${slot.key}-error` : undefined" @change="pickFile(slot.key, $event)" />
                 </label>
               </div>
@@ -465,7 +537,7 @@ const reviewItems = computed(() => [
         <footer class="pp-form__foot">
           <button v-if="step > 0" type="button" class="pp-btn pp-btn--ghost" @click="show(step - 1)"><AppIcon name="arrow-left" :size="16" />Back</button>
           <span class="pp-spacer"></span>
-          <button type="submit" class="pp-btn pp-btn--primary">{{ step === steps.length - 1 ? 'Finish profile' : `Continue to ${current.short}` }}<AppIcon :name="step === steps.length - 1 ? 'check' : 'arrow-right'" :size="16" /></button>
+          <button type="submit" class="pp-btn pp-btn--primary" :disabled="saving">{{ saving ? 'Saving…' : step === steps.length - 1 ? 'Submit to HR' : `Continue to ${current.short}` }}<AppIcon :name="step === steps.length - 1 ? 'check' : 'arrow-right'" :size="16" /></button>
         </footer>
       </form>
     </div>
@@ -474,9 +546,9 @@ const reviewItems = computed(() => [
       <h2 id="pp-requests-title">My change requests</h2>
       <ul>
         <li v-for="item in changeRequests" :key="item.id">
-          <div class="pp-requests__main"><strong>{{ item.field }}</strong><span>→ {{ item.value }}</span><small>{{ item.reason }} · {{ item.date }}</small></div>
+          <div class="pp-requests__main"><strong>{{ item.details.field }}</strong><span>→ {{ item.details.value }}</span><small>{{ item.details.reason }} · {{ fmtDate(item.submitted_at) }}</small></div>
           <span class="pp-badge">{{ item.status }}</span>
-          <button type="button" class="pp-link pp-link--muted" @click="withdrawRequest(item.id)">Withdraw</button>
+          <button v-if="item.can_cancel" type="button" class="pp-link pp-link--muted" @click="withdrawRequest(item.id)">Withdraw</button>
         </li>
       </ul>
     </section>
@@ -501,8 +573,6 @@ const reviewItems = computed(() => [
 .pp-progress__track { height: 8px; overflow: hidden; border-radius: 99px; background: #e6edf3; }
 .pp-progress__track i { display: block; height: 100%; border-radius: inherit; background: var(--pp-brand); transition: width .3s ease; }
 
-.pp-note { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 20px; padding: 11px 14px; border: 1px solid #f1dfae; border-radius: 10px; background: #fffaeb; color: #7a5a12; font-size: .9rem; }
-.pp-note svg { flex: none; margin-top: 2px; }
 
 /* Layout */
 .pp-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); align-items: start; gap: 24px; }

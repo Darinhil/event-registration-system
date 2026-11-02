@@ -162,7 +162,6 @@
 .ck-qr__url { margin-top: 10px !important; color: #6f8295; font-size: .76rem; text-align: center; }
 .ck-qr__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .ck-qr__actions .ck-btn { padding: 0 8px; }
-.ck-qr__steps { display: grid; gap: 4px; margin: 14px 0 0; padding-left: 20px; color: #33475c; font-size: .88rem; line-height: 1.45; }
 .ck-qr__regen { margin-top: 12px; }
 .ck-qr__notice { min-height: 1.2em; margin-top: 8px !important; color: #087a5e; font-size: .86rem; font-weight: 700; text-align: center; }
 .ck-qr .ck-alert { margin-top: 10px; }
