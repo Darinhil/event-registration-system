@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
 import { getMyRequests } from '../../services/staffRequestService'
@@ -10,6 +11,7 @@ const forms = [
   { id: 'purchase', title: 'Purchase Request', short: 'Purchase Requests', description: 'List requested items, quantities, and estimated costs.', action: 'Request a purchase', icon: 'cart', section: 'purchase-request', tone: 'orange' },
 ]
 const selectedForm = ref('travel')
+const router = useRouter()
 const requests = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -19,6 +21,7 @@ const countFor = (id) => requests.value.filter((item) => item.type === id).lengt
 const list = computed(() => filter.value === 'all' ? requests.value : requests.value.filter((item) => item.type === filter.value))
 const dateLabel = (value) => value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const label = (value) => value ? `${value[0].toUpperCase()}${value.slice(1)}` : '—'
+const openForm = (form) => router.push({ path: '/admin/personnel-profile', query: { section: form.section } })
 
 onMounted(async () => {
   try {
@@ -54,7 +57,7 @@ onMounted(async () => {
     <section class="or-panel or-workstation" aria-labelledby="or-form-title">
       <div class="or-panel-head"><div><h2 id="or-form-title">Direct Form Access Workstation</h2><p>Choose a form below, then open it to fill in the details.</p></div><RouterLink class="or-full-link" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Full page view</RouterLink></div>
       <div class="or-tabs" role="tablist" aria-label="Other request forms">
-        <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="selectedForm === form.id" :class="{ 'is-active': selectedForm === form.id }" @click="selectedForm = form.id">{{ form.title }}</button>
+        <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="selectedForm === form.id" :class="{ 'is-active': selectedForm === form.id }" @click="openForm(form)">{{ form.title }}</button>
       </div>
       <div class="or-selected-form"><div><strong>{{ selected.title }}</strong><p>{{ selected.description }}</p></div><RouterLink class="or-submit" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Open {{ selected.title }} form</RouterLink></div>
       <p class="or-note"><strong>Request workflow:</strong> Complete the form and submit it to your approver. Submitted requests and their status will appear in the activity ledger below.</p>

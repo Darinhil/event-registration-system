@@ -1,47 +1,23 @@
-<script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+﻿<script setup>
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
-import DateInput from '../DateInput.vue'
-import RequestFormParts from './RequestFormParts.vue'
-import LeaveApplication from './LeaveApplication.vue'
-import OvertimeRequest from './OvertimeRequest.vue'
-import MonthlyTimesheet from './MonthlyTimesheet.vue'
 import { getMyOvertime } from '../../services/overtimeService'
-import { getMyRequests } from '../../services/staffRequestService'
 import { getTimesheet } from '../../services/timesheetService'
-import { useStaffRequestForm } from '../../utils/staffRequestForm'
-import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
-const auth = useAuthStore()
-const activeForm = ref('leave')
 const loading = ref(true)
 const loadError = ref('')
 const balances = ref([])
 const overtimeSummary = ref(null)
-const requests = ref([])
-const statusFilter = ref('all')
 const now = new Date()
 const period = { year: now.getFullYear(), month: now.getMonth() + 1 }
-const leaveForm = reactive({ type: 'annual', start: '', end: '', reason: '' })
-const leaveRequest = useStaffRequestForm('leave')
-const submitLeave = () => {
-  if (leaveForm.start && leaveForm.end && leaveForm.end < leaveForm.start) return
-  leaveRequest.submit({ leave_type: leaveForm.type, start_date: leaveForm.start, end_date: leaveForm.end, reason: leaveForm.reason.trim() })
-}
-const startNewLeave = () => { Object.assign(leaveForm, { type: 'annual', start: '', end: '', reason: '' }); leaveRequest.reset() }
 
 const forms = [
   { id: 'leave', title: 'Leave Application', description: 'Request time off and review your leave balance.', action: 'Apply for leave', icon: 'calendar-check', section: 'leave-application' },
   { id: 'overtime', title: 'Overtime Request', description: 'Record extra hours and send them for approval.', action: 'Request overtime', icon: 'timer', section: 'overtime-request' },
   { id: 'timesheet', title: 'Monthly Timesheet', description: 'Enter daily hours and submit your monthly timesheet.', action: 'Open timesheet', icon: 'calendar', section: 'monthly-timesheet' },
 ]
-const currentForm = computed(() => forms.find((form) => form.id === activeForm.value))
-const filteredRequests = computed(() => statusFilter.value === 'all' ? requests.value : requests.value.filter((item) => item.type_label?.toLowerCase().includes(statusFilter.value)))
-const statuses = ['all', 'leave', 'overtime']
-const statusLabel = (status) => status === 'all' ? 'All activity' : status.charAt(0).toUpperCase() + status.slice(1)
-const dateLabel = (value) => value ? new Date(value.length === 10 ? `${value}T00:00:00` : value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const remainingAnnual = computed(() => balances.value.find((item) => item.type === 'annual')?.remaining)
 const overtimeHours = computed(() => ((overtimeSummary.value?.approved_this_month_minutes || 0) / 60).toFixed(1))
 const timesheetHours = computed(() => {
@@ -52,26 +28,21 @@ const timesheet = ref(null)
 
 onMounted(async () => {
   try {
-    const [sheet, overtime, requestList] = await Promise.all([getTimesheet(period.year, period.month), getMyOvertime(), getMyRequests()])
+    const [sheet, overtime] = await Promise.all([getTimesheet(period.year, period.month), getMyOvertime()])
     timesheet.value = sheet.data.data
     balances.value = sheet.data.data.balances || []
     overtimeSummary.value = overtime.data.summary || {}
-    requests.value = [
-      ...requestList.data.data.map((item) => ({ ...item, rowKey: `request-${item.id}` })),
-      ...overtime.data.data.map((item) => ({ rowKey: `overtime-${item.id}`, type_label: 'Overtime', summary: `${(item.minutes / 60).toFixed(1)} hours on ${dateLabel(item.work_date)}`, status: item.status, submitted_at: item.submitted_at, approver: item.supervisor })),
-    ].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
   } catch {
-    loadError.value = 'Some time management details could not be loaded. You can still open each form below.'
+    loadError.value = 'Some time management details could not be loaded. Try again shortly.'
   } finally {
     loading.value = false
   }
 })
 
 const openForm = (id) => {
-  activeForm.value = id
-  document.getElementById('tm-workstation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const form = forms.find((item) => item.id === id)
+  if (form) router.push({ path: '/admin/personnel-profile', query: { section: form.section } })
 }
-const openFullPage = () => router.push({ path: '/admin/personnel-profile', query: { section: currentForm.value.section } })
 </script>
 
 <template>
@@ -85,59 +56,27 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
     <section class="tm-metrics" aria-label="Time management summary">
       <article class="tm-metric">
         <span class="tm-icon tm-icon--green"><AppIcon name="calendar-check" :size="18" /></span><small>Annual leave balance</small>
-        <strong>{{ loading ? '—' : remainingAnnual ?? '—' }}<span v-if="!loading && remainingAnnual !== undefined"> days remaining</span></strong><p>Available leave days</p>
+        <strong>{{ loading ? 'â€”' : remainingAnnual ?? 'â€”' }}<span v-if="!loading && remainingAnnual !== undefined"> days remaining</span></strong><p>Available leave days</p>
       </article>
       <article class="tm-metric">
         <span class="tm-icon tm-icon--blue"><AppIcon name="clock" :size="18" /></span><small>Overtime this month</small>
-        <strong>{{ loading ? '—' : overtimeHours }}<span> hours logged</span></strong><p>Approved overtime</p>
+        <strong>{{ loading ? 'â€”' : overtimeHours }}<span> hours logged</span></strong><p>Approved overtime</p>
       </article>
       <article class="tm-metric">
         <span class="tm-icon tm-icon--orange"><AppIcon name="calendar" :size="18" /></span><small>Monthly timesheet</small>
-        <strong>{{ loading ? '—' : timesheetHours }}<span> hours entered</span></strong><p>{{ new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(now) }}</p>
+        <strong>{{ loading ? 'â€”' : timesheetHours }}<span> hours entered</span></strong><p>{{ new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(now) }}</p>
       </article>
     </section>
 
     <section class="tm-panel" aria-labelledby="tm-access-title">
-      <div class="tm-panel-heading"><div><h2 id="tm-access-title">Direct Access Workstation</h2><p>Choose a form to start or continue your request.</p></div><button class="tm-text-link" type="button" @click="router.push({ path: '/admin/personnel-profile', query: { section: 'my-requests' } })">Track requests <span aria-hidden="true">→</span></button></div>
+      <div class="tm-panel-heading"><div><h2 id="tm-access-title">Direct Access Workstation</h2><p>Choose a form to start or continue your request.</p></div><button class="tm-text-link" type="button" @click="router.push({ path: '/admin/personnel-profile', query: { section: 'my-requests' } })">Track requests <span aria-hidden="true">â†’</span></button></div>
       <div class="tm-shortcuts">
         <button v-for="form in forms" :key="form.id" type="button" class="tm-shortcut" @click="openForm(form.id)">
           <span class="tm-shortcut-icon" :class="`tm-shortcut-icon--${form.id}`"><AppIcon :name="form.icon" :size="17" /></span><strong>{{ form.title }}</strong><span>{{ form.description }}</span><b>{{ form.action }}</b>
         </button>
       </div>
     </section>
-
-    <section id="tm-workstation" class="tm-panel tm-workstation" aria-labelledby="tm-form-title">
-      <div class="tm-panel-heading"><div><h2 id="tm-form-title">Direct Form Access Workstation</h2><p>Complete and submit your selected time management form.</p></div><button class="tm-full-link" type="button" @click="openFullPage">Full page view <span aria-hidden="true">↗</span></button></div>
-      <div class="tm-tabs" role="tablist" aria-label="Time management forms">
-        <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="activeForm === form.id" :class="{ 'is-active': activeForm === form.id }" @click="activeForm = form.id">{{ form.title }}</button>
-      </div>
-      <div v-if="activeForm === 'leave'" class="tm-direct-form">
-        <div v-if="leaveRequest.saved.value" class="tm-success" role="status"><span class="tm-icon tm-icon--green"><AppIcon name="check-circle" :size="18" /></span><div><strong>Leave request submitted</strong><p>Your request has been sent to your approver.</p></div><button type="button" class="tm-secondary" @click="startNewLeave">New request</button></div>
-        <form v-else class="tm-leave-form" @submit.prevent="submitLeave">
-          <p v-if="leaveRequest.formError.value" class="tm-notice" role="alert">{{ leaveRequest.formError.value }}</p>
-          <div class="tm-field"><label>Employee name</label><input :value="auth.user?.name || ''" readonly /></div>
-          <div class="tm-form-grid">
-            <div class="tm-field"><label for="tm-leave-type">Leave type</label><select id="tm-leave-type" v-model="leaveForm.type"><option value="annual">Annual</option><option value="sick">Sick</option><option value="unpaid">Unpaid</option></select></div>
-            <div class="tm-field"><label for="tm-leave-start">Start date</label><DateInput id="tm-leave-start" v-model="leaveForm.start" required /></div>
-            <div class="tm-field"><label for="tm-leave-end">End date</label><DateInput id="tm-leave-end" v-model="leaveForm.end" :min="leaveForm.start || undefined" required /></div>
-          </div>
-          <div class="tm-field"><label for="tm-leave-reason">Reason / message to supervisor</label><textarea id="tm-leave-reason" v-model="leaveForm.reason" rows="2" maxlength="500" placeholder="Add a short reason or handover note"></textarea></div>
-          <div class="tm-assignee"><RequestFormParts v-model:approver-id="leaveRequest.approverId.value" v-model:attachment="leaveRequest.attachment.value" :approvers="leaveRequest.approvers.value" :errors="leaveRequest.errors" :with-attachment="false" /></div>
-          <footer class="tm-form-footer"><span>Required fields are marked. Your request will be sent for approval.</span><div><button type="submit" class="tm-submit" :disabled="leaveRequest.saving.value">{{ leaveRequest.saving.value ? 'Submitting…' : 'Submit leave request' }}</button><button type="button" class="tm-secondary" @click="openFullPage">Full page view</button></div></footer>
-        </form>
-      </div>
-      <KeepAlive v-else><component :is="activeForm === 'overtime' ? OvertimeRequest : MonthlyTimesheet" /></KeepAlive>
-    </section>
-
-    <section class="tm-panel tm-ledger" aria-labelledby="tm-ledger-title">
-      <div class="tm-panel-heading"><div><h2 id="tm-ledger-title">Recent Activity &amp; Approvals Ledger</h2><p>Follow the status of your submitted time requests.</p></div><div class="tm-filters" aria-label="Filter requests by status"><button v-for="status in statuses" :key="status" type="button" :class="{ 'is-active': statusFilter === status }" @click="statusFilter = status">{{ statusLabel(status) }}</button></div></div>
-      <div class="tm-table-wrap"><table><thead><tr><th>Request</th><th>Module</th><th>Request / Description</th><th>Submitted</th><th>Approver</th><th>Status</th></tr></thead><tbody>
-        <tr v-if="loading"><td colspan="6" class="tm-empty">Loading recent activity…</td></tr>
-        <tr v-else-if="!filteredRequests.length"><td colspan="6" class="tm-empty">No requests match this filter.</td></tr>
-        <tr v-for="(item, index) in filteredRequests" :key="item.rowKey"><td>{{ item.id || index + 1 }}</td><td>{{ item.type_label }}</td><td>{{ item.summary }}</td><td>{{ dateLabel(item.submitted_at) }}</td><td>{{ item.approver || '—' }}</td><td><span class="tm-status" :class="`is-${item.status}`">{{ statusLabel(item.status) }}</span></td></tr>
-      </tbody></table></div>
-    </section>
-  </main>
+</main>
 </template>
 
 <style scoped>
