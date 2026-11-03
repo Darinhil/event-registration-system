@@ -37,9 +37,9 @@ const profileSteps = computed(() => {
   const declarations = saved.declarations || {}
   return [
     { title: 'Personal info', complete: ['gender', 'dob', 'birthPlace', 'idNumber', 'phone', 'email'].every((key) => filled(saved[key])) },
+    { title: 'Documents', complete: Boolean(documents.id && documents.cv) },
     { title: 'Qualifications', complete: Boolean(saved.education?.length) && rowsFilled(saved.education, ['degree', 'institution']) && rowsFilled(saved.experience, ['organisation', 'position']) },
     { title: 'Family details', complete: Boolean(saved.contacts?.length) && rowsFilled(saved.contacts, ['name', 'relationship', 'phone']) && rowsFilled(saved.children, ['name']) && rowsFilled(saved.beneficiaries, ['name', 'share']) && (saved.maritalStatus !== 'Married' || filled(saved.spouse)) },
-    { title: 'Documents', complete: Boolean(documents.id && documents.cv) },
     { title: 'Declarations', complete: Boolean(declarations.accurate && declarations.updates && declarations.consent) && filled(saved.signature) },
   ]
 })
@@ -264,7 +264,7 @@ const printSummary = () => window.print()
 .pd-head h1 { margin: 0 0 4px; font-size: 1.6rem; font-weight: 700; }
 .pd-head p { margin: 0; color: var(--pd-muted); }
 .pd-head__actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.pd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 16px; border: 1px solid var(--pd-line); border-radius: 10px; background: #fff; color: var(--pd-ink); font: inherit; font-size: .9rem; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s, border-color .15s; }
+.pd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; min-height: 42px; margin: 0; padding: 0 16px; border: 1px solid var(--pd-line); border-radius: 10px; background: #fff; color: var(--pd-ink); font: inherit; font-size: .9rem; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s, border-color .15s; }
 .pd-btn:hover { background: var(--pd-soft); }
 .pd-btn--primary { border-color: var(--pd-brand); background: var(--pd-brand); color: #fff; }
 .pd-btn--primary:hover { border-color: var(--pd-brand-dark); background: var(--pd-brand-dark); }

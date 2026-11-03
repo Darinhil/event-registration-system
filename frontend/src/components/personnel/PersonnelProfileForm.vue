@@ -99,10 +99,10 @@ const save = async (submit = false) => {
 }
 
 const steps = [
-  { title: 'Personal information', short: 'qualifications', icon: 'user', hint: 'Identity and contact details', description: 'Your legal name, identity and how we can reach you.' },
+  { title: 'Personal information', short: 'documents', icon: 'user', hint: 'Identity and contact details', description: 'Your legal name, identity and how we can reach you.' },
+  { title: 'Supporting documents', short: 'qualifications', icon: 'file-text', hint: 'ID, CV and certificates', description: 'Upload copies of your documents. PDF, JPG or PNG, up to 5 MB each.' },
   { title: 'Professional qualifications', short: 'family', icon: 'graduation', hint: 'Education and experience', description: 'Your education and previous work experience.' },
-  { title: 'Family information', short: 'documents', icon: 'users', hint: 'Family, emergency contacts', description: 'Who to contact in an emergency, your dependants and beneficiaries.' },
-  { title: 'Supporting documents', short: 'declarations', icon: 'file-text', hint: 'ID, CV and certificates', description: 'Upload copies of your documents. PDF, JPG or PNG, up to 5 MB each.' },
+  { title: 'Family information', short: 'declarations', icon: 'users', hint: 'Family, emergency contacts', description: 'Who to contact in an emergency, your dependants and beneficiaries.' },
   { title: 'Declarations', icon: 'shield-check', hint: 'Review and confirm', description: 'Check your details, then confirm and sign.' },
 ]
 
@@ -126,6 +126,10 @@ const errorsFor = (index) => {
     if (filled(form.email) && !EMAIL_RE.test(form.email)) e.email = 'Enter a valid email address, e.g. name@example.com.'
   }
   if (index === 1) {
+    for (const slot of documentSlots) if (slot.required && !form.documents[slot.key]) e[`doc.${slot.key}`] = `Upload your ${lower(slot.label)}.`
+    Object.assign(e, fileErrors)
+  }
+  if (index === 2) {
     form.education.forEach((row, i) => {
       need(`education.${i}.degree`, row.degree, 'Enter the qualification.')
       need(`education.${i}.institution`, row.institution, 'Enter the institution.')
@@ -137,7 +141,7 @@ const errorsFor = (index) => {
       if (filled(row.from) && filled(row.to) && row.to < row.from) e[`experience.${i}.to`] = 'End must be after the start.'
     })
   }
-  if (index === 2) {
+  if (index === 3) {
     if (form.maritalStatus === 'Married') need('spouse', form.spouse, 'Enter your spouse or partner’s name.')
     form.children.forEach((row, i) => {
       need(`children.${i}.name`, row.name, 'Enter the child’s name.')
@@ -155,10 +159,6 @@ const errorsFor = (index) => {
       need(`beneficiaries.${i}.share`, row.share, 'Enter a share.')
     })
     if (form.beneficiaries.length && shareTotal.value !== 100) e.shares = `Shares must add up to 100% (currently ${shareTotal.value}%).`
-  }
-  if (index === 3) {
-    for (const slot of documentSlots) if (slot.required && !form.documents[slot.key]) e[`doc.${slot.key}`] = `Upload your ${lower(slot.label)}.`
-    Object.assign(e, fileErrors)
   }
   if (index === 4) {
     for (const item of declarationItems) if (!form.declarations[item.key]) e[`decl.${item.key}`] = 'Tick this box to confirm.'
@@ -400,8 +400,30 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numer
           </fieldset>
         </template>
 
-        <!-- 2. Professional qualifications -->
+        <!-- 2. Supporting documents -->
         <template v-else-if="step === 1">
+          <ul class="pp-docs">
+            <li v-for="slot in documentSlots" :key="slot.key" class="pp-doc" :class="{ 'is-uploaded': form.documents[slot.key], 'has-error': err(`doc.${slot.key}`) || fileErrors[`doc.${slot.key}`] }">
+              <span class="pp-doc__icon"><AppIcon :name="form.documents[slot.key] ? 'check' : 'file-text'" :size="18" /></span>
+              <div class="pp-doc__body">
+                <strong>{{ slot.label }}<span v-if="slot.required" class="pp-req" aria-hidden="true"> *</span><span v-else class="pp-optional">Optional</span></strong>
+                <small v-if="form.documents[slot.key]">{{ form.documents[slot.key].name }}<template v-if="form.documents[slot.key].size"> · {{ fileSize(form.documents[slot.key].size) }}</template></small>
+                <small v-else>{{ slot.hint }}</small>
+                <p v-if="fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`)" :id="`pp-doc-${slot.key}-error`" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`) }}</p>
+              </div>
+              <div class="pp-doc__actions">
+                <button v-if="form.documents[slot.key]" type="button" class="pp-icon-btn" :aria-label="`Remove ${slot.label}`" @click="removeFile(slot.key)"><AppIcon name="trash" :size="16" /></button>
+                <label class="pp-btn pp-btn--ghost pp-btn--sm pp-upload">
+                  <AppIcon name="upload" :size="15" />{{ uploading === slot.key ? 'Uploading…' : form.documents[slot.key] ? 'Replace' : 'Upload' }}
+                  <input :id="`pp-doc-${slot.key}`" type="file" accept=".pdf,.jpg,.jpeg,.png" class="sr-only" :aria-label="`Upload ${slot.label}`" :aria-invalid="err(`doc.${slot.key}`) ? 'true' : undefined" :aria-describedby="err(`doc.${slot.key}`) ? `pp-doc-${slot.key}-error` : undefined" @change="pickFile(slot.key, $event)" />
+                </label>
+              </div>
+            </li>
+          </ul>
+        </template>
+
+        <!-- 3. Professional qualifications -->
+        <template v-else-if="step === 2">
           <fieldset class="pp-section">
             <legend>Education</legend>
             <p class="pp-section__help">Start with your highest qualification.</p>
@@ -432,8 +454,8 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numer
           </fieldset>
         </template>
 
-        <!-- 3. Family information -->
-        <template v-else-if="step === 2">
+        <!-- 4. Family information -->
+        <template v-else-if="step === 3">
           <fieldset class="pp-section">
             <legend>Family situation</legend>
             <div class="pp-grid">
@@ -488,28 +510,6 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numer
             <p v-if="err('shares')" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ err('shares') }}</p>
             <button type="button" class="pp-add" @click="addRow('beneficiaries', { name: '', relationship: '', share: form.beneficiaries.length ? '' : 100 }, (i) => `pp-beneficiaries-${i}-name`)"><AppIcon name="plus" :size="16" />Add beneficiary</button>
           </fieldset>
-        </template>
-
-        <!-- 4. Supporting documents -->
-        <template v-else-if="step === 3">
-          <ul class="pp-docs">
-            <li v-for="slot in documentSlots" :key="slot.key" class="pp-doc" :class="{ 'is-uploaded': form.documents[slot.key], 'has-error': err(`doc.${slot.key}`) || fileErrors[`doc.${slot.key}`] }">
-              <span class="pp-doc__icon"><AppIcon :name="form.documents[slot.key] ? 'check' : 'file-text'" :size="18" /></span>
-              <div class="pp-doc__body">
-                <strong>{{ slot.label }}<span v-if="slot.required" class="pp-req" aria-hidden="true"> *</span><span v-else class="pp-optional">Optional</span></strong>
-                <small v-if="form.documents[slot.key]">{{ form.documents[slot.key].name }}<template v-if="form.documents[slot.key].size"> · {{ fileSize(form.documents[slot.key].size) }}</template></small>
-                <small v-else>{{ slot.hint }}</small>
-                <p v-if="fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`)" :id="`pp-doc-${slot.key}-error`" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`) }}</p>
-              </div>
-              <div class="pp-doc__actions">
-                <button v-if="form.documents[slot.key]" type="button" class="pp-icon-btn" :aria-label="`Remove ${slot.label}`" @click="removeFile(slot.key)"><AppIcon name="trash" :size="16" /></button>
-                <label class="pp-btn pp-btn--ghost pp-btn--sm pp-upload">
-                  <AppIcon name="upload" :size="15" />{{ uploading === slot.key ? 'Uploading…' : form.documents[slot.key] ? 'Replace' : 'Upload' }}
-                  <input :id="`pp-doc-${slot.key}`" type="file" accept=".pdf,.jpg,.jpeg,.png" class="sr-only" :aria-label="`Upload ${slot.label}`" :aria-invalid="err(`doc.${slot.key}`) ? 'true' : undefined" :aria-describedby="err(`doc.${slot.key}`) ? `pp-doc-${slot.key}-error` : undefined" @change="pickFile(slot.key, $event)" />
-                </label>
-              </div>
-            </li>
-          </ul>
         </template>
 
         <!-- 5. Declarations -->
@@ -575,14 +575,14 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numer
 
 
 /* Layout */
-.pp-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); align-items: start; gap: 24px; }
+.pp-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .pp-layout > * { min-width: 0; } /* lets the step strip scroll instead of widening the page on small screens */
 .pp-card { border: 1px solid var(--pp-line); border-radius: 14px; background: #fff; box-shadow: 0 6px 20px rgba(23, 54, 95, .05); }
 
 /* Step navigation */
-.pp-steps { position: sticky; top: 96px; }
-.pp-steps ol { display: grid; gap: 4px; margin: 0; padding: 8px; list-style: none; border: 1px solid var(--pp-line); border-radius: 14px; background: #fff; }
-.pp-steps__item { display: flex; width: 100%; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--pp-text); text-align: left; cursor: pointer; }
+.pp-steps li { min-width: 0; }
+.pp-steps ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 8px; list-style: none; border: 1px solid var(--pp-line); border-radius: 14px; background: #fff; }
+.pp-steps__item { display: flex; box-sizing: border-box; width: 100%; height: 100%; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--pp-text); text-align: left; cursor: pointer; }
 .pp-steps__item:hover { background: var(--pp-soft); transform: none !important; }
 .pp-steps__dot { display: grid; width: 30px; height: 30px; flex: none; place-items: center; border: 1.5px solid #cdd9e5; border-radius: 50%; background: #fff; color: var(--pp-muted); font-size: .85rem; font-weight: 700; }
 .pp-steps__text { display: grid; min-width: 0; }
@@ -716,8 +716,6 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numer
 
 /* Tablet: steps become a horizontal strip above the form */
 @media (max-width: 1080px) {
-  .pp-layout { grid-template-columns: 1fr; gap: 16px; }
-  .pp-steps { position: static; }
   .pp-steps ol { display: flex; overflow-x: auto; scrollbar-width: none; }
   .pp-steps li { flex: 1 0 auto; }
   .pp-steps__item { padding: 8px 12px; }
