@@ -156,13 +156,39 @@ class StaffRequestTest extends TestCase
         $this->getJson('/api/me/personnel-profile')->assertOk()->assertJsonPath('data.profile', null);
 
         $this->putJson('/api/me/personnel-profile', ['profile' => ['gender' => 'Female', 'junk' => 'x']])->assertOk()->assertJsonPath('data.profile.gender', 'Female')->assertJsonPath('data.submitted_at', null)->assertJsonMissingPath('data.profile.junk');
+        $extended = [
+            'gender' => 'Female',
+            'education' => [['start_date' => '2012-01-01', 'end_date' => '2016-01-01', 'institution' => 'RUPP', 'degree' => 'BA', 'major' => 'English']],
+            'trainingCourses' => [['course_title' => 'First aid', 'start_date' => '2024-01-01', 'end_date' => '2024-01-02', 'provider' => 'Red Cross']],
+            'expertise' => ['Project management'],
+            'experience' => [['from' => '2017-01-01', 'to' => '2020-01-01', 'position' => 'Officer', 'organisation' => 'NGO', 'project_title' => 'Health', 'job_description' => 'Managed field work']],
+            'motherTongue' => 'Khmer',
+            'languages' => [['language' => 'English', 'reading' => 'Good', 'writing' => 'Fair', 'speaking' => 'Good', 'understanding' => 'Fluent']],
+            'geographicExperience' => [['country' => 'Cambodia', 'province' => 'Kampot']],
+            'memberships' => [['start_date' => '2021-01-01', 'institution' => 'Association', 'role' => 'Member', 'description' => '']],
+            'maritalStatus' => 'Single',
+            'notes' => 'Please contact HR by email.',
+            'extraDocuments' => [['key' => 'attachment-123e4567-e89b-12d3-a456-426614174000', 'title' => 'Passport', 'description' => 'Current passport', 'remark' => 'Renewal due soon']],
+        ];
+        $this->putJson('/api/me/personnel-profile', ['profile' => $extended])
+            ->assertOk()
+            ->assertJsonPath('data.profile.education.0.major', 'English')
+            ->assertJsonPath('data.profile.trainingCourses.0.provider', 'Red Cross')
+            ->assertJsonPath('data.profile.experience.0.project_title', 'Health')
+            ->assertJsonPath('data.profile.extraDocuments.0.remark', 'Renewal due soon');
 
         $complete = ['gender' => 'Female', 'dob' => '1990-01-01', 'birthPlace' => 'Kampot', 'idNumber' => 'N1', 'phone' => '012345678', 'email' => 'a@example.com', 'education' => [['degree' => 'BA', 'institution' => 'RUPP', 'year' => 2012]], 'contacts' => [['name' => 'Dara', 'relationship' => 'Sister', 'phone' => '012345679']], 'declarations' => ['accurate' => true, 'updates' => true, 'consent' => true], 'signature' => 'Sokha'];
 
         $this->putJson('/api/me/personnel-profile', ['submit' => true, 'profile' => ['gender' => 'Female']])->assertStatus(422)->assertJsonValidationErrors(['profile.dob', 'profile.signature', 'profile.declarations.accurate']);
         $this->putJson('/api/me/personnel-profile', ['submit' => true, 'profile' => $complete])->assertStatus(422)->assertJsonValidationErrors('documents');
 
-        $this->post('/api/me/personnel-profile/documents/id', ['file' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf')], ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('data.documents.id.name', 'id.pdf')->assertJsonMissingPath('data.documents.id.path');
+        $this->post('/api/me/personnel-profile/documents/id', ['file' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'), 'title' => 'National ID', 'description' => 'Front and back', 'remark' => 'Verified'], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('data.documents.id.name', 'id.pdf')
+            ->assertJsonPath('data.documents.id.title', 'National ID')
+            ->assertJsonPath('data.documents.id.description', 'Front and back')
+            ->assertJsonPath('data.documents.id.remark', 'Verified')
+            ->assertJsonMissingPath('data.documents.id.path');
         $this->post('/api/me/personnel-profile/documents/cv', ['file' => UploadedFile::fake()->create('cv.pdf', 10, 'application/pdf')], ['Accept' => 'application/json'])->assertCreated();
         $this->post('/api/me/personnel-profile/documents/nope', ['file' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')], ['Accept' => 'application/json'])->assertNotFound();
 

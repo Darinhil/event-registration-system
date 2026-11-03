@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminCompliancePolicyController;
+use App\Http\Controllers\AdminTrainingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CheckInController;
 use App\Http\Controllers\ComplianceController;
@@ -114,6 +116,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/check-ins', [AdminController::class, 'checkIns']);
         Route::get('/events/{event}/check-ins', [AdminController::class, 'eventCheckIns'])->middleware('can:view,event');
         Route::middleware('can:manage-admin-accounts')->group(function (): void {
+            Route::get('/training-courses', [AdminTrainingController::class, 'index']);
+            Route::post('/training-courses', [AdminTrainingController::class, 'store']);
+            Route::put('/training-courses/{course}', [AdminTrainingController::class, 'update']);
+            Route::delete('/training-courses/{course}', [AdminTrainingController::class, 'destroy']);
+            Route::put('/training-courses/{course}/assignments', [AdminTrainingController::class, 'assign']);
+            Route::get('/compliance-policies', [AdminCompliancePolicyController::class, 'index']);
+            Route::post('/compliance-policies', [AdminCompliancePolicyController::class, 'store']);
+            Route::put('/compliance-policies/{policy}', [AdminCompliancePolicyController::class, 'update']);
+            Route::delete('/compliance-policies/{policy}', [AdminCompliancePolicyController::class, 'destroy']);
             Route::get('/settings', [SystemSettingsController::class, 'show']);
             Route::put('/settings', [SystemSettingsController::class, 'update']);
             Route::get('/contracts', [ContractController::class, 'index']);

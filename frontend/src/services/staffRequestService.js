@@ -7,7 +7,12 @@ export const decideRequest = (id, decision, note) => api.post(`/requests/${id}/d
 export const downloadRequestAttachment = (id) => api.get(`/requests/${id}/attachment`, { responseType: 'blob' })
 export const getPersonnelProfile = () => api.get('/me/personnel-profile')
 export const savePersonnelProfile = (profile, submit = false) => api.put('/me/personnel-profile', { profile, submit })
-export const uploadPersonnelDocument = (slot, file) => { const body = new FormData(); body.append('file', file); return api.post(`/me/personnel-profile/documents/${slot}`, body) }
+export const uploadPersonnelDocument = (slot, file, metadata = {}) => {
+  const body = new FormData()
+  body.append('file', file)
+  for (const [key, value] of Object.entries(metadata)) if (value) body.append(key, value)
+  return api.post(`/me/personnel-profile/documents/${slot}`, body)
+}
 export const deletePersonnelDocument = (slot) => api.delete(`/me/personnel-profile/documents/${slot}`)
 export const downloadPersonnelDocument = (userId, slot) => api.get(`/personnel-profiles/${userId}/documents/${slot}`, { responseType: 'blob' })
 export const getStaffPersonnelProfile = (userId) => api.get(`/admin/personnel-profiles/${userId}`)

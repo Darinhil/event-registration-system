@@ -2,9 +2,12 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import { useAuthStore } from '../../stores/auth'
 import PersonnelDashboard from '../../components/personnel/PersonnelDashboard.vue'
 import PersonnelProfileForm from '../../components/personnel/PersonnelProfileForm.vue'
 import ComplianceCenter from '../../components/personnel/ComplianceCenter.vue'
+import CompliancePolicyManagement from '../../components/personnel/CompliancePolicyManagement.vue'
+import TrainingManagement from '../../components/personnel/TrainingManagement.vue'
 import FinanceManagement from '../../components/FinanceManagement.vue'
 import ContractHistory from '../../components/personnel/ContractHistory.vue'
 import TrainingCenter from '../../components/personnel/TrainingCenter.vue'
@@ -17,6 +20,7 @@ import PurchaseRequest from '../../components/personnel/PurchaseRequest.vue'
 import MyRequests from '../../components/personnel/MyRequests.vue'
 
 const route = useRoute()
+const auth = useAuthStore()
 // Group headings in the sidebar open their first page.
 const sections = {
   'my-profile': PersonnelProfileForm,
@@ -35,7 +39,12 @@ const sections = {
   'my-requests': MyRequests,
 }
 // No section is the dashboard; an unknown one still falls back to the profile form.
-const page = computed(() => (route.query.section ? sections[route.query.section] || PersonnelProfileForm : PersonnelDashboard))
+const page = computed(() => {
+  if (!route.query.section) return PersonnelDashboard
+  if (route.query.section === 'compliances' && auth.isAdmin) return CompliancePolicyManagement
+  if (route.query.section === 'training' && auth.isAdmin && !route.query.course) return TrainingManagement
+  return sections[route.query.section] || PersonnelProfileForm
+})
 </script>
 
 <template>
