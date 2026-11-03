@@ -161,23 +161,24 @@ export const starterFields = (step = 0) => {
     field('email', 'អ៊ីមែល/Email', true),
     field('select', 'ភេទ/Gender', true, ['M: ប្រុស/Male', 'F: ស្រី/Female', 'P: មិនបញ្ជាក់/Prefer not to say', 'N: មិនមែនពីរភេទ/Non-binary']),
     field('select', 'អាយុ/Age', true, ['K: ក្រោម 18 ឆ្នាំ/Under 18', 'Y: 18–29', 'A: 30–60', 'E: លើស 60 ឆ្នាំ/Above 60']),
-    field('checkbox', 'ពិការភាព/Disability', false, [
+    field('checkbox', 'ពិការភាព/Disability', true, [
       'C: ពិបាកមើលឃើញ/Difficulty seeing',
       'H: ពិបាកស្តាប់/Difficulty hearing',
       'M: ពិបាកធ្វើចលនា/Difficulty moving',
       'R: ពិបាកចងចាំ/Difficulty remembering',
       'S: ពិបាកថែទាំខ្លួនឯង/Difficulty with self-care',
       'X: ពិបាកទំនាក់ទំនង/Difficulty communicating',
+      'គ្មានពិការភាព/No disability',
     ], { multiple: true }),
-    field('select', 'ជនជាតិ/Ethnicity', false, [
+    field('select', 'ជនជាតិ/Ethnicity', true, [
       'ខ្មែរ/Khmer people',
       'ជនជាតិភាគតិច/Ethnic minorities',
       'ជនជាតិដើមភាគតិច/Indigenous peoples',
     ]),
     field('text', 'ស្ថាប័ន/Institution', true),
     field('text', 'អង្គភាពអាជីវកម្ម/Business Entity'),
-    field('text', 'មុខតំណែង/Position'),
-    field('radio', 'ការអនុញ្ញាតប្រើប្រាស់រូបថត/Photo consent', false, ['បាទ/ចាស/Yes', 'ទេ/No']),
+    field('text', 'មុខតំណែង/Position', true),
+    field('radio', 'ការអនុញ្ញាតប្រើប្រាស់រូបថត/Photo consent', true, ['បាទ/ចាស/Yes', 'ទេ/No']),
     field('phone', 'លេខទូរស័ព្ទ/Phone', true),
   ]
 }
@@ -192,6 +193,10 @@ export const addNonBinaryGenderOption = (fields) => fields.map((field) => {
   if (JSON.stringify(field.options || []) === JSON.stringify(bilingualOptions)) return { ...field, options: [...bilingualOptions, 'N: មិនមែនពីរភេទ/Non-binary'] }
   return field
 })
+
+/** Disability options show without their code ("C: "). The stored value keeps it: the API reads disability_type from that prefix. */
+export const choiceLabel = (field, option) =>
+  /disability|ពិការភាព/i.test(field?.label || '') ? String(option).replace(/^[A-Z]{1,2}:\s*/, '') : option
 
 /** Identify untouched built-in forms from earlier app versions for safe upgrades. */
 export const isLegacyStarterForm = (fields) => {

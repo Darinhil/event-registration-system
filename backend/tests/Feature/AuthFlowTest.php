@@ -12,26 +12,26 @@ class AuthFlowTest extends TestCase
 
     public function test_signup_with_email_or_phone_returns_a_token(): void
     {
-        $this->postJson('/api/auth/register', ['name' => 'Sokha', 'identifier' => 'sokha@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123'])
+        $this->postJson('/api/auth/register', ['name' => 'Sokha', 'identifier' => 'sokha@example.com', 'password' => 'secret123'])
             ->assertCreated()->assertJsonStructure(['data' => ['id', 'email'], 'token'])->assertJsonPath('data.role', 'attendee');
 
-        $this->postJson('/api/auth/register', ['name' => 'Dara', 'identifier' => '+855 12 345 678', 'password' => 'secret123', 'password_confirmation' => 'secret123'])
+        $this->postJson('/api/auth/register', ['name' => 'Dara', 'identifier' => '+855 12 345 678', 'password' => 'secret123'])
             ->assertCreated()->assertJsonPath('data.phone', '+855 12 345 678');
     }
 
-    public function test_signup_rejects_mismatched_passwords_and_duplicate_accounts(): void
+    public function test_signup_rejects_short_passwords_and_duplicate_accounts(): void
     {
-        $this->postJson('/api/auth/register', ['name' => 'Sokha', 'identifier' => 'sokha@example.com', 'password' => 'secret123', 'password_confirmation' => 'different'])
+        $this->postJson('/api/auth/register', ['name' => 'Sokha', 'identifier' => 'sokha@example.com', 'password' => 'short'])
             ->assertStatus(422)->assertJsonValidationErrors('password');
 
         User::factory()->create(['email' => 'taken@example.com']);
-        $this->postJson('/api/auth/register', ['name' => 'Copy', 'identifier' => 'taken@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123'])
+        $this->postJson('/api/auth/register', ['name' => 'Copy', 'identifier' => 'taken@example.com', 'password' => 'secret123'])
             ->assertStatus(422)->assertJsonValidationErrors('identifier');
     }
 
     public function test_signup_cannot_assign_itself_a_staff_role(): void
     {
-        $this->postJson('/api/auth/register', ['name' => 'Eve', 'identifier' => 'eve@example.com', 'password' => 'secret123', 'password_confirmation' => 'secret123', 'role' => 'admin'])
+        $this->postJson('/api/auth/register', ['name' => 'Eve', 'identifier' => 'eve@example.com', 'password' => 'secret123', 'role' => 'admin'])
             ->assertCreated();
 
         $this->assertSame('attendee', User::where('email', 'eve@example.com')->value('role'));

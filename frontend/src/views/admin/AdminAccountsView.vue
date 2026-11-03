@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import { downloadPersonnelDocument, getStaffPersonnelProfile } from '../../services/staffRequestService'
+import { saveBlob } from '../../utils/staffRequestForm'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 
@@ -148,12 +150,15 @@ let highlightTimer
 const highlight = (id) => { highlightId.value = id; clearTimeout(highlightTimer); highlightTimer = setTimeout(() => (highlightId.value = null), 4000) }
 onBeforeUnmount(() => clearTimeout(highlightTimer))
 
-/* ---------- Dialogs (grant review, change role, delete) ---------- */
+/* ---------- Dialogs (grant review, change role, edit, HR profile, delete) ---------- */
 const dialogEl = ref(null)
 const dialog = ref(null)
 const dialogBusy = ref(false)
 const dialogError = ref('')
 const nextRole = ref('')
+const editForm = reactive({ name: '', password: '' })
+const staffProfile = ref(null)
+const staffProfileLoading = ref(false)
 let returnFocus = null
 
 const openDialog = async (state, trigger) => {
@@ -161,8 +166,41 @@ const openDialog = async (state, trigger) => {
   dialog.value = state
   dialogError.value = ''
   nextRole.value = state.account?.role || ''
+  editForm.name = state.account?.name || ''
+  editForm.password = ''
+  staffProfile.value = null
   await nextTick()
   dialogEl.value?.showModal()
+  if (state.type === 'profile') loadStaffProfile(state.account)
+}
+const loadStaffProfile = async (account) => {
+  staffProfileLoading.value = true
+  try {
+    staffProfile.value = (await getStaffPersonnelProfile(account.id)).data.data
+  } catch {
+    dialogError.value = 'We couldn’t load this profile.'
+  } finally {
+    staffProfileLoading.value = false
+  }
+}
+const profileRows = computed(() => {
+  const p = staffProfile.value?.profile
+  if (!p) return []
+  const list = (rows, line) => (rows || []).map(line).filter(Boolean).join('; ')
+  return [
+    ['Name in Khmer', p.khmerName], ['Gender', p.gender], ['Date of birth', p.dob], ['Place of birth', p.birthPlace], ['Citizenship', p.citizenship], ['ID or passport', p.idNumber],
+    ['Phone', [p.phone, p.altPhone].filter(Boolean).join(', ')], ['Email', p.email], ['Address', p.address],
+    ['Education', list(p.education, (row) => [row.degree, row.institution, row.year].filter(Boolean).join(', '))],
+    ['Experience', list(p.experience, (row) => [row.position, row.organisation].filter(Boolean).join(', '))],
+    ['Marital status', p.maritalStatus], ['Spouse or partner', p.spouse],
+    ['Children', list(p.children, (row) => [row.name, row.dob].filter(Boolean).join(', '))],
+    ['Emergency contacts', list(p.contacts, (row) => [row.name, row.relationship, row.phone].filter(Boolean).join(', '))],
+    ['Beneficiaries', list(p.beneficiaries, (row) => (row.name ? `${row.name} (${row.share}%)` : ''))],
+  ].filter(([, value]) => value)
+})
+const DOCUMENT_LABELS = { id: 'National ID or passport', cv: 'CV', certificate: 'Highest qualification', bank: 'Bank details' }
+const saveDocument = async (slot, document) => {
+  try { saveBlob((await downloadPersonnelDocument(staffProfile.value.user_id, slot)).data, document.name) } catch { dialogError.value = 'We couldn’t download this file.' }
 }
 const closeDialog = () => { if (!dialogBusy.value) dialogEl.value?.close() }
 const onDialogClosed = () => {
@@ -196,7 +234,13 @@ const confirmDialog = async () => {
       if (!ok) focusFirstError()
       return
     }
-    if (type === 'role') {
+    if (type === 'edit') {
+      const body = { name: editForm.name.trim(), ...(editForm.password ? { password: editForm.password } : {}) }
+      const { data } = await api.put(`/admin/admin-accounts/${account.id}`, body)
+      accounts.value = accounts.value.map((a) => (a.id === account.id ? { ...a, ...data.data } : a))
+      notify('success', editForm.password ? `${data.data.name}’s account was updated and they were signed out.` : `${data.data.name}’s account was updated.`)
+      highlight(account.id)
+    } else if (type === 'role') {
       const { data } = await api.put(`/admin/admin-accounts/${account.id}`, { role: nextRole.value })
       accounts.value = accounts.value.map((a) => (a.id === account.id ? { ...a, ...data.data } : a))
       notify('success', `${account.name} is now ${roleLabel(data.data?.role || nextRole.value)}.`)
@@ -392,6 +436,8 @@ onMounted(load)
               <div class="aa-member-actions">
                 <span v-if="account.id === meId" class="aa-self-note">Signed in</span>
                 <template v-else>
+                  <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`View ${account.name}’s personnel profile`" @click="openDialog({ type: 'profile', account }, $event.currentTarget)"><AppIcon name="eye" :size="15" /><span>Profile</span></button>
+                  <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`Edit ${account.name}’s account`" @click="openDialog({ type: 'edit', account }, $event.currentTarget)"><AppIcon name="user" :size="15" /><span>Edit</span></button>
                   <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`Change role for ${account.name}`" @click="openDialog({ type: 'role', account }, $event.currentTarget)"><AppIcon name="pen" :size="15" /><span>Role</span></button>
                   <button type="button" class="aa-btn aa-btn--quiet aa-btn--danger" :aria-label="`Delete ${account.name}’s account`" @click="openDialog({ type: 'delete', account }, $event.currentTarget)"><AppIcon name="trash" :size="15" /><span>Delete</span></button>
                 </template>
@@ -431,6 +477,31 @@ onMounted(load)
             <p v-if="roleChangeWarning" class="aa-callout"><AppIcon name="alert-circle" :size="16" />{{ roleChangeWarning }}</p>
           </template>
 
+          <template v-else-if="dialog.type === 'edit'">
+            <h2 id="aa-dialog-title">Edit account</h2>
+            <p id="aa-dialog-desc">{{ dialog.account.email }}</p>
+            <div class="aa-field">
+              <label for="aa-edit-name">Full name</label>
+              <input id="aa-edit-name" v-model="editForm.name" type="text" maxlength="100" required />
+            </div>
+            <div class="aa-field">
+              <label for="aa-edit-password">New password</label>
+              <input id="aa-edit-password" v-model="editForm.password" type="password" minlength="8" autocomplete="new-password" aria-describedby="aa-edit-password-hint" />
+              <p id="aa-edit-password-hint" class="aa-hint">Leave empty to keep the current one. Changing it signs them out everywhere.</p>
+            </div>
+          </template>
+
+          <template v-else-if="dialog.type === 'profile'">
+            <h2 id="aa-dialog-title">{{ dialog.account.name }}</h2>
+            <p id="aa-dialog-desc">{{ staffProfileLoading ? 'Loading…' : !staffProfile?.profile ? 'No personnel profile yet.' : staffProfile.submitted_at ? `Submitted ${addedOn(staffProfile.submitted_at)}` : 'Draft — not submitted yet' }}</p>
+            <dl v-if="profileRows.length" class="aa-profile">
+              <div v-for="[label, value] in profileRows" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+            </dl>
+            <div v-if="staffProfile && Object.keys(staffProfile.documents).length" class="aa-profile-docs">
+              <button v-for="(document, slot) in staffProfile.documents" :key="slot" type="button" class="aa-btn aa-btn--ghost" @click="saveDocument(slot, document)"><AppIcon name="download" :size="15" />{{ DOCUMENT_LABELS[slot] || slot }}</button>
+            </div>
+          </template>
+
           <template v-else>
             <span class="aa-dialog-icon is-danger" aria-hidden="true"><AppIcon name="trash" :size="20" /></span>
             <h2 id="aa-dialog-title">Delete this account?</h2>
@@ -451,10 +522,10 @@ onMounted(load)
           <p v-if="dialogError" class="aa-form-error" role="alert"><AppIcon name="alert-circle" :size="16" />{{ dialogError }}</p>
 
           <div class="aa-dialog-actions">
-            <button type="button" class="aa-btn aa-btn--ghost" :disabled="dialogBusy" @click="closeDialog">Cancel</button>
-            <button type="submit" class="aa-btn" :class="dialog.type === 'delete' ? 'aa-btn--danger-solid' : 'aa-btn--primary'" :disabled="dialogBusy || (dialog.type === 'role' && nextRole === dialog.account.role)" :aria-busy="dialogBusy">
+            <button type="button" class="aa-btn aa-btn--ghost" :disabled="dialogBusy" @click="closeDialog">{{ dialog.type === 'profile' ? 'Close' : 'Cancel' }}</button>
+            <button v-if="dialog.type !== 'profile'" type="submit" class="aa-btn" :class="dialog.type === 'delete' ? 'aa-btn--danger-solid' : 'aa-btn--primary'" :disabled="dialogBusy || (dialog.type === 'role' && nextRole === dialog.account.role) || (dialog.type === 'edit' && (!editForm.name.trim() || (editForm.password && editForm.password.length < 8)))" :aria-busy="dialogBusy">
               <span v-if="dialogBusy" class="aa-spinner" aria-hidden="true"></span>
-              {{ dialog.type === 'grant' ? (dialogBusy ? 'Creating…' : 'Create Master Admin') : dialog.type === 'role' ? (dialogBusy ? 'Saving…' : 'Change role') : (dialogBusy ? 'Deleting…' : 'Delete account') }}
+              {{ dialog.type === 'edit' ? (dialogBusy ? 'Saving…' : 'Save changes') : dialog.type === 'grant' ? (dialogBusy ? 'Creating…' : 'Create Master Admin') : dialog.type === 'role' ? (dialogBusy ? 'Saving…' : 'Change role') : (dialogBusy ? 'Deleting…' : 'Delete account') }}
             </button>
           </div>
         </form>
@@ -644,11 +715,11 @@ onMounted(load)
 .aa-footnote svg { flex: none; margin-top: 2px; }
 
 @container (max-width: 620px) {
-  .aa-member { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "av main actions" "av role actions"; row-gap: 8px; padding: 14px 16px; }
+  .aa-member { grid-template-columns: 40px minmax(0, 1fr); grid-template-areas: "av main" "av role" "actions actions"; row-gap: 8px; padding: 14px 16px; }
   .aa-avatar { grid-area: av; align-self: start; }
   .aa-member-main { grid-area: main; }
   .aa-member-role { grid-area: role; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .aa-member-actions { grid-area: actions; flex-direction: column; align-self: center; }
+  .aa-member-actions { grid-area: actions; flex-wrap: wrap; justify-content: flex-start; margin-left: 42px; }
   .aa-tools { padding: 12px 16px; }
 }
 @container (max-width: 420px) {
@@ -678,6 +749,12 @@ onMounted(load)
 /* Dialog */
 .aa-dialog { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: 14px; background: #fff; box-shadow: 0 24px 60px rgba(15, 28, 46, .28); color: var(--aa-text); }
 .aa-dialog::backdrop { background: rgba(15, 28, 46, .5); }
+.aa-field input { box-sizing: border-box; width: 100%; height: 42px; padding: 0 12px; border: 1px solid #cfdbe7; border-radius: 10px; font: inherit; }
+.aa-profile { display: grid; max-height: 50vh; gap: 0; margin: 0; overflow-y: auto; }
+.aa-profile > div { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid #e6ecf1; font-size: .88rem; }
+.aa-profile dt { flex: none; color: #5f7286; }
+.aa-profile dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.aa-profile-docs { display: flex; flex-wrap: wrap; gap: 8px; }
 .aa-dialog-body { display: grid; gap: 14px; padding: 24px; }
 .aa-dialog-body h2 { margin: 0; color: var(--aa-ink); font-size: 1.12rem; font-weight: 700; }
 .aa-dialog-body p { margin: 0; font-size: .9rem; line-height: 1.5; }

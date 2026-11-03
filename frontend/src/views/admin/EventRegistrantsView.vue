@@ -5,7 +5,7 @@ import AdminLayout from '../../layouts/AdminLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { getEventReportAttendees } from '../../services/adminService'
-import { toCsv, toLocalParts } from '../../utils/eventStats'
+import { downloadCsv, toLocalParts } from '../../utils/eventStats'
 
 const route = useRoute()
 const eventId = computed(() => route.params.id)
@@ -57,11 +57,7 @@ const exportCsv = () => {
   const list = filtered.value
   const header = ['Name', 'Email', 'Phone', 'Organization', 'Registration ID', 'Status', 'Checked in at']
   const lines = list.map((row) => { const at = toLocalParts(row.checked_in_at); return [row.name, row.email, row.phone, row.profile?.organization, row.registration_code, row.status, at.value ? `${at.date} ${at.time}` : ''] })
-  const anchor = document.createElement('a')
-  anchor.href = URL.createObjectURL(new Blob(['﻿', toCsv(header, lines)], { type: 'text/csv;charset=utf-8' }))
-  anchor.download = `event-${eventId.value}-registrants.csv`
-  anchor.click()
-  setTimeout(() => URL.revokeObjectURL(anchor.href), 1000)
+  downloadCsv(`event-${eventId.value}-registrants.csv`, header, lines)
   exported.value = `Exported ${list.length} ${list.length === 1 ? 'registrant' : 'registrants'}.`
 }
 </script>

@@ -93,8 +93,6 @@
 .at-stat small { color: #6f8295; font-size: .8rem; }
 .at-stat--in { border-color: #cdebdf; background: #f3fbf8; }
 .at-stat--in dt, .at-stat--in dd { color: #087a5e; }
-.at-progress { display: block; height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #e3eaf0; }
-.at-progress span { display: block; height: 100%; border-radius: inherit; background: #0b9a76; transition: width .3s ease; }
 
 /* Roster */
 .at-roster { container-type: inline-size; overflow: hidden; }
@@ -248,5 +246,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .at-skeleton, .at-drawer__scrim, .at-drawer__panel { animation: none; }
-  .at-toast, .at-progress span { transition: none; }
+  .at-toast { transition: none; }
 }

@@ -58,25 +58,9 @@
 /* With the camera off, drop the black viewfinder frame behind the start card. */
 div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; }
 /* Check-in buttons in the attendee list: solid brand green with white text (the pale tint read as disabled). */
-.attendee-actions button.primary-button.small { border-color: #0b7f62; background: #0b7f62; color: #fff; opacity: 1; }
-.attendee-actions button.primary-button.small:hover:not(:disabled) { background: #086a51; }
-.attendee-actions button.primary-button.small:disabled { opacity: .6; }
-.scanner-start { display: flex; align-items: center; gap: 16px; width: 100%; margin: 0; padding: 22px; border: 1.5px dashed #b9dccf; border-radius: 14px; background: #f5fbf9; color: #0f1c2e; text-align: left; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
-.scanner-start:hover { border-color: #0b9a76; background: #ecf8f4; transform: none; }
-.scanner-start:focus-visible { outline: 3px solid rgba(11, 127, 98, .35); outline-offset: 2px; }
-.scanner-start__icon { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 14px; background: #0b7f62; color: #fff; }
-.scanner-start__icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.scanner-start strong { display: block; font-size: 1rem; }
-.scanner-start small { color: #5b7085; font-size: .86rem; }
 
 /* ---------- Small shared bits ---------- */
-.attendance-inline-icon { flex: none; color: #7d8fa1; }
 /* Keep the calendar/pin icon beside its text (these lines were stacked as blocks). */
-.attendance-event-header p:has(> .attendance-inline-icon), .attendance-event-copy > :has(> .attendance-inline-icon) { display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; }
-.attendance-event-copy > :has(> .attendance-inline-icon) { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.auth-form button.forgot-link { width: auto; min-height: 0; margin: 0; padding: 4px 0; border: 0; background: none; box-shadow: none; color: #0b7f62; font-size: .82rem; font-weight: 700; cursor: pointer; }
-.auth-form button.forgot-link:hover { text-decoration: underline; transform: none; }
-.auth-hint { margin: -4px 0 0; padding: 10px 12px; border-radius: 10px; background: #f1faf7; color: #33475c; font-size: .84rem; line-height: 1.45; }
 
 /* Screen-reader-only text inside table headers is absolutely positioned; without a
    positioned ancestor it escapes the scroll container and widens the page on phones. */
@@ -84,16 +68,12 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 
 /* ---------- Comfortable touch targets on phones ---------- */
 @media (max-width: 640px) {
-  .attendance-pagination button, .attendance-events-heading a { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
-  .form-actions button, .request-change { min-height: 40px; }
-  .reports-row-action button { min-height: 40px; }
+  .request-change { min-height: 40px; }
   .pe-page .pe-link, .pe-page button.pe-link { min-height: 40px; }
   .ed-crumbs a, .rl-back, .es-back, .rg-back { min-height: 40px; }
   .ed-card__head .es-link { min-height: 40px; }
   /* These pages use scoped styles (extra attribute specificity), so match more precisely. */
-  .profile-form-card footer.form-actions button { min-height: 40px; }
   .aa-card .aa-password .aa-password-toggle { min-height: 40px; min-width: 40px; }
-  .auth-form .login-options button.forgot-link { min-height: 40px; }
 }
 
 /* ---------- My information (MyInformationView) ---------- */
@@ -296,13 +276,10 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .hp-eyebrow { margin: 0 0 14px; color: #8fe0c6; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .hp-hero h1 { max-width: 640px; margin: 0; color: #fff; font-size: clamp(2.1rem, 4.2vw, 3.4rem); font-weight: 800; letter-spacing: -.04em; line-height: 1.08; overflow-wrap: anywhere; }
 .hp-hero h1 em { color: #8fe0c6; font-style: normal; }
-.hp-lede { max-width: 540px; margin: 18px 0 0; color: rgba(255, 255, 255, .8); font-size: 1.08rem; line-height: 1.6; }
 .hp-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .hp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 22px; border: 1px solid transparent; border-radius: 12px; font-size: 1rem; font-weight: 700; text-decoration: none; transition: background-color .15s ease, border-color .15s ease; }
 .hp-btn--primary { background: #fff; color: #0c2a33; }
 .hp-btn--primary:hover { background: #e8f7f2; color: #0c2a33; }
-.hp-btn--ghost { border-color: rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .06); color: #fff; }
-.hp-btn--ghost:hover { border-color: rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .12); color: #fff; }
 .hp-btn:focus-visible, .hp-signup a:focus-visible { outline: 3px solid #8fe0c6; outline-offset: 3px; }
 
 .hp-signup { margin: 16px 0 0; color: rgba(255, 255, 255, .75); font-size: .95rem; }
@@ -316,8 +293,6 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .hp-how strong { color: #fff; font-size: 1rem; }
 .hp-how__num { color: #8fe0c6; }
 .hp-how li p { margin: 3px 0 0; color: rgba(255, 255, 255, .72); font-size: .92rem; line-height: 1.5; }
-.hp-how__note { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .12); color: rgba(255, 255, 255, .78); font-size: .9rem; }
-.hp-how__note svg { flex: none; color: #8fe0c6; }
 
 @media (max-width: 900px) {
   .hp-hero__inner { grid-template-columns: minmax(0, 1fr); }
@@ -337,8 +312,6 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .au-page button:not(:disabled):hover { transform: none; }
 .au-page svg { flex: none; }
 .au-wrap { width: min(100%, 440px); }
-.au-home { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; margin-bottom: 8px; color: #33475c; font-size: .9rem; font-weight: 650; }
-.au-home:hover { color: #087a5e; }
 .au-card { padding: 32px 32px 28px; border: 1px solid rgba(15, 23, 42, .06); border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 30px 70px -30px rgba(12, 42, 51, .35); }
 .au-logo { display: block; width: auto; height: 52px; margin: 0 auto 22px; }
 
@@ -368,8 +341,7 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .au-input input::placeholder { color: #9aabb9; }
 .au-reveal { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: #5f7286; cursor: pointer; }
 .au-reveal:hover { background: #f1f5f6; color: #0f1c2e; }
-.au-reveal:focus-visible, .au-link:focus-visible, .au-switch a:focus-visible, .au-submit:focus-visible, .au-home:focus-visible, .au-foot a:focus-visible { outline: 3px solid rgba(11, 127, 98, .4); outline-offset: 2px; }
-.au-ok { margin-right: 10px; color: #0b9a76; }
+.au-reveal:focus-visible, .au-link:focus-visible, .au-switch a:focus-visible, .au-submit:focus-visible, .au-foot a:focus-visible { outline: 3px solid rgba(11, 127, 98, .4); outline-offset: 2px; }
 
 .au-error { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #b42318; font-size: .84rem; font-weight: 600; line-height: 1.4; }
 .au-error svg { margin-top: 2px; }
@@ -378,7 +350,6 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .au-rule { display: flex; align-items: center; gap: 6px; margin: 0; color: #6f8295; font-size: .82rem; font-weight: 600; }
 .au-rule.is-met { color: #087a5e; }
 .au-rule.is-error { color: #b42318; }
-.au-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .au-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
 .au-check { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; color: #33475c; font-size: .9rem; cursor: pointer; }

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\CheckIn;
 use App\Models\Registration;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
@@ -52,10 +54,19 @@ class CheckInService
         if (! $atDesk && ($venueToken === '' || ! is_string($entranceToken) || ! hash_equals($venueToken, $entranceToken))) {
             throw ValidationException::withMessages(['entrance_token' => 'Scan the check-in QR code at the event entrance to check in.']);
         }
-        if ($registration->checkIn()->exists()) { throw ValidationException::withMessages(['credential' => 'This registration is already checked in.']); }
-        $checkIn = $registration->checkIn()->create(['checked_in_at' => now(), 'checked_in_by' => $user->id]);
-        $registration->update(['status' => 'checked_in']);
+        $alreadyIn = fn () => ValidationException::withMessages(['credential' => 'This registration is already checked in.']);
+        if ($registration->checkIn()->exists()) { throw $alreadyIn(); }
 
-        return $checkIn;
+        // Two desks can scan the same pass at once; the unique index decides who wins.
+        try {
+            return DB::transaction(function () use ($registration, $user): CheckIn {
+                $checkIn = $registration->checkIn()->create(['checked_in_at' => now(), 'checked_in_by' => $user->id]);
+                $registration->update(['status' => 'checked_in']);
+
+                return $checkIn;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw $alreadyIn();
+        }
     }
 }

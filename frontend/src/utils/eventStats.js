@@ -99,6 +99,15 @@ export const toCsv = (header, rows) => {
   return [header, ...rows].map((row) => row.map(cell).join(',')).join('\r\n')
 }
 
+/** Downloads rows as a CSV file. The BOM makes Excel open Khmer and other non-Latin text correctly. */
+export const downloadCsv = (fileName, header, rows) => {
+  const anchor = document.createElement('a')
+  anchor.href = URL.createObjectURL(new Blob(['\uFEFF', toCsv(header, rows)], { type: 'text/csv;charset=utf-8' }))
+  anchor.download = fileName
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(anchor.href), 1000)
+}
+
 // Where an event is in its lifecycle right now: draft | unscheduled | upcoming | ongoing | past.
 export const eventPhase = (event, now = Date.now()) => {
   if (event?.status === 'draft') return 'draft'

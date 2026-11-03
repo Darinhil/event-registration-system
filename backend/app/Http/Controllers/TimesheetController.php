@@ -238,7 +238,8 @@ class TimesheetController extends Controller
 
         $draft = new Timesheet(['entries' => $entries]);
         foreach ($this->balances($user, $year, $month, $draft) as $balance) {
-            if ($balance['remaining'] < 0) $errors["leave.{$balance['type']}"] = "You’ve used more {$balance['label']} leave than you have left ({$balance['remaining']} days).";
+            // Types with no allowance on record (unpaid, sick…) aren't capped.
+            if ($balance['limited'] && $balance['remaining'] < 0) $errors["leave.{$balance['type']}"] = "You’ve used more {$balance['label']} leave than you have left ({$balance['remaining']} days).";
         }
         return $errors;
     }
@@ -277,7 +278,7 @@ class TimesheetController extends Controller
             $before = (float) ($usedBefore[$type] ?? 0);
             $pend = (float) ($pending[$type] ?? 0);
             $now = (float) ($thisMonth[$type] ?? 0);
-            return ['type' => $type, 'label' => $label, 'entitlement' => $entitled, 'carried_over' => $carried, 'used_before' => $before, 'pending' => $pend, 'used_this_month' => $now, 'remaining' => $entitled + $carried - $before - $pend - $now];
+            return ['type' => $type, 'label' => $label, 'limited' => $rows->has($type) || isset(Timesheet::DEFAULT_ENTITLEMENTS[$type]), 'entitlement' => $entitled,'carried_over' => $carried, 'used_before' => $before, 'pending' => $pend, 'used_this_month' => $now, 'remaining' => $entitled + $carried - $before - $pend - $now];
         })->values()->all();
     }
 

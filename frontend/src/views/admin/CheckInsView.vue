@@ -403,7 +403,6 @@ onBeforeUnmount(() => { cameraOn.value = false })
       <header class="ck-header">
         <div>
           <h1>Participant Check-in</h1>
-          <p>Verify registrations and check in participants quickly.</p>
         </div>
         <span v-if="phase === 'ongoing'" class="ck-live"><i aria-hidden="true" />Event in progress</span>
       </header>
@@ -593,7 +592,7 @@ onBeforeUnmount(() => { cameraOn.value = false })
               <h2 id="ck-qr-title">Entrance QR</h2>
               <span class="ck-badge ck-badge--neutral">Self check-in</span>
             </header>
-            <p class="ck-qr__lead">One shared code for the door — participants scan it with their own phone. It is <b>not</b> a personal pass and contains no attendee data.</p>
+            <p class="ck-qr__lead">Print this and place it at the entrance. Participants scan it with their phone and tap “Check me in”.</p>
 
             <div v-if="deskLoading" class="ck-qr__box ck-skeleton" />
             <div v-else-if="!selectedEventId || deskError" class="ck-qr__box ck-qr__box--empty"><p>Select an event to see its entrance QR.</p></div>
@@ -617,11 +616,7 @@ onBeforeUnmount(() => { cameraOn.value = false })
                 <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" @click="downloadQr"><AppIcon name="download" :size="16" />Download</button>
                 <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" @click="copyLink"><AppIcon name="copy" :size="16" />Copy link</button>
               </div>
-              <ol class="ck-qr__steps">
-                <li>Print it and place it at the entrance.</li>
-                <li>Participants scan it with their phone camera.</li>
-                <li>They sign in with the account they registered with and tap “Check me in”. Without scanning this code, participants can’t check themselves in.</li>
-              </ol>
+
               <div class="ck-qr__regen">
                 <template v-if="!regenConfirm">
                   <button type="button" class="ck-link" @click="regenConfirm = true">Replace this QR code…</button>

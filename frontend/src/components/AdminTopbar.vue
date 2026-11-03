@@ -8,22 +8,6 @@ import { theme, toggleTheme } from '../utils/theme'
 
 const router = useRouter()
 const route = useRoute()
-const personnelPageTitle = computed(() => ({
-  'my-profile': 'My Profile',
-  compliances: 'Compliances',
-  'contract-history': 'Contract History',
-  training: 'Staff Online Training',
-  'time-management': 'Time Management',
-  'leave-application': 'Leave Application',
-  'overtime-request': 'Overtime Request',
-  'monthly-timesheet': 'Monthly Timesheet',
-  'other-requests': 'Other Requests',
-  'travel-application': 'Travel Application',
-  'fuel-log-sheet': 'Fuel Log-Sheet',
-  'purchase-request': 'Purchase Request',
-  'finance-management': 'Finance Management',
-  'my-requests': 'My Requests',
-}[route.query.section] || 'My Profile'))
 const auth = useAuthStore()
 const profileMenuOpen = ref(false)
 const notificationOpen = ref(false)
@@ -32,7 +16,7 @@ const profilePhotoSrc = ref(auth.profilePhotoPreview || '')
 const profileLoadError = ref('')
 const searchInput = ref(null)
 const searchTerm = ref(String(route.query.search || ''))
-const canSearchEvents = computed(() => auth.isAdmin || auth.isEventAdmin)
+const canSearchEvents = computed(() => auth.canManageEvents)
 let profilePhotoRequest = 0
 
 const submitSearch = () => {
@@ -155,7 +139,6 @@ onBeforeUnmount(() => {
 
 <template>
   <header class="admin-topbar">
-    <strong v-if="route.path === '/admin/personnel-profile'" class="profile-context-title">{{ personnelPageTitle }}</strong>
     <form v-if="canSearchEvents" class="admin-search" role="search" @submit.prevent="submitSearch">
       <span class="admin-search-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
@@ -227,8 +210,3 @@ onBeforeUnmount(() => {
     </div>
   </header>
 </template>
-
-<style scoped>
-.profile-context-title{flex:none;margin-right:auto;color:#172b4d;font-size:14px;font-weight:700;letter-spacing:-.1px}
-@media(max-width:720px){.profile-context-title{font-size:12px}}
-</style>

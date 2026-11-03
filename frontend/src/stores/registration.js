@@ -3,6 +3,27 @@ import { createRegistration } from '../services/registrationService'
 
 const isFile = (value) => typeof File !== 'undefined' && value instanceof File
 
+/** A registration as JSON, or as multipart form data when it carries files. */
+export const registrationBody = (form) => {
+  if (!isFile(form.profile_photo) && !Object.values(form.form_data || {}).some(isFile)) return form
+  return Object.entries(form).reduce((body, [key, value]) => {
+    if (key === 'form_data' && value && typeof value === 'object') {
+      Object.entries(value).forEach(([fieldId, answer]) => {
+        if (Array.isArray(answer)) {
+          answer.forEach((item) => body.append(`form_data[${fieldId}][]`, item ?? ''))
+        } else {
+          body.append(`form_data[${fieldId}]`, answer === true ? '1' : answer === false ? '0' : answer ?? '')
+        }
+      })
+    } else if (Array.isArray(value)) {
+      value.forEach((item) => body.append(`${key}[]`, item ?? ''))
+    } else {
+      body.append(key, value ?? '')
+    }
+    return body
+  }, new FormData())
+}
+
 export const useRegistrationStore = defineStore('registration', {
   state: () => ({ current: null, loading: false, error: null }),
   actions: {
@@ -10,26 +31,7 @@ export const useRegistrationStore = defineStore('registration', {
       this.loading = true
       this.error = null
       try {
-        const hasUpload = isFile(form.profile_photo) || Object.values(form.form_data || {}).some(isFile)
-        const payload = hasUpload
-          ? Object.entries(form).reduce((body, [key, value]) => {
-            if (key === 'form_data' && value && typeof value === 'object') {
-              Object.entries(value).forEach(([fieldId, answer]) => {
-                if (Array.isArray(answer)) {
-                  answer.forEach((item) => body.append(`form_data[${fieldId}][]`, item ?? ''))
-                } else {
-                  body.append(`form_data[${fieldId}]`, answer === true ? '1' : answer === false ? '0' : answer ?? '')
-                }
-              })
-            } else if (Array.isArray(value)) {
-              value.forEach((item) => body.append(`${key}[]`, item ?? ''))
-            } else {
-              body.append(key, value ?? '')
-            }
-            return body
-          }, new FormData())
-          : form
-        const { data } = await createRegistration(payload)
+        const { data } = await createRegistration(registrationBody(form))
         this.current = data.data
         return this.current
       } catch (error) {

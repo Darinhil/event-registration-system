@@ -83,8 +83,8 @@ class FinanceVoucherController extends Controller
     {
         return [
             'voucher_number' => $data['number'],
-            'voucher_date' => $data['date'] ?: null,
-            'payee_name' => $data['name'] ?: null,
+            'voucher_date' => ($data['date'] ?? null) ?: null,
+            'payee_name' => ($data['name'] ?? null) ?: null,
         ];
     }
 }

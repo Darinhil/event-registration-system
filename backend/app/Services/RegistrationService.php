@@ -10,7 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class RegistrationService
 {
@@ -71,17 +71,20 @@ class RegistrationService
     public function update(Registration $registration, array $data): Registration
     {
         $event = $registration->event;
-        $formData = $this->sanitizeFormData($data['form_data'] ?? [], $event->formFields()->get());
+        $fields = $event->formFields()->get();
+        $formData = $this->sanitizeFormData($data['form_data'] ?? [], $fields);
 
         // Use the same conversion as create(). In particular, age-group choices
         // such as "K: Under 18" must never be written to the integer `age` column.
-        $this->hydrateCoreFields($data, $event->formFields()->get(), $formData);
+        $this->hydrateCoreFields($data, $fields, $formData);
 
         if (!empty($data['email']) && Registration::where('event_id', $event->id)->where('email', $data['email'])->where('id', '!=', $registration->id)->exists()) {
             throw ValidationException::withMessages(['email' => 'Already registered for this event.']);
         }
 
+        $replacedFiles = $this->keepOrReplaceFiles($registration, $fields, $formData);
         $this->storeFieldUploads($formData);
+        Storage::disk('public')->delete($replacedFiles);
         $data['form_data'] = $formData;
 
         unset($data['event_id'], $data['user_id'], $data['registration_code'], $data['qr_token'], $data['status']);
@@ -94,19 +97,41 @@ class RegistrationService
         return $registration->fresh();
     }
 
-    /** Next unused per-event registration code (count()+1 collides after deletions/backfills). */
+    /**
+     * An edit doesn't re-send stored files: an empty answer keeps the existing file, and
+     * a new upload replaces it. Returns the paths of the files being replaced.
+     */
+    private function keepOrReplaceFiles(Registration $registration, $fields, array &$formData): array
+    {
+        $previous = (array) $registration->form_data;
+        $byId = FormConditions::index($fields);
+        $replaced = [];
+        foreach ($fields as $field) {
+            $old = $previous[$field->id] ?? null;
+            if ($field->type !== 'file' || ! is_string($old) || $old === '') continue;
+            if (($formData[$field->id] ?? null) instanceof UploadedFile) $replaced[] = $old;
+            elseif (FormConditions::visible($field, $byId, $formData)) $formData[$field->id] = $old;
+        }
+
+        return $replaced;
+    }
+
+    /**
+     * Next code for this event's name. registration_code is unique across all events, so
+     * events that share a name share the sequence. Names with no Latin letters (e.g. Khmer)
+     * have no slug, so they use the event id.
+     */
     private function nextRegistrationCode(Event $event): string
     {
-        $base = strtoupper(Str::slug($event->name));
-        $n = 1;
-        // registration_code has a global unique index, not a per-event index.
-        // Check globally so two events with the same name cannot generate the
-        // same first code (for example TEST-EVENT-001).
-        while (Registration::where('registration_code', $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT))->exists()) {
+        $base = preg_match('/[a-z0-9]/i', (string) $event->name) ? strtoupper(Str::slug($event->name)) : "EVENT-{$event->id}";
+        $last = (string) Registration::where('registration_code', 'like', "{$base}-%")->latest('id')->value('registration_code');
+        $n = preg_match('/^'.preg_quote($base, '/').'-(\d+)$/', $last, $match) ? (int) $match[1] + 1 : 1;
+        $code = fn () => $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT);
+        while (Registration::where('registration_code', $code())->exists()) {
             $n++;
         }
 
-        return $base.'-'.str_pad((string) $n, 3, '0', STR_PAD_LEFT);
+        return $code();
     }
 
     /**
@@ -220,12 +245,9 @@ class RegistrationService
         if (($settings['allow_registration'] ?? true) === false) return 'Registration is currently closed for this event.';
         if ($event->ends_at && $event->ends_at->isPast()) return 'This event has already ended.';
         if (\App\Http\Controllers\SystemSettingsController::maintenanceMode()) return 'Registration is paused while the system is under maintenance. Please try again later.';
-        $start = $settings['registration_start'] ?? null;
-        $end = $settings['registration_end'] ?? null;
-        if ($start && Carbon::parse($start)->isAfter(now())) return 'Registration for this event has not opened yet.';
-        if ($end && Carbon::parse($end)->endOfDay()->isPast()) return 'Registration for this event has closed.';
-        $max = (int) ($settings['max_participants'] ?? $event->capacity);
-        if ($max > 0 && $event->registrations()->count() >= $max) return 'This event is full.';
+        if ($event->registrationOpensAt()?->isFuture()) return 'Registration for this event has not opened yet.';
+        if ($event->registrationClosesAt()?->isPast()) return 'Registration for this event has closed.';
+        if ($event->registrationLimit() > 0 && $event->registrations()->count() >= $event->registrationLimit()) return 'This event is full.';
         return null;
     }
 }

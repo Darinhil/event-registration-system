@@ -87,7 +87,6 @@ const cancelRegistration = async (registration) => {
       <header class="my-header">
         <div>
           <h1>My information</h1>
-          <p>Your profile and the events you’ve registered for.</p>
         </div>
       </header>
 
@@ -117,7 +116,7 @@ const cancelRegistration = async (registration) => {
             <div><dt>Upcoming</dt><dd>{{ upcoming.length }}</dd></div>
             <div><dt>Attended</dt><dd>{{ attended }}</dd></div>
           </dl>
-          <RouterLink class="my-btn" to="/profile"><AppIcon name="pen" :size="15" />Edit profile</RouterLink>
+          <RouterLink class="my-btn" to="/profile"><AppIcon name="pen" :size="15" />Profile settings</RouterLink>
         </section>
 
         <!-- Registrations -->

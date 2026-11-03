@@ -47,7 +47,7 @@ const createLine = () => ({
   debit: '',
   credit: '',
 })
-const lines = reactive(Array.from({ length: 14 }, createLine))
+const lines = reactive(Array.from({ length: 5 }, createLine))
 const numericValue = (value) => {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -183,7 +183,7 @@ const startNewVoucher = () => {
     date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
     advanceNumber: '', name: '', position: '', purpose: '', signatureDate: '', voucherType: '', paymentMode: '', chequeNumber: '', remarks: '',
   })
-  lines.splice(0, lines.length, ...Array.from({ length: 14 }, createLine))
+  lines.splice(0, lines.length, ...Array.from({ length: 5 }, createLine))
   for (const { key } of approvalRoles) {
     Object.assign(approvals[key], { name: '', position: '', date: '', signature: '' })
     clearSignature(key)
@@ -197,7 +197,6 @@ onMounted(refreshSavedVouchers)
   <section class="finance-page">
     <header class="finance-page-toolbar">
       <div>
-        <span class="finance-kicker">FINANCE MANAGEMENT</span>
         <h1>General Voucher</h1>
         <p>Complete the voucher details, then print a copy for approval and posting.</p>
       </div>
@@ -323,32 +322,32 @@ onMounted(refreshSavedVouchers)
 <style scoped>
 .finance-page{max-width:1120px;margin:0 auto;padding:18px 14px 52px;color:#17202c}
 .finance-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 16px}
-.finance-kicker{color:#648079;font-size:10px;font-weight:750;letter-spacing:.14em}
+.finance-kicker{color:#648079;font-size:12px;font-weight:750;letter-spacing:.14em}
 .finance-page-toolbar h1{margin:4px 0;color:#1b3044;font-size:25px}
 .finance-page-toolbar p{margin:0;color:#718092;font-size:13px}
 .finance-print-button,.voucher-line-actions button{min-height:38px;padding:0 15px;border:1px solid #176e64;border-radius:7px;background:#167568;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
-.finance-paper{max-width:900px;margin:0 auto;padding:18px;background:#fff;border:1px solid #d7dde2;box-shadow:0 8px 30px #1e334012;font-family:Arial,Helvetica,sans-serif;font-size:10px}
+.finance-paper{max-width:900px;margin:0 auto;padding:18px;background:#fff;border:1px solid #d7dde2;box-shadow:0 8px 30px #1e334012;font-family:Arial,Helvetica,sans-serif;font-size:12px}
 .voucher-header{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:start;gap:10px;padding:0 2px 10px}
 .voucher-brand{display:flex;align-items:center;padding-top:4px}
 .voucher-brand img{display:block;width:min(100%,220px);max-height:60px;object-fit:contain;object-position:left center}
 .voucher-header h2{margin:3px 0;text-align:center;font-size:19px;white-space:nowrap}
 .voucher-reference-fields{display:grid;gap:4px}
-.voucher-reference-fields label{display:grid;grid-template-columns:auto minmax(65px,1fr);align-items:center;gap:6px;font-size:8px;font-weight:700}
+.voucher-reference-fields label{display:grid;grid-template-columns:auto minmax(65px,1fr);align-items:center;gap:6px;font-size:12px;font-weight:700}
 .voucher-reference-fields input{min-width:0;height:18px;padding:0 2px;border:0;border-bottom:1px solid #222;border-radius:0;font:inherit}
 .voucher-parties{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(120px,.85fr) minmax(120px,.9fr);min-height:105px;border:2px solid #111}
 .voucher-person-fields{display:grid;grid-template-rows:repeat(3,minmax(20px,1fr)) 28px;border-right:2px solid #111}
 .voucher-person-fields>label{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:stretch;border-bottom:1px solid #999}
 .voucher-person-fields>label:last-child{border-bottom:0}
-.voucher-person-fields label>strong{display:flex;align-items:center;padding:2px 4px;border-right:1px solid #222;font-size:8px}
+.voucher-person-fields label>strong{display:flex;align-items:center;padding:2px 4px;border-right:1px solid #222;font-size:12px}
 .voucher-person-fields input,.voucher-person-fields textarea{width:100%;min-width:0;resize:none;border:0;border-radius:0;padding:3px;font:inherit}
 .voucher-person-fields .voucher-signature-field{grid-template-columns:76px minmax(25px,1fr) 30px 75px}
 .voucher-signature-field span{border-right:1px solid #999}
 .voucher-choice-group{display:grid;grid-template-columns:34px minmax(0,1fr);align-content:start;gap:3px 5px;margin:0;padding:4px 5px;border:0;border-right:2px solid #111}
-.voucher-choice-group legend{float:left;grid-row:1 / span 5;align-self:center;padding:0 3px;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:8px;font-weight:800}
-.voucher-choice-group legend small{font-size:7px;font-weight:400}
-.voucher-choice-group label{display:flex;align-items:center;gap:5px;min-height:14px;font-size:8px}
+.voucher-choice-group legend{float:left;grid-row:1 / span 5;align-self:center;padding:0 3px;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:12px;font-weight:800}
+.voucher-choice-group legend small{font-size:12px;font-weight:400}
+.voucher-choice-group label{display:flex;align-items:center;gap:5px;min-height:14px;font-size:12px}
 .voucher-choice-group input[type=radio]{display:grid;width:13px;height:13px;margin:0;appearance:none;place-content:center;border:1px solid #222;border-radius:1px;background:#fff}
-.voucher-choice-group input[type=radio]::after{content:"X";font-size:9px;font-weight:800;opacity:0}
+.voucher-choice-group input[type=radio]::after{content:"X";font-size:12px;font-weight:800;opacity:0}
 .voucher-choice-group input[type=radio]:checked::after{opacity:1}
 .voucher-payment-group{border-right:0}
 .voucher-payment-group legend{grid-row:1 / span 5}
@@ -356,7 +355,7 @@ onMounted(refreshSavedVouchers)
 .cheque-number input{width:80px;min-width:0;border:0;border-bottom:1px solid #444;border-radius:0}
 .voucher-table-wrap{overflow-x:auto}
 .voucher-lines,.voucher-approvals{width:100%;border-collapse:collapse;table-layout:fixed}
-.voucher-lines{margin-top:3px;font-size:8px}
+.voucher-lines{margin-top:3px;font-size:12px}
 .voucher-lines th,.voucher-lines td,.voucher-approvals th,.voucher-approvals td{border:1px solid #222}
 .voucher-lines thead th{height:19px;padding:2px 3px;text-align:center;font-weight:700}
 .voucher-lines thead tr:first-child th{border-top:2px solid #111}
@@ -381,52 +380,52 @@ onMounted(refreshSavedVouchers)
 .voucher-lines tfoot th{height:19px;padding:2px 3px;border-top:2px solid #111;text-align:right;white-space:nowrap}
 .voucher-lines tfoot .total-label{border-right:0}
 .voucher-line-actions{display:flex;gap:7px;margin:7px 0}
-.voucher-line-actions button{min-height:27px;padding:0 10px;font-size:9px}
+.voucher-line-actions button{min-height:27px;padding:0 10px;font-size:12px}
 .voucher-line-actions .remove-line-action{border-color:#b7c1ca;background:#fff;color:#52616f}
 .voucher-remarks{display:grid;grid-template-rows:16px minmax(45px,auto);border:2px solid #111}
 .voucher-remarks strong{padding:2px 5px}
 .voucher-remarks textarea{width:100%;min-height:45px;resize:vertical;padding:4px;border:0;border-top:1px solid #888;border-radius:0;font:inherit}
-.voucher-approvals{margin-top:3px;font-size:8px}
+.voucher-approvals{margin-top:3px;font-size:12px}
 .voucher-approvals th,.voucher-approvals td{height:23px;padding:2px 4px}
 .voucher-approvals thead th{text-align:center}
 .voucher-approvals thead th:not(.approval-label-spacer){height:18px}
 .voucher-approvals .approval-label-spacer,.voucher-approvals tbody th{width:9%;text-align:left}
 .voucher-approvals input{min-height:19px}
-@media(max-width:680px){.finance-page{padding:12px 7px 35px}.finance-page-toolbar{align-items:flex-start;flex-direction:column}.finance-page-toolbar h1{font-size:22px}.finance-paper{padding:10px}.voucher-header{grid-template-columns:1fr 1fr}.voucher-header h2{grid-column:1/-1;grid-row:1;text-align:right;font-size:16px}.voucher-brand{grid-row:2}.voucher-reference-fields{grid-row:2}.voucher-parties{grid-template-columns:minmax(0,1.2fr) minmax(100px,.8fr) minmax(110px,.9fr)}.voucher-person-fields>label{grid-template-columns:57px minmax(0,1fr)}.voucher-person-fields .voucher-signature-field{grid-template-columns:57px minmax(12px,1fr) 26px 62px}.voucher-choice-group{grid-template-columns:25px minmax(0,1fr);gap:2px}.voucher-choice-group legend{font-size:7px}.voucher-choice-group label{font-size:7px}.voucher-lines{min-width:620px}.voucher-approvals{font-size:7px}}
+@media(max-width:680px){.finance-page{padding:12px 7px 35px}.finance-page-toolbar{align-items:flex-start;flex-direction:column}.finance-page-toolbar h1{font-size:22px}.finance-paper{padding:10px}.voucher-header{grid-template-columns:1fr 1fr}.voucher-header h2{grid-column:1/-1;grid-row:1;text-align:right;font-size:16px}.voucher-brand{grid-row:2}.voucher-reference-fields{grid-row:2}.voucher-parties{grid-template-columns:minmax(0,1.2fr) minmax(100px,.8fr) minmax(110px,.9fr)}.voucher-person-fields>label{grid-template-columns:57px minmax(0,1fr)}.voucher-person-fields .voucher-signature-field{grid-template-columns:57px minmax(12px,1fr) 26px 62px}.voucher-choice-group{grid-template-columns:25px minmax(0,1fr);gap:2px}.voucher-choice-group legend{font-size:12px}.voucher-choice-group label{font-size:12px}.voucher-lines{min-width:620px}.voucher-approvals{font-size:12px}}
 .finance-page{max-width:1360px;padding:28px clamp(16px,3vw,40px) 56px;color:#172a3a}
 .finance-page-toolbar{align-items:center;margin-bottom:22px}
 .finance-page-toolbar h1{margin:6px 0 5px;color:#172a3a;font-size:clamp(27px,3vw,34px);font-weight:750;letter-spacing:-.035em}
 .finance-page-toolbar p{color:#65758a;font-size:14px}
-.finance-kicker{display:inline-flex;align-items:center;gap:8px;color:#167568;font-size:11px;letter-spacing:.13em}
+.finance-kicker{display:inline-flex;align-items:center;gap:8px;color:#167568;font-size:12px;letter-spacing:.13em}
 .finance-kicker::before{width:8px;height:8px;border-radius:50%;background:#20a58d;content:""}
 .finance-print-button,.voucher-line-actions button{min-height:42px;padding:0 18px;border-color:#12695e;border-radius:9px;background:#147568;box-shadow:0 3px 8px #16756824;font-size:13px;transition:background .18s ease,transform .18s ease,box-shadow .18s ease}
 .finance-print-button:hover,.voucher-line-actions button:hover{transform:translateY(-1px);background:#105f55;box-shadow:0 6px 14px #16756832}
-.finance-paper{max-width:1180px;padding:clamp(18px,2.4vw,32px);border:1px solid #dce5eb;border-radius:16px;box-shadow:0 16px 42px #19344a12;font-size:11px}
+.finance-paper{max-width:1180px;padding:clamp(18px,2.4vw,32px);border:1px solid #dce5eb;border-radius:16px;box-shadow:0 16px 42px #19344a12;font-size:12px}
 .voucher-header{align-items:center;gap:18px;padding:0 4px 18px}
 .voucher-brand img{width:min(100%,250px);max-height:76px}
 .voucher-header h2{color:#1b2d3f;font-size:clamp(20px,2.3vw,27px);font-weight:700;letter-spacing:.025em}
 .voucher-reference-fields{gap:7px}
-.voucher-reference-fields label{grid-template-columns:90px minmax(80px,1fr);gap:8px;color:#32475b;font-size:10px}
-.voucher-reference-fields input{height:25px;border-color:#9baab7;font-size:11px}
+.voucher-reference-fields label{grid-template-columns:90px minmax(80px,1fr);gap:8px;color:#32475b;font-size:12px}
+.voucher-reference-fields input{height:25px;border-color:#9baab7;font-size:12px}
 .voucher-parties{grid-template-columns:minmax(0,1.45fr) minmax(190px,.88fr) minmax(190px,.9fr);min-height:148px;border-color:#253747;border-radius:7px;overflow:hidden}
 .voucher-person-fields{grid-template-rows:repeat(3,minmax(32px,1fr)) 38px;border-color:#253747}
 .voucher-person-fields>label{border-color:#d7e0e7}
-.voucher-person-fields label>strong{padding:5px 9px;border-color:#d7e0e7;background:#f7f9fb;color:#34495d;font-size:9px;letter-spacing:.045em}
+.voucher-person-fields label>strong{padding:5px 9px;border-color:#d7e0e7;background:#f7f9fb;color:#34495d;font-size:12px;letter-spacing:.045em}
 .voucher-person-fields input,.voucher-person-fields textarea{padding:6px 8px;color:#172a3a;font:inherit}
 .voucher-choice-group{grid-template-columns:42px minmax(0,1fr);align-content:center;gap:5px 8px;padding:10px;border-color:#d7e0e7}
-.voucher-choice-group legend{font-size:9px;line-height:1.35}
-.voucher-choice-group legend small{font-size:8px}
-.voucher-choice-group label{min-height:24px;gap:8px;color:#34495d;font-size:10px}
+.voucher-choice-group legend{font-size:12px;line-height:1.35}
+.voucher-choice-group legend small{font-size:12px}
+.voucher-choice-group label{min-height:24px;gap:8px;color:#34495d;font-size:12px}
 .voucher-choice-group input[type=radio]{width:18px;height:18px;border-color:#9aabb8;border-radius:4px}
 .voucher-choice-group input[type=radio]:checked{border-color:#167568;background:#e4f5f0;color:#12695e}
-.voucher-choice-group input[type=radio]::after{font-size:11px}
+.voucher-choice-group input[type=radio]::after{font-size:12px}
 .voucher-payment-group .cheque-number{margin-top:4px}
 .cheque-number input{height:22px;padding:2px 4px;border-color:#9aabb8}
 .voucher-table-wrap{margin-top:8px;border:1px solid #d9e2e9;border-radius:8px}
 .voucher-lines,.voucher-approvals{color:#263b4d}
-.voucher-lines{min-width:900px;margin:0;font-size:10px}
+.voucher-lines{min-width:900px;margin:0;font-size:12px}
 .voucher-lines th,.voucher-lines td,.voucher-approvals th,.voucher-approvals td{border-color:#cbd6df}
-.voucher-lines thead th{height:42px;padding:7px 5px;background:#f1f6fa;color:#345d83;font-size:10px;line-height:1.3}
+.voucher-lines thead th{height:42px;padding:7px 5px;background:#f1f6fa;color:#345d83;font-size:12px;line-height:1.3}
 .voucher-lines thead tr:first-child th{border-top:2px solid #263b4d}
 .voucher-lines .line-number{width:34px}
 .voucher-lines tbody tr{height:39px}
@@ -438,18 +437,18 @@ onMounted(refreshSavedVouchers)
 .voucher-lines tfoot th{height:34px;padding:5px;background:#f7f9fb;font-variant-numeric:tabular-nums}
 .voucher-lines tfoot .total-label{color:#253c50}
 .voucher-line-actions{gap:9px;margin:12px 0}
-.voucher-line-actions button{min-height:34px;padding:0 13px;font-size:11px}
+.voucher-line-actions button{min-height:34px;padding:0 13px;font-size:12px}
 .voucher-line-actions .remove-line-action{box-shadow:none}
 .voucher-line-actions .remove-line-action:hover{border-color:#aab8c4;background:#f5f8fa;color:#34495d}
 .voucher-remarks{grid-template-rows:28px minmax(62px,auto);border-color:#536678;border-radius:6px;overflow:hidden}
-.voucher-remarks strong{display:flex;align-items:center;padding:4px 9px;background:#f1f6fa;color:#34495d;font-size:9px;letter-spacing:.05em}
+.voucher-remarks strong{display:flex;align-items:center;padding:4px 9px;background:#f1f6fa;color:#34495d;font-size:12px;letter-spacing:.05em}
 .voucher-remarks textarea{min-height:62px;padding:8px;border-color:#d7e0e7;color:#172a3a}
-.voucher-approvals{margin-top:10px;font-size:9px}
+.voucher-approvals{margin-top:10px;font-size:12px}
 .voucher-approvals th,.voucher-approvals td{height:32px;padding:5px 7px}
 .voucher-approvals thead th{background:#f1f6fa;color:#345d83}
 .voucher-approvals .approval-label-spacer,.voucher-approvals tbody th{color:#34495d}
 .voucher-approvals input{min-height:27px;padding:4px;color:#172a3a}
-.voucher-approvals tbody tr:last-child input{height:28px;padding:4px 6px;border:1px solid #d3dee7;border-radius:6px;background:#f8fafc;color:#30485d;font-size:9px;letter-spacing:.015em}
+.voucher-approvals tbody tr:last-child input{height:28px;padding:4px 6px;border:1px solid #d3dee7;border-radius:6px;background:#f8fafc;color:#30485d;font-size:12px;letter-spacing:.015em}
 .voucher-approvals tbody tr:last-child input::placeholder{color:#8494a3;opacity:1}
 .voucher-approvals tbody tr:last-child input:hover{border-color:#9aabb8;background:#fff}
 .voucher-approvals tbody tr:last-child input:focus-visible{outline:2px solid #168273;outline-offset:1px;border-color:#168273;background:#fff}
@@ -480,15 +479,15 @@ onMounted(refreshSavedVouchers)
   .voucher-brand{grid-row:2}
   .voucher-brand img{max-height:48px}
   .voucher-reference-fields{grid-row:2}
-  .voucher-reference-fields label{grid-template-columns:1fr;gap:1px;font-size:9px}
+  .voucher-reference-fields label{grid-template-columns:1fr;gap:1px;font-size:12px}
   .voucher-reference-fields input{height:22px}
   .voucher-parties{grid-template-columns:1fr}
   .voucher-person-fields{grid-column:auto;grid-template-rows:repeat(3,minmax(36px,1fr)) 38px}
   .voucher-person-fields>label{grid-template-columns:70px minmax(0,1fr)}
   .voucher-person-fields .voucher-signature-field{grid-template-columns:70px minmax(20px,1fr) 32px 86px}
   .voucher-choice-group{grid-template-columns:38px minmax(0,1fr);min-height:0;border-right:0;border-bottom:1px solid #d7e0e7}
-  .voucher-choice-group label{font-size:10px}
-  .voucher-choice-group legend{font-size:9px}
+  .voucher-choice-group label{font-size:12px}
+  .voucher-choice-group legend{font-size:12px}
   .voucher-payment-group{border-bottom:0}
   .voucher-lines{min-width:900px}
   .voucher-approvals{min-width:620px}
@@ -498,36 +497,36 @@ onMounted(refreshSavedVouchers)
   .finance-page-toolbar p{max-width:34ch;line-height:1.5}
   .finance-paper{padding:16px 12px;border:1px solid #d5e0e8;border-radius:14px}
   .voucher-table-wrap{margin:10px -2px 0;border-radius:9px}
-  .voucher-lines thead th{height:46px;padding:8px 6px;font-size:11px}
+  .voucher-lines thead th{height:46px;padding:8px 6px;font-size:12px}
   .voucher-lines tbody tr{height:44px}
   .voucher-lines input,.voucher-lines textarea{min-height:38px;padding:6px}
-  .voucher-lines .line-number{font-size:11px}
+  .voucher-lines .line-number{font-size:12px}
   .voucher-approvals-wrap{padding-bottom:5px}
-  .voucher-approvals{font-size:10px}
+  .voucher-approvals{font-size:12px}
   .voucher-approvals th,.voucher-approvals td{height:38px;padding:6px 7px}
-  .voucher-approvals tbody tr:last-child input{height:32px;font-size:10px}
+  .voucher-approvals tbody tr:last-child input{height:32px;font-size:12px}
 }
 .finance-page-toolbar h1{font-size:clamp(30px,3.2vw,38px);letter-spacing:-.04em}
 .finance-page-toolbar p{font-size:14px;line-height:1.5}
 .finance-paper{font-size:12px}
 .voucher-header h2{font-size:clamp(22px,2.5vw,28px)}
-.voucher-reference-fields label{font-size:11px}
+.voucher-reference-fields label{font-size:12px}
 .voucher-reference-fields input{height:29px;font-size:12px}
-.voucher-person-fields label>strong{font-size:10px}
+.voucher-person-fields label>strong{font-size:12px}
 .voucher-person-fields input,.voucher-person-fields textarea{font-size:12px}
-.voucher-choice-group label{font-size:11px}
-.voucher-choice-group legend{font-size:10px}
-.voucher-lines{font-size:11px}
-.voucher-lines thead th{height:48px;padding:8px 6px;font-size:11px}
+.voucher-choice-group label{font-size:12px}
+.voucher-choice-group legend{font-size:12px}
+.voucher-lines{font-size:12px}
+.voucher-lines thead th{height:48px;padding:8px 6px;font-size:12px}
 .voucher-lines tbody tr{height:44px}
-.voucher-lines input,.voucher-lines textarea{min-height:38px;padding:6px;font-size:11px}
-.voucher-lines .line-number{font-size:11px}
-.voucher-lines tfoot th{height:38px;font-size:11px}
+.voucher-lines input,.voucher-lines textarea{min-height:38px;padding:6px;font-size:12px}
+.voucher-lines .line-number{font-size:12px}
+.voucher-lines tfoot th{height:38px;font-size:12px}
 .voucher-line-actions button{min-height:38px;font-size:12px}
-.voucher-remarks strong{font-size:10px}
-.voucher-approvals{font-size:10px}
+.voucher-remarks strong{font-size:12px}
+.voucher-approvals{font-size:12px}
 .voucher-approvals th,.voucher-approvals td{height:38px}
-.voucher-approvals tbody tr:last-child input{height:32px;font-size:10px}
+.voucher-approvals tbody tr:last-child input{height:32px;font-size:12px}
 .finance-page{max-width:1440px;padding:24px clamp(12px,2vw,28px) 48px;background:transparent;color:#26364a}
 .finance-page-toolbar{margin-bottom:16px}
 .finance-page-toolbar h1{font-size:28px}
@@ -537,116 +536,116 @@ onMounted(refreshSavedVouchers)
 .voucher-header h2{display:none}
 .voucher-brand img{width:min(100%,290px);max-height:72px}
 .voucher-reference-fields{gap:7px;padding:10px;border:1px solid #e5ecf3;border-radius:9px;background:#f8fafc}
-.voucher-reference-fields::before{content:"DOCUMENT TYPE\A GENERAL VOUCHER";white-space:pre-line;text-align:right;color:#29374a;font-size:11px;font-weight:750;line-height:1.6}
-.voucher-reference-fields label{grid-template-columns:78px minmax(0,1fr);font-size:10px;font-weight:500;color:#6b7c91}
-.voucher-reference-fields input{height:24px;padding:0 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;text-align:right;font-size:10px}
+.voucher-reference-fields::before{content:"DOCUMENT TYPE\A GENERAL VOUCHER";white-space:pre-line;text-align:right;color:#29374a;font-size:12px;font-weight:750;line-height:1.6}
+.voucher-reference-fields label{grid-template-columns:78px minmax(0,1fr);font-size:12px;font-weight:500;color:#6b7c91}
+.voucher-reference-fields input{height:24px;padding:0 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;text-align:right;font-size:12px}
 .voucher-parties{grid-template-columns:minmax(1.25fr,1.5fr) minmax(180px,1fr) minmax(180px,1fr);gap:12px;min-height:0;margin:14px 0;padding:14px;border:1px solid #e7edf3;border-radius:10px;background:#fff}
 .voucher-person-fields{grid-template-rows:repeat(3,minmax(0,auto));gap:9px;padding-right:12px;border:0;border-right:1px solid #edf1f5}
 .voucher-person-fields>label{display:flex;flex-direction:column;gap:4px;border:0}
-.voucher-person-fields label>strong{padding:0;border:0;background:transparent;color:#6d8095;font-size:9px;letter-spacing:.04em}
-.voucher-person-fields input,.voucher-person-fields textarea{min-height:34px;padding:7px 9px;border:1px solid #dbe4ed;border-radius:6px;background:#fff;font-size:11px}
+.voucher-person-fields label>strong{padding:0;border:0;background:transparent;color:#6d8095;font-size:12px;letter-spacing:.04em}
+.voucher-person-fields input,.voucher-person-fields textarea{min-height:34px;padding:7px 9px;border:1px solid #dbe4ed;border-radius:6px;background:#fff;font-size:12px}
 .voucher-person-fields .voucher-signature-field{display:none}
 .voucher-choice-group{display:flex;flex-direction:column;gap:6px;min-width:0;padding:0 12px;border:0;border-right:1px solid #edf1f5}
-.voucher-choice-group legend{float:none;grid-row:auto;align-self:auto;padding:0 0 2px;writing-mode:horizontal-tb;transform:none;text-align:left;color:#6d8095;font-size:9px;letter-spacing:.06em}
+.voucher-choice-group legend{float:none;grid-row:auto;align-self:auto;padding:0 0 2px;writing-mode:horizontal-tb;transform:none;text-align:left;color:#6d8095;font-size:12px;letter-spacing:.06em}
 .voucher-choice-group legend br,.voucher-choice-group legend small{display:none}
-.voucher-choice-group label{min-height:31px;padding:5px 8px;border:1px solid #e5ebf1;border-radius:7px;background:#fff;font-size:10px}
+.voucher-choice-group label{min-height:31px;padding:5px 8px;border:1px solid #e5ebf1;border-radius:7px;background:#fff;font-size:12px}
 .voucher-choice-group label:has(input:checked){border-color:#74d6b2;background:#effcf6;color:#176c53}
 .voucher-choice-group input[type=radio]{flex:0 0 14px;width:14px;height:14px;border:1px solid #c6d3df;border-radius:50%;background:#fff}
 .voucher-choice-group input[type=radio]::after{content:"";width:6px;height:6px;border-radius:50%;background:#13946b}
 .voucher-payment-group{padding-right:0}
-.voucher-payment-group .cheque-number{display:flex;flex-direction:column;align-items:stretch;gap:4px;margin-top:1px;font-size:9px;color:#708197}
+.voucher-payment-group .cheque-number{display:flex;flex-direction:column;align-items:stretch;gap:4px;margin-top:1px;font-size:12px;color:#708197}
 .cheque-number input{box-sizing:border-box;width:100%;height:30px;padding:5px 8px;border:1px solid #dbe4ed;border-radius:6px}
 .voucher-table-wrap{margin-top:0;border:0;border-radius:8px;box-shadow:none}
-.voucher-lines{min-width:860px;font-size:10px}
-.voucher-lines thead th{height:36px;padding:7px 5px;background:#f4f7fa;color:#5b6d82;font-size:9px;text-transform:uppercase;letter-spacing:.035em}
+.voucher-lines{min-width:860px;font-size:12px}
+.voucher-lines thead th{height:36px;padding:7px 5px;background:#f4f7fa;color:#5b6d82;font-size:12px;text-transform:uppercase;letter-spacing:.035em}
 .voucher-lines thead tr:first-child th{border-top:0}
 .voucher-lines tbody tr{height:40px}
 .voucher-lines tbody td{padding:2px 4px}
-.voucher-lines input,.voucher-lines textarea{min-height:29px;padding:4px 6px;border:1px solid #e1e8ef;border-radius:4px;background:#fff;font-size:9px}
+.voucher-lines input,.voucher-lines textarea{min-height:29px;padding:4px 6px;border:1px solid #e1e8ef;border-radius:4px;background:#fff;font-size:12px}
 .voucher-lines input:focus-visible,.voucher-lines textarea:focus-visible{outline:2px solid #56c89b;outline-offset:0;border-color:#56c89b}
 .voucher-lines .calculated-amount{padding:0 6px;background:#f8fafc;color:#32495e}
-.voucher-lines tfoot th{height:36px;padding:5px;background:#f2f5f8;color:#596c80;font-size:9px}
+.voucher-lines tfoot th{height:36px;padding:5px;background:#f2f5f8;color:#596c80;font-size:12px}
 .voucher-line-actions{justify-content:flex-end;margin:9px 0 12px}
-.voucher-line-actions button{min-height:31px;padding:0 11px;border-radius:6px;font-size:10px}
+.voucher-line-actions button{min-height:31px;padding:0 11px;border-radius:6px;font-size:12px}
 .voucher-line-actions .remove-line-action{border-color:#f0d8dc;background:#fff7f8;color:#b24d5c}
 .voucher-remarks{grid-template-rows:24px minmax(54px,auto);margin-top:12px;border:1px solid #e5ebf1;border-radius:9px}
-.voucher-remarks strong{padding:5px 9px;background:#f8fafc;color:#64768b;font-size:9px}
-.voucher-remarks textarea{min-height:54px;padding:9px;border-top:1px solid #edf1f5;font-size:10px}
+.voucher-remarks strong{padding:5px 9px;background:#f8fafc;color:#64768b;font-size:12px}
+.voucher-remarks textarea{min-height:54px;padding:9px;border-top:1px solid #edf1f5;font-size:12px}
 .voucher-approvals-wrap{margin-top:14px;padding:14px;border:1px solid #e6edf3;border-radius:10px;background:#fff}
 .approval-section-heading{display:grid;gap:3px;margin-bottom:12px}
-.approval-section-heading strong{color:#35495d;font-size:10px;letter-spacing:.04em}
-.approval-section-heading span{color:#91a0b0;font-size:9px}
+.approval-section-heading strong{color:#35495d;font-size:12px;letter-spacing:.04em}
+.approval-section-heading span{color:#91a0b0;font-size:12px}
 .voucher-approval-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .voucher-approval-card{display:grid;gap:7px;min-width:0;padding:9px;border:1px solid #e6edf3;border-radius:8px;background:#fbfcfd}
-.voucher-approval-card>header{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#34465a;font-size:9px}
-.voucher-approval-card>header span{padding:3px 5px;border-radius:4px;background:#eef2f6;color:#738398;font-size:8px}
-.approval-signature{display:grid;min-height:42px;place-items:center;border:1px dashed #d8e2eb;border-radius:5px;background:#fff;color:#a1adbb;font-size:9px;font-style:italic}
-.voucher-approval-card>label{display:grid;gap:3px;color:#8190a1;font-size:8px}
-.voucher-approval-card input{box-sizing:border-box;width:100%;min-width:0;height:29px;padding:5px 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;color:#33485c;font:inherit;font-size:9px}
+.voucher-approval-card>header{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#34465a;font-size:12px}
+.voucher-approval-card>header span{padding:3px 5px;border-radius:4px;background:#eef2f6;color:#738398;font-size:12px}
+.approval-signature{display:grid;min-height:42px;place-items:center;border:1px dashed #d8e2eb;border-radius:5px;background:#fff;color:#a1adbb;font-size:12px;font-style:italic}
+.voucher-approval-card>label{display:grid;gap:3px;color:#8190a1;font-size:12px}
+.voucher-approval-card input{box-sizing:border-box;width:100%;min-width:0;height:29px;padding:5px 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;color:#33485c;font:inherit;font-size:12px}
 .voucher-approval-card input:focus-visible{outline:2px solid #56c89b;outline-offset:0;border-color:#56c89b}
 .approval-signature{position:relative;overflow:hidden;min-height:58px;border:1px solid #dce5ed;border-radius:7px;background:#fff;cursor:crosshair;transition:border-color .16s ease,box-shadow .16s ease}
 .approval-signature:hover{border-color:#a7cbbb;box-shadow:0 2px 8px #1c6b5210}
 .approval-signature:focus-within{border-color:#50b98f;box-shadow:0 0 0 3px #50b98f1a}
 .approval-signature::after{position:absolute;right:12px;bottom:14px;left:12px;border-bottom:1px solid #e8edf2;content:"";pointer-events:none}
 .approval-signature canvas{grid-area:1/1;z-index:1;width:100%;height:58px;touch-action:none}
-.approval-signature span{grid-area:1/1;z-index:2;align-self:center;color:#9aa7b5;font-size:9px;font-style:normal;pointer-events:none}
-.signature-clear{justify-self:end;padding:2px 4px;border:0;background:transparent;color:#71839a;font:inherit;font-size:8px;cursor:pointer}
+.approval-signature span{grid-area:1/1;z-index:2;align-self:center;color:#9aa7b5;font-size:12px;font-style:normal;pointer-events:none}
+.signature-clear{justify-self:end;padding:2px 4px;border:0;background:transparent;color:#71839a;font:inherit;font-size:12px;cursor:pointer}
 .signature-clear:hover{color:#b34d5c;text-decoration:underline}
 .voucher-expenses{margin-top:14px;padding:0 0 5px;border:1px solid #e7edf3;border-radius:12px;background:#fff;overflow:hidden}
 .voucher-expenses-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;border-bottom:1px solid #e9eef3;background:#fbfcfd}
 .voucher-expenses-heading>div:first-child{display:grid;gap:3px}
 .voucher-expenses-heading strong{color:#26384c;font-size:13px;font-weight:700}
 .voucher-expenses-heading strong::before{content:"▦";margin-right:7px;color:#149477}
-.voucher-expenses-heading span{color:#8594a6;font-size:10px}
+.voucher-expenses-heading span{color:#8594a6;font-size:12px}
 .voucher-expenses .voucher-line-actions{flex:0 0 auto;margin:0}
-.voucher-expenses .voucher-line-actions button{min-height:30px;padding:0 11px;border:1px solid #b8f0d6;border-radius:7px;background:#f0fdf7;color:#07805d;font-size:10px;box-shadow:none}
+.voucher-expenses .voucher-line-actions button{min-height:30px;padding:0 11px;border:1px solid #b8f0d6;border-radius:7px;background:#f0fdf7;color:#07805d;font-size:12px;box-shadow:none}
 .voucher-expenses .voucher-line-actions button:hover{background:#e1faef}
 .voucher-expenses .voucher-line-actions .remove-line-action{border-color:#ffd8dc;background:#fff5f6;color:#dc4b5c}
 .voucher-expenses .voucher-line-actions .remove-line-action:hover{background:#ffeaec}
 .voucher-table-wrap{padding:0 0 2px}
-.voucher-lines{width:100%;min-width:1000px;table-layout:fixed;border-collapse:collapse;font-size:10px}
+.voucher-lines{width:100%;min-width:1000px;table-layout:fixed;border-collapse:collapse;font-size:12px}
 .voucher-lines col.col-no{width:5%}.voucher-lines col.col-description{width:26%}.voucher-lines col.col-funding{width:10%}.voucher-lines col.col-budget{width:9%}.voucher-lines col.col-amount{width:11%}.voucher-lines col.col-liquidated{width:12%}.voucher-lines col.col-balance{width:10%}.voucher-lines col.col-coa{width:7%}.voucher-lines col.col-debit{width:5%}.voucher-lines col.col-credit{width:5%}
-.voucher-lines thead th{height:36px;padding:8px 5px;border-top:0;border-bottom:1px solid #e5ebf1;background:#f6f8fa;color:#53657a;font-size:9px;letter-spacing:.04em}
+.voucher-lines thead th{height:36px;padding:8px 5px;border-top:0;border-bottom:1px solid #e5ebf1;background:#f6f8fa;color:#53657a;font-size:12px;letter-spacing:.04em}
 .voucher-lines thead th:first-child{border-left:0}.voucher-lines thead th:last-child{border-right:0}
 .voucher-lines tbody td{height:43px;padding:5px 7px;border-color:#e7edf2}
 .voucher-lines tbody td:first-child,.voucher-lines tfoot th:first-child{border-left:0}
 .voucher-lines tbody td:last-child,.voucher-lines tfoot th:last-child{border-right:0}
 .voucher-lines tbody tr:nth-child(even){background:#fff}
 .voucher-lines tbody tr:nth-child(odd){background:#fbfcfd}
-.voucher-lines tbody td.line-number{color:#5b7087;font-size:10px}
-.voucher-lines input,.voucher-lines textarea{min-height:28px;padding:5px 7px;border:1px solid #e1e8ef;border-radius:4px;background:#fff;color:#35495e;font-size:9px}
+.voucher-lines tbody td.line-number{color:#5b7087;font-size:12px}
+.voucher-lines input,.voucher-lines textarea{min-height:28px;padding:5px 7px;border:1px solid #e1e8ef;border-radius:4px;background:#fff;color:#35495e;font-size:12px}
 .voucher-lines input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
-.voucher-lines .calculated-amount{background:#f8fafc;color:#33485d;font-size:9px;font-variant-numeric:tabular-nums}
+.voucher-lines .calculated-amount{background:#f8fafc;color:#33485d;font-size:12px;font-variant-numeric:tabular-nums}
 .voucher-lines tbody td:nth-child(8){border-left:1px solid #e7edf2}
-.voucher-lines tfoot th{height:36px;padding:7px;border-top:2px solid #dce5ed;background:#f2f5f8;color:#586b80;font-size:9px}
+.voucher-lines tfoot th{height:36px;padding:7px;border-top:2px solid #dce5ed;background:#f2f5f8;color:#586b80;font-size:12px}
 .voucher-lines tfoot .total-label{text-align:right;font-weight:500;letter-spacing:.025em}
 .voucher-lines tfoot th:nth-child(5){background:#eaf8f2;color:#13734f}
 .voucher-lines tfoot th:nth-child(6){background:#f4f6f9;color:#314459}
 .voucher-lines tfoot th:nth-child(7){background:#eaf8f2;color:#13734f}
-.voucher-lines tfoot th:nth-child(8){color:#8997a8;font-size:8px;font-weight:500}
+.voucher-lines tfoot th:nth-child(8){color:#8997a8;font-size:12px;font-weight:500}
 .voucher-parties{grid-template-columns:minmax(1.3fr,1.55fr) minmax(190px,1fr) minmax(190px,1fr);gap:0;padding:16px 14px;border:0;border-radius:0;box-shadow:none}
 .voucher-person-fields{display:grid;align-content:start;gap:8px;padding:0 20px 0 0;border-right:1px solid #edf1f5}
-.voucher-person-fields::before{content:"♙  REQUESTOR / BENEFICIARY INFORMATION";grid-column:1/-1;margin:0 0 2px;color:#8395aa;font-size:9px;font-weight:700;letter-spacing:.045em}
+.voucher-person-fields::before{content:"♙  REQUESTOR / BENEFICIARY INFORMATION";grid-column:1/-1;margin:0 0 2px;color:#8395aa;font-size:12px;font-weight:700;letter-spacing:.045em}
 .voucher-person-fields>label{gap:4px}
-.voucher-person-fields label>strong{color:#40566f;font-size:9px;font-weight:500;letter-spacing:0}
-.voucher-person-fields input,.voucher-person-fields textarea{min-height:29px;padding:5px 9px;border-color:#dce5ed;border-radius:6px;background:#fff;color:#344a61;font-size:10px}
+.voucher-person-fields label>strong{color:#40566f;font-size:12px;font-weight:500;letter-spacing:0}
+.voucher-person-fields input,.voucher-person-fields textarea{min-height:29px;padding:5px 9px;border-color:#dce5ed;border-radius:6px;background:#fff;color:#344a61;font-size:12px}
 .voucher-person-fields input::placeholder,.voucher-person-fields textarea::placeholder,.cheque-number input::placeholder{color:#9aa8b7;opacity:1}
 .voucher-choice-group{align-content:start;gap:6px;padding:0 20px;border-right:1px solid #edf1f5}
-.voucher-choice-group legend{padding-bottom:2px;color:#8294aa;font-size:9px;font-weight:700;letter-spacing:.045em}
+.voucher-choice-group legend{padding-bottom:2px;color:#8294aa;font-size:12px;font-weight:700;letter-spacing:.045em}
 .voucher-choice-group legend::before{margin-right:6px;color:#159476}
 .voucher-type-group legend::before{content:"☷"}
 .voucher-payment-group legend::before{content:"▤"}
-.voucher-choice-group label{min-height:28px;padding:4px 8px;border-radius:7px;color:#394e65;font-size:9px}
+.voucher-choice-group label{min-height:28px;padding:4px 8px;border-radius:7px;color:#394e65;font-size:12px}
 .voucher-choice-group input[type=radio]{flex-basis:13px;width:13px;height:13px}
 .voucher-choice-group input[type=radio]{box-sizing:border-box;flex:0 0 12px;width:12px;height:12px;min-width:12px;padding:0;border-width:1px;border-radius:50%}
 .voucher-choice-group input[type=radio]::after{width:4px;height:4px}
 .voucher-choice-group input[type=radio]::after{width:5px;height:5px}
 .voucher-payment-group{padding-right:0;border-right:0}
-.voucher-payment-group .cheque-number{gap:4px;margin-top:2px;color:#7b8da2;font-size:9px}
-.cheque-number input{height:28px;padding:5px 8px;border-color:#dce5ed;border-radius:5px;background:#fff;color:#344a61;font-size:10px}
+.voucher-payment-group .cheque-number{gap:4px;margin-top:2px;color:#7b8da2;font-size:12px}
+.cheque-number input{height:28px;padding:5px 8px;border-color:#dce5ed;border-radius:5px;background:#fff;color:#344a61;font-size:12px}
 .finance-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:7px;min-width:0}
 .finance-toolbar-actions select,.finance-toolbar-actions button{box-sizing:border-box;align-self:center;height:44px;min-height:44px;margin:0;line-height:1}
-.finance-toolbar-actions select,.finance-new-button,.finance-save-button{flex:0 0 auto;padding:0 10px;border:1px solid #d7e2eb;border-radius:7px;background:#fff;color:#40566d;font:inherit;font-size:11px}
+.finance-toolbar-actions select,.finance-new-button,.finance-save-button{flex:0 0 auto;padding:0 10px;border:1px solid #d7e2eb;border-radius:7px;background:#fff;color:#40566d;font:inherit;font-size:12px}
 .finance-toolbar-actions select{flex:1 1 180px;width:180px;min-width:90px;max-width:230px}
 .finance-new-button{cursor:pointer}
 .finance-save-button{border-color:#147568;background:#147568;color:#fff;font-weight:700;cursor:pointer}
@@ -665,8 +664,8 @@ onMounted(refreshSavedVouchers)
 @media(max-width:680px){
   .finance-page-toolbar h1{font-size:27px}
   .voucher-header h2{font-size:20px}
-  .voucher-reference-fields label{font-size:10px}
-  .voucher-person-fields input,.voucher-person-fields textarea{font-size:11px}
+  .voucher-reference-fields label{font-size:12px}
+  .voucher-person-fields input,.voucher-person-fields textarea{font-size:12px}
   .finance-page{padding:12px 8px 28px}
   .finance-paper{padding:11px;border-radius:10px}
   .voucher-header{grid-template-columns:1fr;gap:10px}

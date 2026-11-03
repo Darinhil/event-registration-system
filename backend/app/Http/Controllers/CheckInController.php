@@ -16,9 +16,8 @@ class CheckInController extends Controller
     public function __construct(private CheckInService $checkIns) {}
     public function lookup(Request $request): RegistrationResource
     {
-        $data = $request->validate(['credential' => ['nullable', 'string', 'max:2048'], 'qr_token' => ['nullable', 'uuid']]);
-        $data['credential'] = ($data['credential'] ?? null) ?: ($data['qr_token'] ?? null);
-        $registration = $this->checkIns->findRegistration($data['credential'], $request->user());
+        $data = $request->validate(['credential' => ['required_without:qr_token', 'nullable', 'string', 'max:2048'], 'qr_token' => ['nullable', 'uuid']]);
+        $registration = $this->checkIns->findRegistration($data['credential'] ?? $data['qr_token'], $request->user());
         $registration->append_form_values();
         return new RegistrationResource($registration);
     }

@@ -11,7 +11,7 @@ import adminLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
 const router = useRouter(); const route = useRoute(); const auth = useAuthStore()
 const isAdmin = computed(() => auth.isAdmin); const roleLabel = computed(() => auth.roleLabel)
-const hasEventWorkspace = computed(() => auth.isAdmin || auth.isEventAdmin)
+const hasEventWorkspace = computed(() => auth.canManageEvents)
 const mobileMenuOpen = ref(false)
 const PORTAL_KEY = 'admin-nav-portal-open'
 const readPortalPref = () => { try { return localStorage.getItem(PORTAL_KEY) !== '0' } catch { return true } }
@@ -45,12 +45,13 @@ const workspaceItems = [
 const workspaceOpen = reactive(Object.fromEntries(workspaceItems.filter((item) => item.children).map((item) => [item.id, false])))
 const isChildActive = (item) => !!item.children?.some((child) => isSectionActive(child.id))
 const eventItems = [
+  { to: '/admin/events/new', label: 'Create event', icon: 'plus' },
   { to: '/admin/users', label: 'Attendance', icon: 'user-check' },
   { to: '/admin/check-ins', label: 'Check-in', icon: 'scan' },
-  { to: '/admin/reports', label: 'Reports', icon: 'chart-column' },
+  { to: '/admin/reports', label: 'Event report', icon: 'chart-column' },
 ]
 const underPath = (path, base) => path === base || path.startsWith(`${base}/`)
-const isEventsActive = computed(() => underPath(route.path, '/admin/events'))
+const isEventsActive = computed(() => underPath(route.path, '/admin/events') && !underPath(route.path, '/admin/events/new'))
 const isEventSection = computed(() => isEventsActive.value || eventItems.some((item) => underPath(route.path, item.to)))
 const isSectionActive = (id) => isPersonnelSection.value && route.query.section === id
 const isWorkspaceActive = computed(() => workspaceItems.some((item) => isSectionActive(item.id) || isChildActive(item)))
@@ -79,11 +80,12 @@ const logout = async () => { await auth.logout(); router.push('/login') }
 
 <template>
   <div class="admin-app-shell" :class="{ 'mobile-menu-open': mobileMenuOpen }"><a class="skip-link" href="#main-content">Skip to content</a><button type="button" class="admin-mobile-menu-toggle" :aria-expanded="mobileMenuOpen" aria-controls="admin-sidebar" aria-label="Toggle navigation" @click="mobileMenuOpen = !mobileMenuOpen"><span></span><span></span><span></span></button><button v-if="mobileMenuOpen" type="button" class="admin-mobile-menu-backdrop" aria-label="Close navigation" @click="mobileMenuOpen = false"></button><aside id="admin-sidebar" class="admin-sidebar">
-    <div class="sb-brand-block"><RouterLink to="/admin" class="admin-brand sb-brand" aria-label="Live &amp; Learn Cambodia — go to Dashboard"><img class="admin-brand-logo sb-brand-logo" :src="adminLogo" alt="" decoding="async" /></RouterLink><p class="sb-brand-caption"><span class="sb-brand-name">{{ settings.loaded ? settings.site_name : '' }}</span><span class="sb-brand-tag">Admin</span></p></div>
+    <div class="sb-brand-block"><RouterLink to="/admin" class="admin-brand sb-brand" aria-label="Live &amp; Learn Cambodia — go to Dashboard"><img class="admin-brand-logo sb-brand-logo" :src="adminLogo" alt="" decoding="async" /></RouterLink><p class="sb-brand-caption"><span class="sb-brand-name">{{ settings.loaded ? settings.site_name : '' }}</span><span v-if="hasEventWorkspace" class="sb-brand-tag">Admin</span></p></div>
     <nav class="sb-nav" aria-label="Admin navigation">
       <section class="sb-section" aria-labelledby="sb-label-workspace">
         <h2 id="sb-label-workspace" class="sb-label">Workspace</h2>
         <ul class="sb-list">
+          <li><RouterLink to="/admin" class="sb-link" exact-active-class="is-active"><AppIcon class="sb-icon" name="layout-grid" :size="18" /><span class="sb-text">{{ hasEventWorkspace ? 'Event dashboard' : 'Dashboard' }}</span></RouterLink></li>
           <li v-if="hasEventWorkspace" class="sb-group" :class="{ 'is-open': eventMenuOpen, 'has-active': isEventSection }">
             <div class="sb-row">
               <RouterLink to="/admin/events" class="sb-link" :class="{ 'is-active': isEventsActive, 'is-parent-active': isEventSection && !isEventsActive }" :aria-current="isEventsActive ? 'page' : undefined"><AppIcon class="sb-icon" name="calendar" :size="18" /><span class="sb-text">{{ isAdmin ? 'All Events' : 'My Events' }}</span></RouterLink>
@@ -93,7 +95,6 @@ const logout = async () => { await auth.logout(); router.push('/login') }
               <li v-for="item in eventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
             </ul>
           </li>
-          <li><RouterLink to="/admin" class="sb-link" exact-active-class="is-active"><AppIcon class="sb-icon" name="layout-grid" :size="18" /><span class="sb-text">Dashboard</span></RouterLink></li>
         </ul>
       </section>
 

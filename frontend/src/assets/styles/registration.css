@@ -30,22 +30,21 @@
 .fr-field-help { color: var(--fr-muted); font-size: 13px; line-height: 1.45; }
 .fr-multi-hint { margin: 0; color: var(--fr-muted); font-size: 12.5px; }
 
-.fr-field > input, .fr-field > textarea, .fr-field .fr-select-wrap select, .fr-field .fr-file input {
+.fr-field > input, .fr-field > textarea, .fr-field .fr-file input {
   width: 100%; min-height: 46px; margin: 0; padding: 10px 13px;
   border: 1px solid var(--fr-border); border-radius: var(--fr-radius); background: #fff;
   color: var(--fr-ink); font: inherit; font-size: 16px; /* 16px stops iOS zooming into fields */
   box-shadow: none; outline: 0; transition: border-color .15s ease, box-shadow .15s ease;
 }
 .fr-field > textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
-.fr-field .fr-select-wrap select { appearance: none; -webkit-appearance: none; padding-right: 38px; }
 .fr-field .fr-file input { padding: 9px 10px; font-size: 14px; }
 .fr-field > input::placeholder, .fr-field > textarea::placeholder { color: #94a3b8; }
-.fr-field > input:hover, .fr-field > textarea:hover, .fr-field .fr-select-wrap select:hover { border-color: #aebdca; }
-.fr-field > input:focus, .fr-field > textarea:focus, .fr-field .fr-select-wrap select:focus, .fr-field .fr-file input:focus-visible {
+.fr-field > input:hover, .fr-field > textarea:hover { border-color: #aebdca; }
+.fr-field > input:focus, .fr-field > textarea:focus, .fr-field .fr-file input:focus-visible {
   border-color: var(--fr-primary); box-shadow: 0 0 0 3px rgba(11, 127, 98, .18);
 }
-.fr-field--invalid > input, .fr-field--invalid > textarea, .fr-field--invalid .fr-select-wrap select, .fr-field--invalid .fr-file input { border-color: var(--fr-danger); background: #fffbfa; }
-.fr-field--invalid > input:focus, .fr-field--invalid > textarea:focus, .fr-field--invalid .fr-select-wrap select:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, .16); }
+.fr-field--invalid > input, .fr-field--invalid > textarea, .fr-field--invalid .fr-file input { border-color: var(--fr-danger); background: #fffbfa; }
+.fr-field--invalid > input:focus, .fr-field--invalid > textarea:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, .16); }
 
 /* Option groups */
 .fr-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -159,8 +158,15 @@
   .rg-event__banner { height: auto; aspect-ratio: 3 / 1; }
   .rg-event__body { gap: 10px; padding: 16px; }
   .rg-form { padding: 22px 16px 24px; border-radius: 14px; }
-  .fr-w25, .fr-w33, .fr-w50 { width: 100%; }
   .fr-choices--grid { grid-template-columns: minmax(0, 1fr); }
   .fr-nav { flex-direction: column-reverse; align-items: stretch; }
   .fr-form .fr-back { width: 100%; }
 }
+
+.fr-field .fr-select-wrap select { width: 100%; min-height: 46px; margin: 0; padding: 10px 13px; border: 1px solid var(--fr-border); border-radius: var(--fr-radius); background: #fff; color: var(--fr-ink); font: inherit; font-size: 16px; /* 16px stops iOS zooming into fields */; box-shadow: none; outline: 0; transition: border-color .15s ease, box-shadow .15s ease }
+.fr-field .fr-select-wrap select { appearance: none; -webkit-appearance: none; padding-right: 38px }
+.fr-field .fr-select-wrap select:hover { border-color: #aebdca }
+.fr-field .fr-select-wrap select:focus { border-color: var(--fr-primary); box-shadow: 0 0 0 3px rgba(11, 127, 98, .18) }
+.fr-field--invalid .fr-select-wrap select { border-color: var(--fr-danger); background: #fffbfa }
+.fr-field--invalid .fr-select-wrap select:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, .16) }
+@media (max-width: 600px) { .fr-w25, .fr-w33, .fr-w50 { width: 100% } }

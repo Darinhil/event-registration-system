@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 
 class Event extends Model
 {
@@ -26,6 +28,39 @@ class Event extends Model
         return $user->role === 'admin' ? $query : $query->where('created_by', $user->id);
     }
     public function formFields(): HasMany { return $this->hasMany(FormField::class)->orderBy('sort_order'); }
+
+    /** Registration dates are calendar days at the organisation, whatever time zone the server runs in. */
+    public function registrationOpensAt(): ?Carbon
+    {
+        $start = $this->form_config['settings']['registration_start'] ?? null;
+
+        return $start ? Carbon::parse($start, config('app.business_timezone')) : null;
+    }
+
+    public function registrationClosesAt(): ?Carbon
+    {
+        $end = $this->form_config['settings']['registration_end'] ?? null;
+
+        return $end ? Carbon::parse($end, config('app.business_timezone'))->endOfDay() : null;
+    }
+
+    /** The form builder can set a limit below the event's capacity. */
+    public function registrationLimit(): int
+    {
+        return (int) ($this->form_config['settings']['max_participants'] ?? $this->capacity);
+    }
+
+    /** A link for lists, so they don't carry every embedded image; signed because an <img> can't send a token. */
+    public function withBannerLink(): self
+    {
+        $branding = $this->branding;
+        if (str_starts_with((string) ($branding['image'] ?? ''), 'data:')) {
+            $branding['image'] = URL::signedRoute('events.banner', ['event' => $this->id, 'v' => $this->updated_at?->timestamp]);
+            $this->branding = $branding;
+        }
+
+        return $this;
+    }
 
     public function checkInQrToken(): string
     {

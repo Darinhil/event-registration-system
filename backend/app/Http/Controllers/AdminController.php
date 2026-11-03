@@ -168,7 +168,6 @@ class AdminController extends Controller
     public function users(\Illuminate\Http\Request $request)
     {
         $search = trim((string) $request->query('search'));
-        $status = (string) $request->query('status');
         $checkIn = (string) $request->query('check_in');
         $eventId = (int) $request->query('event_id');
 
@@ -178,25 +177,29 @@ class AdminController extends Controller
 
         $visibleEventIds = Event::visibleTo($request->user())->pluck('id');
         if ($eventId > 0 && ! $visibleEventIds->contains($eventId)) abort(403);
+        // Every condition looks only at registrations for the events in scope.
+        $inScope = fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds);
+        // Only contact details: organisers must not receive the person's HR record with their attendance.
         $page = User::query()
-            ->where('role', '!=', 'admin')
-            ->whereHas('registrations', fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds))
-            ->withCount(['registrations' => fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds)])
-            ->with(['registrations' => fn ($q) => $q->whereIn('event_id', $eventId > 0 ? [$eventId] : $visibleEventIds), 'registrations.checkIn'])
+            ->select(['id', 'name', 'email', 'phone', 'created_at'])
+            ->whereHas('registrations', $inScope)
+            ->withCount(['registrations' => $inScope])
+            ->with(['registrations' => $inScope, 'registrations.checkIn', 'registrations.event:id,form_config'])
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
                 ->orWhere('phone', 'like', "%{$search}%")))
-            ->when(in_array($status, ['registered', 'pending'], true), fn ($query) => $query->whereHas('registrations', fn ($q) => $q->where('status', $status)))
-            ->when($checkIn === 'in', fn ($query) => $query->whereHas('registrations.checkIn'))
-            ->when($checkIn === 'out', fn ($query) => $query->whereHas('registrations', fn ($q) => $q->whereDoesntHave('checkIn')))
+            ->when($checkIn === 'in', fn ($query) => $query->whereHas('registrations', fn ($q) => $inScope($q)->whereHas('checkIn')))
+            ->when($checkIn === 'out', fn ($query) => $query->whereHas('registrations', fn ($q) => $inScope($q)->whereDoesntHave('checkIn')))
             ->latest()
             ->paginate(min(max((int) $request->query('per_page', 25), 1), 100));
-        $page->getCollection()->each(fn (User $user) => $user->registrations->each(fn (Registration $registration) => $registration->append_form_values($formFields)));
+        $page->getCollection()->each(fn (User $user) => $user->registrations->each(function (Registration $registration) use ($formFields): void {
+            $registration->append_form_values($formFields);
+            $registration->makeHidden('event');
+        }));
 
         return $page->appends(array_filter([
             'search' => $search,
-            'status' => $status,
             'check_in' => $checkIn,
             'event_id' => $eventId > 0 ? $eventId : null,
         ]));
@@ -267,6 +270,8 @@ class AdminController extends Controller
         // Only Master Admins reach this route, so blocking self-demotion also guarantees one always remains.
         abort_if(isset($data['role']) && $data['role'] !== $user->role && $request->user()->is($user), 422, 'You cannot change your own role.');
         $user->update($data);
+        // A reset password must lock out whoever had the old one.
+        if (isset($data['password']) && ! $request->user()->is($user)) $user->tokens()->delete();
         return response()->json(['data' => $user->fresh()]);
     }
 
@@ -274,6 +279,7 @@ class AdminController extends Controller
     {
         abort_unless($user->isStaff(), 404);
         abort_if($request->user()->is($user), 422, 'You cannot delete your own account.');
+        $user->tokens()->delete();
         $user->delete();
         return response()->json(['message' => 'Admin account deleted.']);
     }
