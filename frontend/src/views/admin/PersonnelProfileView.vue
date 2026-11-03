@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import PersonnelDashboard from '../../components/personnel/PersonnelDashboard.vue'
 import PersonnelProfileForm from '../../components/personnel/PersonnelProfileForm.vue'
 import ComplianceCenter from '../../components/personnel/ComplianceCenter.vue'
 import FinanceManagement from '../../components/FinanceManagement.vue'
@@ -33,7 +34,8 @@ const sections = {
   'finance-management': FinanceManagement,
   'my-requests': MyRequests,
 }
-const page = computed(() => sections[route.query.section] || PersonnelProfileForm)
+// No section is the dashboard; an unknown one still falls back to the profile form.
+const page = computed(() => (route.query.section ? sections[route.query.section] || PersonnelProfileForm : PersonnelDashboard))
 </script>
 
 <template>
