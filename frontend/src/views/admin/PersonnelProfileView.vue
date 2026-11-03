@@ -51,7 +51,7 @@ const page = computed(() => {
 
 <template>
   <AdminLayout>
-    <div class="profile-workspace" :class="{ 'is-profile-form': page === PersonnelProfileForm }">
+    <div class="profile-workspace" :class="{ 'is-profile-form': page === PersonnelProfileForm, 'is-wide': page === TimeManagement || page === OtherRequests }">
       <component :is="page" />
     </div>
   </AdminLayout>
@@ -60,5 +60,6 @@ const page = computed(() => {
 <style scoped>
 .profile-workspace { width: min(100%, 1180px); margin: 0 auto; padding: 12px 0 42px; color: #172b4d; }
 .profile-workspace.is-profile-form { padding: 0; }
+.profile-workspace.is-wide { width: 100%; max-width: none; padding: 12px 24px 42px; }
 @media (max-width: 700px) { .profile-workspace:not(.is-profile-form) { width: 100%; padding: 14px 16px 16px; } }
 </style>

@@ -141,7 +141,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
 </template>
 
 <style scoped>
-.tm { display:grid; width:min(100%,940px); gap:12px; margin:0 auto; color:#15314a; }
+.tm { display:grid; width:100%; max-width:none; gap:12px; margin:0; color:#15314a; }
 .tm-heading h1 { margin:0; color:#0d3155; font-size:25px; line-height:1.2; }
 .tm-heading p,.tm-panel-heading p { margin:3px 0 0; color:#72849b; font-size:12px; }
 .tm-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }

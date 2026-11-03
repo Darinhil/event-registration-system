@@ -73,7 +73,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.or { display:grid; width:min(100%,940px); gap:12px; margin:0 auto; color:#15314a; }
+.or { display:grid; width:100%; max-width:none; gap:12px; margin:0; color:#15314a; }
 .or-head h1 { margin:0; color:#0d3155; font-size:30px; line-height:1.2; }.or-head p,.or-panel-head p { margin:4px 0 0; color:#72849b; font-size:13px; }
 .or-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .or-metric,.or-panel { min-width:0; border:1px solid #d9e3ef; border-radius:9px; background:#fff; box-shadow:0 3px 10px #1d41620c; }
