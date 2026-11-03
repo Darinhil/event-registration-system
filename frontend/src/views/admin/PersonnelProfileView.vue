@@ -18,6 +18,8 @@ import TravelApplication from '../../components/personnel/TravelApplication.vue'
 import FuelLogSheet from '../../components/personnel/FuelLogSheet.vue'
 import PurchaseRequest from '../../components/personnel/PurchaseRequest.vue'
 import MyRequests from '../../components/personnel/MyRequests.vue'
+import TimeManagement from '../../components/personnel/TimeManagement.vue'
+import OtherRequests from '../../components/personnel/OtherRequests.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -27,11 +29,11 @@ const sections = {
   compliances: ComplianceCenter,
   'contract-history': ContractHistory,
   training: TrainingCenter,
-  'time-management': LeaveApplication,
+  'time-management': TimeManagement,
   'leave-application': LeaveApplication,
   'overtime-request': OvertimeRequest,
   'monthly-timesheet': MonthlyTimesheet,
-  'other-requests': TravelApplication,
+  'other-requests': OtherRequests,
   'travel-application': TravelApplication,
   'fuel-log-sheet': FuelLogSheet,
   'purchase-request': PurchaseRequest,
