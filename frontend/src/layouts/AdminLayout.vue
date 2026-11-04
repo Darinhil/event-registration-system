@@ -46,7 +46,7 @@ const workspaceOpen = reactive(Object.fromEntries(workspaceItems.filter((item) =
 const isChildActive = (item) => !!item.children?.some((child) => isSectionActive(child.id))
 const eventItems = [
   { to: '/admin/events/new', label: 'Create event', icon: 'plus' },
-  { to: '/admin/users', label: 'Attendance', icon: 'user-check' },
+  { to: '/admin/users', label: 'Event Detail', icon: 'user-check' },
   { to: '/admin/check-ins', label: 'Check-in', icon: 'scan' },
   { to: '/admin/reports', label: 'Event report', icon: 'chart-column' },
 ]
