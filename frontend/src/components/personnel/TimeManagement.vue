@@ -184,5 +184,34 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
 .tm-form-footer > span { font-size:10px; }.tm-submit,.tm-secondary { min-height:34px; font-size:11px; }.tm-filters button { min-height:28px; font-size:10px; }
 table { font-size:11px; }th { font-size:9px; }.tm-status { font-size:9px; }
 .tm button:focus-visible,.tm a:focus-visible { outline:3px solid #8ab4f8; outline-offset:2px; }
+/* Larger text for comfortable reading across the dashboard and embedded forms. */
+.tm { gap:16px; }
+.tm-heading h1 { font-size:32px; }
+.tm-heading p,.tm-panel-heading p { font-size:15px; }
+.tm-metric { min-height:126px; padding:16px 18px; gap:8px; }
+.tm-metric small { font-size:15px; }
+.tm-metric strong { font-size:31px; }
+.tm-metric strong span { font-size:14px; }
+.tm-metric p { font-size:12px; }
+.tm-panel { padding:16px 18px; }
+.tm-panel-heading h2 { font-size:20px; }
+.tm-text-link,.tm-full-link { font-size:14px; }
+.tm-shortcuts { gap:14px; }
+.tm-shortcut { padding:14px; gap:8px; }
+.tm-shortcut strong { font-size:16px; }
+.tm-shortcut > span:not(.tm-shortcut-icon) { min-height:38px; font-size:14px; }
+.tm-shortcut b { padding:10px 12px; font-size:14px; }
+.tm-tabs { gap:24px; }
+.tm-tabs button { padding:12px 5px; font-size:14px; }
+.tm-field label,.tm-assignee :deep(.lv-label) { font-size:14px; }
+.tm-field input,.tm-field select,.tm-field textarea,.tm-assignee :deep(select) { min-height:43px; padding:9px 11px; font-size:15px; }
+.tm-field textarea { min-height:70px; }
+.tm-form-footer > span { font-size:12px; }
+.tm-submit,.tm-secondary { min-height:42px; padding:9px 14px; font-size:14px; }
+.tm-filters button { min-height:34px; padding:7px 10px; font-size:12px; }
+.tm-table-wrap table { font-size:13px; }
+.tm-table-wrap th { padding:10px; font-size:11px; }
+.tm-table-wrap td { padding:11px 10px; }
+.tm-status { padding:5px 9px; font-size:11px; }
 @media(max-width:700px) { .tm-metrics,.tm-shortcuts { grid-template-columns:1fr; }.tm-metric { min-height:auto; grid-template-columns:30px 1fr; align-items:center; }.tm-metric small,.tm-metric strong,.tm-metric p { grid-column:2; }.tm-icon { grid-row:1 / span 3; }.tm-panel { padding:11px; }.tm-panel-heading { align-items:flex-start; flex-wrap:wrap; }.tm-tabs { gap:9px; overflow:auto; }.tm-tabs button { flex:none; }.tm-filters { width:100%; }.tm-form-grid { grid-template-columns:1fr 1fr; }.tm-form-grid .tm-field:first-child { grid-column:1 / -1; }.tm-form-footer { align-items:flex-start; flex-direction:column; }.tm-form-footer > div { width:100%; }.tm-submit { flex:1; } }
 </style>

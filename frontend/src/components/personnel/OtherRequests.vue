@@ -90,5 +90,34 @@ onMounted(async () => {
 .or-filters { display:flex; flex-wrap:wrap; gap:5px; }.or-filters button { padding:6px 9px; border:1px solid #dce5ee; border-radius:4px; color:#687f95; background:#fff; font-size:10px; cursor:pointer; }.or-filters button.is-active { color:#08786e; border-color:#a8d9cf; background:#edf9f5; }
 .or-table-wrap { overflow-x:auto; }table { width:100%; border-collapse:collapse; font-size:12px; }th { padding:9px; color:#536d86; background:#f4f7fb; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; }td { padding:10px 9px; border-bottom:1px solid #edf1f5; color:#344f69; }.or-empty { padding:18px; color:#687f95; text-align:center; font-size:12px; }.or-status { padding:4px 8px; border-radius:99px; color:#8b6820; background:#fff5d8; font-size:10px; font-weight:600; }.or-status.is-approved { color:#08785c; background:#e2f5ed; }.or-status.is-rejected { color:#ae3c43; background:#fdebed; }.or-status.is-cancelled { color:#6d7d8e; background:#eef1f4; }
 .or button:focus-visible,.or a:focus-visible { outline:3px solid #8ab4f8; outline-offset:2px; }
+/* Match the larger, easy-to-read type used on Time Management. */
+.or { gap:16px; }
+.or-head h1 { font-size:32px; }
+.or-head p,.or-panel-head p { font-size:15px; }
+.or-metric { min-height:148px; padding:18px 20px; gap:8px; }
+.or-metric small { font-size:15px; }
+.or-metric strong { font-size:31px; }
+.or-metric strong span { font-size:14px; }
+.or-metric p { font-size:12px; }
+.or-panel { padding:18px 20px; }
+.or-panel-head h2,.or-workstation .or-panel-head h2 { font-size:22px; }
+.or-quick-label { font-size:13px; }
+.or-cards { gap:14px; }
+.or-card { padding:16px; gap:9px; }
+.or-card strong { font-size:16px; }
+.or-card > span:not(.or-card-icon) { min-height:44px; font-size:14px; }
+.or-card small { font-size:12px; }
+.or-card b { padding:11px 13px; font-size:14px; }
+.or-workstation .or-panel-head p { font-size:15px; }
+.or-tabs button { font-size:15px; }
+.or-selected-form strong { font-size:16px; }
+.or-selected-form p { font-size:14px; }
+.or-submit { padding:11px 15px; font-size:14px; }
+.or-note { font-size:13px; }
+.or-filters button { padding:7px 10px; font-size:12px; }
+.or-table-wrap table { font-size:13px; }
+.or-table-wrap th { font-size:11px; }
+.or-empty { font-size:13px; }
+.or-status { font-size:11px; }
 @media(max-width:700px) { .or-metrics,.or-cards { grid-template-columns:1fr; }.or-panel-head { align-items:flex-start; flex-wrap:wrap; }.or-workstation .or-panel-head { margin-bottom:20px; }.or-tabs { gap:12px; overflow-x:auto; }.or-tabs button { flex:none; font-size:12px; }.or-filters { width:100%; }.or-selected-form { align-items:flex-start; flex-direction:column; }.or-submit { width:100%; box-sizing:border-box; text-align:center; } }
 </style>
