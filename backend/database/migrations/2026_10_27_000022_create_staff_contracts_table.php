@@ -24,8 +24,10 @@ return new class extends Migration {
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->index(['user_id', 'start_date']);
+            
         });
     }
 
     public function down(): void { Schema::dropIfExists('staff_contracts'); }
+
 };

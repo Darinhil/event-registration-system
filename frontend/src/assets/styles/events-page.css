@@ -260,3 +260,5 @@
   .ev-card__actions { flex-wrap: wrap; }
   .ev-card__actions > .ev-btn:nth-child(3) { order: 3; flex-basis: 100%; }
 }
+
+.ev-page { padding-top: 20px; }

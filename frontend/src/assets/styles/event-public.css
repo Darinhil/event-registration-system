@@ -60,14 +60,6 @@
 .pe-section__head h2 { margin: 0; }
 .pe-description { max-width: 70ch; margin: 0; color: var(--pe-ink-2); font-size: 16px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
 
-.pe-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.pe-detail { display: flex; gap: 14px; min-width: 0; padding: 16px 18px; border: 1px solid var(--pe-border); border-radius: 14px; background: #fff; }
-.pe-detail__icon { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--pe-wash); color: var(--pe-primary); }
-.pe-detail > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.pe-detail strong { color: var(--pe-ink); font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
-.pe-detail span { color: var(--pe-muted); font-size: 14px; }
-.pe-detail .pe-link { margin-top: 4px; }
-
 /* ---------- Agenda ---------- */
 .pe-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: thin; }
 .pe-tabs button { flex: none; min-height: 42px; padding: 0 16px; border: 1px solid var(--pe-border); border-radius: 999px; background: #fff; color: var(--pe-ink-2); font-size: 14px; font-weight: 650; cursor: pointer; }
@@ -101,7 +93,6 @@
 .pe-register__facts li.is-low { color: #9a4a06; font-weight: 650; }
 .pe-register__facts li.is-low svg { color: #d97706; }
 .pe-register__facts li.is-closed svg { color: var(--pe-muted); }
-.pe-register__note { margin: -6px 0 0; color: var(--pe-muted); font-size: 13px; line-height: 1.45; text-align: center; }
 .pe-register__share { display: flex; justify-content: center; padding-top: 12px; border-top: 1px solid var(--pe-line); }
 .pe-mobile-cta { display: none; }
 
@@ -130,7 +121,6 @@
   .pe-hero__image { aspect-ratio: 16 / 9; }
   .pe-hero__body { padding: 22px 20px 24px; }
   .pe-hero__facts { flex-direction: column; gap: 8px; font-size: 14.5px; }
-  .pe-details { grid-template-columns: minmax(0, 1fr); }
   .pe-session { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 16px; }
   .pe-session__time { flex-direction: row; gap: 6px; }
   .pe-session__time small::before { content: '– '; }

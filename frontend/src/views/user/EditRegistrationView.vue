@@ -6,6 +6,7 @@ import FormRenderer from '../../components/FormRenderer.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { buildSubmission, normalizeStoredValue } from '../../utils/formValidation'
+import { registrationBody } from '../../stores/registration'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,15 +20,7 @@ const serverErrors = ref({})
 const initialValues = ref({})
 const step = ref(0)
 
-const fields = computed(() => {
-  const list = formConfig.value?.fields || []
-  const hasGenderChoice = list.some((field) => { const label = String(field.label || '').trim().toLowerCase(); return (label === 'gender' || label.includes('ភេទ')) && field.type === 'radio' })
-  return list.filter((field) => {
-    const label = String(field.label || '').trim().toLowerCase()
-    if (label.includes('business entity') || label.includes('អង្គភាពអាជីវកម្ម')) return false
-    return !(hasGenderChoice && (label === 'gender' || label.includes('ភេទ')) && field.type === 'text')
-  })
-})
+const fields = computed(() => formConfig.value?.fields || [])
 const steps = computed(() => formConfig.value?.steps || [])
 const settings = computed(() => formConfig.value?.settings || {})
 // Same event summary as the registration form (RegistrationForm.vue), so both pages read alike.
@@ -121,10 +114,10 @@ const submit = async (values) => {
   serverErrors.value = {}
   try {
     const formData = buildSubmission(fields.value, values)
-    const { data } = await api.put(`/registrations/${registration.value.id}`, {
-      event_id: registration.value.event_id,
-      form_data: formData,
-    })
+    const body = registrationBody({ event_id: registration.value.event_id, form_data: formData })
+    // PHP only reads multipart bodies on POST, so uploads say they're a PUT.
+    if (body instanceof FormData) body.append('_method', 'PUT')
+    const { data } = body instanceof FormData ? await api.post(`/registrations/${registration.value.id}`, body) : await api.put(`/registrations/${registration.value.id}`, body)
     registration.value = data.data
     // Return to My information after a successful update so the attendee can
     // immediately see the saved registration details.

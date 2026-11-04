@@ -110,6 +110,9 @@ class FormBuilderController extends Controller
 
     public function publish(Request $request, Event $event): JsonResponse
     {
+        // Closing and cancelling are final; drafts need the details the event page depends on.
+        abort_if(in_array($event->status, ['closed', 'cancelled'], true), 422, "This event is {$event->status}, so it can’t be published again.");
+        abort_unless($event->starts_at && $event->ends_at && $event->location && $event->capacity, 422, 'Add the event’s dates, location and capacity before publishing.');
         if (! $event->formFields()->exists()) {
             abort(422, 'Add at least one field before publishing.');
         }

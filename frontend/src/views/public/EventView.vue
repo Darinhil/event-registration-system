@@ -5,10 +5,8 @@ import UserLayout from '../../layouts/UserLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { copyText } from '../../utils/clipboard'
-import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
-const auth = useAuthStore()
 const event = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -149,24 +147,9 @@ const addToCalendar = () => {
         <div class="pe-layout">
           <div class="pe-main">
             <!-- About -->
-            <section class="pe-section" aria-labelledby="pe-about">
+            <section v-if="event.description" class="pe-section" aria-labelledby="pe-about">
               <h2 id="pe-about">About this event</h2>
-              <p class="pe-description">{{ event.description || 'The organizer hasn’t added a description yet.' }}</p>
-            </section>
-
-            <!-- When & where -->
-            <section class="pe-section" aria-labelledby="pe-when">
-              <h2 id="pe-when">When &amp; where</h2>
-              <div class="pe-details">
-                <div class="pe-detail">
-                  <span class="pe-detail__icon"><AppIcon name="calendar" :size="20" /></span>
-                  <div><strong>{{ dateLabel }}</strong><span>{{ timeLabel }}</span><button v-if="start" type="button" class="pe-link" @click="addToCalendar"><AppIcon name="calendar-plus" :size="15" />Add to calendar</button></div>
-                </div>
-                <div class="pe-detail">
-                  <span class="pe-detail__icon"><AppIcon name="pin" :size="20" /></span>
-                  <div><strong>{{ event.location || 'Location to be confirmed' }}</strong><a v-if="mapsLink" class="pe-link" :href="mapsLink" target="_blank" rel="noopener noreferrer"><AppIcon name="arrow-up-right" :size="15" />Get directions<span class="sr-only"> (opens Google Maps)</span></a></div>
-                </div>
-              </div>
+              <p class="pe-description">{{ event.description }}</p>
             </section>
 
             <!-- Agenda -->
@@ -209,8 +192,9 @@ const addToCalendar = () => {
               </ul>
               <RouterLink v-if="isOpen" class="pe-btn pe-btn--primary pe-btn--block" :to="registerLink">Register now<AppIcon name="arrow-right" :size="17" /></RouterLink>
               <RouterLink v-else class="pe-btn pe-btn--block" to="/me">View my registrations</RouterLink>
-              <p v-if="isOpen" class="pe-register__note">{{ auth.isAuthenticated ? 'Next, you’ll fill in a short registration form.' : 'You’ll sign in or create an account, then fill in a short form.' }}</p>
               <div class="pe-register__share">
+                <button v-if="start" type="button" class="pe-link" @click="addToCalendar"><AppIcon name="calendar-plus" :size="15" />Add to calendar</button>
+                <a v-if="mapsLink" class="pe-link" :href="mapsLink" target="_blank" rel="noopener noreferrer"><AppIcon name="arrow-up-right" :size="15" />Get directions<span class="sr-only"> (opens Google Maps)</span></a>
                 <button type="button" class="pe-link" @click="copyLink"><AppIcon :name="copied ? 'check' : 'link'" :size="15" />{{ copied ? 'Link copied' : 'Copy event link' }}</button>
               </div>
             </div>

@@ -10,7 +10,6 @@ use App\Services\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
 
 class RegistrationController extends Controller
 {
@@ -28,15 +27,11 @@ class RegistrationController extends Controller
     public function update(RegistrationRequest $request, Registration $registration): RegistrationResource
     {
         abort_unless($request->user()->id === $registration->user_id, 403, 'You can only edit your own registration.');
-        $event = $registration->event;
-        $settings = $event->form_config['settings'] ?? [];
-        if (! (bool) ($settings['allow_user_edit'] ?? false)) {
-            abort(403, 'Editing registration is disabled for this event.');
-        }
-        $deadline = $settings['registration_end'] ?? null;
-        if ($deadline && Carbon::parse($deadline)->endOfDay()->isPast()) {
+        // Past the deadline gets its own message; every other reason means editing is off.
+        if ($registration->event?->registrationClosesAt()?->isPast() && ! $registration->event->ends_at?->isPast()) {
             throw ValidationException::withMessages(['registration' => 'The registration editing deadline has passed.']);
         }
+        abort_unless($registration->isEditable(), 403, 'Editing is closed for this registration.');
         if ((int) $request->validated()['event_id'] !== (int) $registration->event_id) {
             abort(403, 'This registration does not belong to that event.');
         }

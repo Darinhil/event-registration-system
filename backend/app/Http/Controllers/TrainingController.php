@@ -24,7 +24,12 @@ class TrainingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $courses = TrainingCourse::where('is_active', true)->withCount(['lessons', 'questions'])->orderBy('sort_order')->orderBy('id')->get();
+        $courses = TrainingCourse::where('is_active', true)
+            ->where(fn ($query) => $query->where('assign_all_staff', true)->orWhereHas('assignedUsers', fn ($users) => $users->whereKey($user->id)))
+            ->withCount(['lessons', 'questions'])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
         $progress = TrainingProgress::where('user_id', $user->id)->whereIn('training_course_id', $courses->pluck('id'))->get()->keyBy('training_course_id');
         $items = $courses->map(fn (TrainingCourse $course) => $this->overview($course, $progress->get($course->id), $course->lessons_count));
 
@@ -40,13 +45,14 @@ class TrainingController extends Controller
 
     public function show(Request $request, TrainingCourse $course): JsonResponse
     {
-        abort_unless($course->is_active, 404);
+        $this->assertAccessible($course, $request->user());
         return response()->json(['data' => $this->detail($course, $request->user())]);
     }
 
     public function completeLesson(Request $request, TrainingCourse $course, TrainingLesson $lesson): JsonResponse
     {
-        abort_unless($course->is_active && $lesson->training_course_id === $course->id, 404);
+        $this->assertAccessible($course, $request->user());
+        abort_unless($lesson->training_course_id === $course->id, 404);
         $user = $request->user();
         $lessonIds = $course->lessons()->pluck('id')->all();
         $progress = $this->progressFor($user, $course);
@@ -67,7 +73,7 @@ class TrainingController extends Controller
 
     public function quiz(Request $request, TrainingCourse $course): JsonResponse
     {
-        abort_unless($course->is_active, 404);
+        $this->assertAccessible($course, $request->user());
         $this->assertQuizUnlocked($course, $request->user());
 
         return response()->json(['data' => $course->questions()->get()->map(fn ($question) => ['id' => $question->id, 'prompt' => $question->prompt, 'options' => $question->options])->values()]);
@@ -75,7 +81,7 @@ class TrainingController extends Controller
 
     public function submitQuiz(Request $request, TrainingCourse $course): JsonResponse
     {
-        abort_unless($course->is_active, 404);
+        $this->assertAccessible($course, $request->user());
         $user = $request->user();
         $progress = $this->assertQuizUnlocked($course, $user);
         if ($progress->completed_at) throw ValidationException::withMessages(['quiz' => 'You’ve already passed this course.']);
@@ -114,6 +120,17 @@ class TrainingController extends Controller
     private function progressFor(User $user, TrainingCourse $course): TrainingProgress
     {
         return TrainingProgress::firstOrNew(['user_id' => $user->id, 'training_course_id' => $course->id]);
+    }
+
+    private function assertAccessible(TrainingCourse $course, User $user): void
+    {
+        abort_unless(
+            $course->is_active && (
+                $course->assign_all_staff
+                || $course->assignedUsers()->whereKey($user->id)->exists()
+            ),
+            404
+        );
     }
 
     private function assertQuizUnlocked(TrainingCourse $course, User $user): TrainingProgress

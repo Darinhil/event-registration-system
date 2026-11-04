@@ -61,12 +61,11 @@ const login = async () => {
 }
 
 /* ---------- Sign up ---------- */
-const signupForm = reactive({ name: '', identifier: '', password: '', password_confirmation: '' })
+const signupForm = reactive({ name: '', identifier: '', password: '' })
 const signupPasswordVisible = ref(false)
 const signupErrors = reactive({})
 const signupFormError = ref('')
 const passwordLongEnough = computed(() => signupForm.password.length >= 8)
-const passwordsMatch = computed(() => !signupForm.password_confirmation || signupForm.password === signupForm.password_confirmation)
 
 const validateSignup = () => {
   Object.keys(signupErrors).forEach((key) => delete signupErrors[key])
@@ -75,9 +74,7 @@ const validateSignup = () => {
   if (!identifier) signupErrors.identifier = 'Enter your email or phone number.'
   else if (!isEmailOrPhone(identifier)) signupErrors.identifier = 'Enter a valid email or phone number.'
   if (!passwordLongEnough.value) signupErrors.password = 'Use at least 8 characters.'
-  if (!signupForm.password_confirmation) signupErrors.password_confirmation = 'Re-enter your password.'
-  else if (!passwordsMatch.value) signupErrors.password_confirmation = 'The passwords don’t match.'
-  const first = ['name', 'identifier', 'password', 'password_confirmation'].find((key) => signupErrors[key])
+  const first = ['name', 'identifier', 'password'].find((key) => signupErrors[key])
   if (first) { focus(`signup-${first}`); return false }
   signupForm.identifier = identifier
   return true
@@ -122,8 +119,6 @@ const clearSignup = (key) => { delete signupErrors[key]; signupFormError.value =
   <UserLayout>
     <section class="au-page">
       <div class="au-wrap">
-        <RouterLink class="au-home" to="/"><AppIcon name="chevron-left" :size="16" />Back to home</RouterLink>
-
         <article class="au-card" aria-labelledby="au-title">
           <img class="au-logo" :src="logo" alt="Live &amp; Learn Cambodia" />
 
@@ -162,7 +157,7 @@ const clearSignup = (key) => { delete signupErrors[key]; signupFormError.value =
                 <label class="au-check" for="remember-me"><input id="remember-me" v-model="rememberMe" type="checkbox" name="remember_me" />Remember me</label>
                 <button type="button" class="au-link" :aria-expanded="forgotOpen" aria-controls="forgot-help" @click="forgotOpen = !forgotOpen">Forgot password?</button>
               </div>
-              <p v-if="forgotOpen" id="forgot-help" class="au-note" role="status"><AppIcon name="info" :size="16" />Password resets aren’t available online yet. Ask your event organizer or administrator to reset it for you.</p>
+              <p v-if="forgotOpen" id="forgot-help" class="au-note" role="status"><AppIcon name="info" :size="16" />Password resets aren’t available online yet. Staff can ask a Master Admin to reset theirs; attendees can create a new account with another email or phone.</p>
               <button type="submit" class="au-submit" :disabled="auth.loading"><span v-if="auth.loading" class="au-spinner" aria-hidden="true"></span>{{ auth.loading ? 'Signing in…' : 'Sign in' }}</button>
             </form>
             <p class="au-foot">Don’t have an account? <RouterLink :to="{ path: '/account/register', query: keepRedirect }">Create one — it’s free</RouterLink></p>
@@ -198,19 +193,9 @@ const clearSignup = (key) => { delete signupErrors[key]; signupFormError.value =
                 <div class="au-input" :class="{ 'is-invalid': signupErrors.password }">
                   <AppIcon name="lock" :size="18" />
                   <input id="signup-password" v-model="signupForm.password" :type="signupPasswordVisible ? 'text' : 'password'" autocomplete="new-password" placeholder="Create a password" :aria-invalid="signupErrors.password ? 'true' : undefined" aria-describedby="signup-password-rule" @input="clearSignup('password')" />
-                  <button type="button" class="au-reveal" :aria-pressed="signupPasswordVisible" :aria-label="signupPasswordVisible ? 'Hide passwords' : 'Show passwords'" @click="signupPasswordVisible = !signupPasswordVisible"><AppIcon :name="signupPasswordVisible ? 'eye' : 'eye-off'" :size="18" /></button>
+                  <button type="button" class="au-reveal" :aria-pressed="signupPasswordVisible" :aria-label="signupPasswordVisible ? 'Hide password' : 'Show password'" @click="signupPasswordVisible = !signupPasswordVisible"><AppIcon :name="signupPasswordVisible ? 'eye' : 'eye-off'" :size="18" /></button>
                 </div>
                 <p id="signup-password-rule" class="au-rule" :class="{ 'is-met': passwordLongEnough, 'is-error': signupErrors.password }"><AppIcon :name="passwordLongEnough ? 'check-circle' : 'info'" :size="14" />At least 8 characters</p>
-              </div>
-              <div class="au-field">
-                <label for="signup-password_confirmation">Confirm password</label>
-                <div class="au-input" :class="{ 'is-invalid': signupErrors.password_confirmation || !passwordsMatch, 'is-valid': signupForm.password_confirmation && passwordsMatch && passwordLongEnough }">
-                  <AppIcon name="lock" :size="18" />
-                  <input id="signup-password_confirmation" v-model="signupForm.password_confirmation" :type="signupPasswordVisible ? 'text' : 'password'" autocomplete="new-password" placeholder="Re-enter your password" :aria-invalid="signupErrors.password_confirmation || !passwordsMatch ? 'true' : undefined" aria-describedby="signup-match" @input="clearSignup('password_confirmation')" />
-                  <AppIcon v-if="signupForm.password_confirmation && passwordsMatch && passwordLongEnough" name="check" :size="18" class="au-ok" />
-                </div>
-                <p v-if="signupErrors.password_confirmation || !passwordsMatch" id="signup-match" class="au-error" aria-live="polite"><AppIcon name="alert-circle" :size="14" />{{ signupErrors.password_confirmation || 'The passwords don’t match.' }}</p>
-                <p v-else id="signup-match" class="au-sr" aria-live="polite">{{ signupForm.password_confirmation && passwordsMatch ? 'Passwords match.' : '' }}</p>
               </div>
               <button type="submit" class="au-submit" :disabled="auth.loading"><span v-if="auth.loading" class="au-spinner" aria-hidden="true"></span>{{ auth.loading ? 'Creating account…' : 'Create account' }}</button>
             </form>

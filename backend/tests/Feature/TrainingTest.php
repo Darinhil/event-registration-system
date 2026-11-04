@@ -50,8 +50,31 @@ class TrainingTest extends TestCase
         $this->staff();
         $response = $this->getJson('/api/me/training')->assertOk();
 
-        $response->assertJsonPath('data.0.status', 'not_started')->assertJsonPath('data.0.lesson_count', 4)->assertJsonPath('data.0.percent', 0);
-        $this->assertSame(['assigned' => 1, 'completed' => 0, 'in_progress' => 0, 'not_started' => 1, 'overdue' => 0, 'percent' => 0], $response->json('summary'));
+        $response->assertJsonPath('data.0.title', 'Child Safeguarding')
+            ->assertJsonPath('data.0.status', 'not_started')
+            ->assertJsonPath('data.0.lesson_count', 4)
+            ->assertJsonPath('data.0.percent', 0);
+        $this->assertSame(['assigned' => 8, 'completed' => 0, 'in_progress' => 0, 'not_started' => 8, 'overdue' => 0, 'percent' => 0], $response->json('summary'));
+    }
+
+    public function test_default_training_catalog_includes_all_requested_topics_with_lessons_and_quizzes(): void
+    {
+        $titles = [
+            'Child Safeguarding',
+            'Adult Safeguarding (PSEAH)',
+            'Staff Safeguarding',
+            'Conflict of Interest',
+            'Anti-Corruption and Anti-Money Laundering',
+            'Anti-Fraud',
+            'GEDSI Policy',
+            'Environmental Safeguarding Policy',
+        ];
+
+        $courses = TrainingCourse::withCount(['lessons', 'questions'])->orderBy('sort_order')->get();
+
+        $this->assertSame($titles, $courses->pluck('title')->all());
+        $this->assertTrue($courses->every(fn (TrainingCourse $course) => $course->is_active && $course->assign_all_staff && $course->lessons_count >= 1 && $course->questions_count >= 1));
+        $this->assertTrue($courses->skip(1)->every(fn (TrainingCourse $course) => $course->questions()->pluck('correct_option')->unique()->count() > 1));
     }
 
     public function test_quiz_questions_never_include_the_answer_key(): void
@@ -121,7 +144,7 @@ class TrainingTest extends TestCase
         $this->assertSame(1, TrainingProgress::where('user_id', $user->id)->whereNotNull('certificate_code')->count());
 
         $this->postJson("/api/me/training/{$course->id}/quiz", ['answers' => $this->answers($course)])->assertStatus(422)->assertJsonValidationErrors('quiz');
-        $this->getJson('/api/me/training')->assertJsonPath('summary.completed', 1)->assertJsonPath('summary.percent', 100);
+        $this->getJson('/api/me/training')->assertJsonPath('summary.completed', 1)->assertJsonPath('summary.percent', 13);
     }
 
     public function test_quiz_requires_every_question_answered_with_a_valid_option(): void
@@ -154,5 +177,47 @@ class TrainingTest extends TestCase
 
         $this->staff();
         $this->getJson('/api/me/training')->assertJsonPath('data.0.status', 'not_started');
+    }
+
+    public function test_only_master_admins_manage_courses_and_assignments_are_staff_scoped(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'manager']));
+        $this->getJson('/api/admin/training-courses')->assertForbidden();
+
+        $staff = User::factory()->create(['role' => 'officer_1']);
+        $otherStaff = User::factory()->create(['role' => 'officer_2']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+        $payload = [
+            'title' => 'New Staff Orientation',
+            'category' => 'Onboarding',
+            'summary' => 'An introduction for new team members.',
+            'estimated_minutes' => 15,
+            'pass_mark' => 80,
+            'due_date' => now()->addMonth()->toDateString(),
+            'lessons' => [['title' => 'Welcome', 'body' => 'Welcome to the team.']],
+            'questions' => [['prompt' => 'Ready?', 'options' => ['Yes', 'No', 'Maybe', 'Later'], 'correct_option' => 0]],
+        ];
+        $course = $this->postJson('/api/admin/training-courses', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.assigned_count', 0)
+            ->json('data');
+
+        Sanctum::actingAs($staff);
+        $this->getJson('/api/me/training')->assertJsonMissing(['title' => 'New Staff Orientation']);
+        $this->getJson("/api/me/training/{$course['id']}")->assertNotFound();
+
+        Sanctum::actingAs($admin);
+        $this->putJson("/api/admin/training-courses/{$course['id']}/assignments", ['user_ids' => [$staff->id]])
+            ->assertOk()
+            ->assertJsonPath('data.assigned_count', 1);
+
+        Sanctum::actingAs($staff);
+        $this->getJson('/api/me/training')->assertJsonFragment(['title' => 'New Staff Orientation']);
+        $this->getJson("/api/me/training/{$course['id']}")->assertOk();
+
+        Sanctum::actingAs($otherStaff);
+        $this->getJson('/api/me/training')->assertJsonMissing(['title' => 'New Staff Orientation']);
+        $this->getJson("/api/me/training/{$course['id']}")->assertNotFound();
     }
 }

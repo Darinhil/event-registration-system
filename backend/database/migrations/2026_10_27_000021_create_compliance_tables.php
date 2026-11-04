@@ -40,7 +40,7 @@ return new class extends Migration {
                 $table->json('response')->nullable();
                 $table->string('signature', 150);
                 $table->timestamps();
-                $table->index(['user_id', 'compliance_policy_id', 'completed_at']);
+                $table->index(['user_id', 'compliance_policy_id', 'completed_at'], 'compliance_records_user_policy_completed_idx');
             });
         }
 

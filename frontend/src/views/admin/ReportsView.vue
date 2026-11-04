@@ -286,7 +286,6 @@ onMounted(loadReports)
       <header class="rp-head">
         <div>
           <h1>Reports</h1>
-          <p>Registrations and attendance for {{ hasFilters ? 'the events shown below' : 'all your events' }}.</p>
         </div>
         <button type="button" class="rp-btn rp-btn--secondary" :disabled="loading || exporting || !filteredReports.length" :aria-busy="exporting" :title="hasFilters ? 'Exports only the events matching your filters' : 'Exports every event in the report'" @click="exportReport">
           <AppIcon name="download" :size="17" />{{ exporting ? 'Exporting…' : hasFilters ? `Export ${filteredReports.length} to Excel` : 'Export to Excel' }}

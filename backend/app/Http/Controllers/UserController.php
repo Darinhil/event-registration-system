@@ -245,6 +245,8 @@ class UserController extends Controller
         }
 
         $request->user()->update(['password' => $data['new_password']]);
+        // Other devices must sign in again; this one stays signed in.
+        $request->user()->tokens()->whereKeyNot($request->user()->currentAccessToken()?->getKey())->delete();
 
         return response()->json(['message' => 'Password changed successfully.']);
     }

@@ -1,25 +1,32 @@
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AppIcon from '../AppIcon.vue'
+import DateInput from '../DateInput.vue'
+import RequestFormParts from './RequestFormParts.vue'
+import RequestSubmitted from './RequestSubmitted.vue'
+import { getTimesheet } from '../../services/timesheetService'
+import { useStaffRequestForm } from '../../utils/staffRequestForm'
 
-const emit = defineEmits(['submitted'])
-
-// The leave workflow has no API yet, so these are the same sample balances the page showed before.
-const balances = [
-  { type: 'Annual', entitled: 15, used: 3, icon: 'calendar' },
-  { type: 'Sick', entitled: 10, used: 5, icon: 'heart' },
-  { type: 'Other', entitled: 5, used: 2, icon: 'circle-dot' },
-].map((item) => ({ ...item, remaining: item.entitled - item.used }))
-
-const MAX_FILE = 5 * 1024 * 1024
 const REASON_MAX = 500
-const form = reactive({ type: 'Annual', start: '', end: '', reason: '', file: null })
+const ICONS = { annual: 'calendar', sick: 'heart', unpaid: 'circle-dot' }
+const form = reactive({ type: 'annual', start: '', end: '', reason: '' })
+const request = useStaffRequestForm('leave')
+const { approvers, approverId, attachment, saving, saved, formError, errors: serverErrors, formEl } = request
 const errors = ref({})
 const tried = ref(false)
-const submitted = ref(null)
-const fileInput = ref(null)
-const formEl = ref(null)
+
+// Balances come from the timesheet: leave is deducted once it's on an approved timesheet.
+const balances = ref([])
+const balancesError = ref('')
+onMounted(async () => {
+  const today = new Date()
+  try {
+    balances.value = (await getTimesheet(today.getFullYear(), today.getMonth() + 1)).data.data.balances.map((item) => ({ ...item, used: item.used_before + item.pending + item.used_this_month, total: item.entitlement + item.carried_over, icon: ICONS[item.type] || 'circle-dot' }))
+  } catch {
+    balancesError.value = 'We couldn’t load your leave balance.'
+  }
+})
+const capped = computed(() => balances.value.filter((item) => item.limited))
 
 /* ---------- Duration ---------- */
 const toDate = (iso) => new Date(`${iso}T00:00:00`)
@@ -40,8 +47,8 @@ const duration = computed(() => {
   }
   return { working, calendar }
 })
-const selected = computed(() => balances.find((item) => item.type === form.type))
-const overBalance = computed(() => duration.value && duration.value.working > selected.value.remaining)
+const selected = computed(() => balances.value.find((item) => item.type === form.type))
+const overBalance = computed(() => Boolean(duration.value && selected.value?.limited && duration.value.working > selected.value.remaining))
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 
 /* ---------- Validation ---------- */
@@ -51,80 +58,40 @@ const validate = () => {
   if (!form.end) e.end = 'Choose the last day of your leave.'
   else if (form.start && form.end < form.start) e.end = 'The end date can’t be before the start date.'
   if (duration.value && duration.value.working === 0) e.end = 'These dates fall on a weekend — choose at least one working day.'
-  if (overBalance.value) e.end = `This is ${plural(duration.value.working, 'working day')}, but you have ${plural(selected.value.remaining, 'day')} of ${form.type.toLowerCase()} leave left.`
+  if (overBalance.value) e.end = `This is ${plural(duration.value.working, 'working day')}, but you have ${plural(selected.value.remaining, 'day')} of ${selected.value.label.toLowerCase()} leave left.`
   if (form.reason.length > REASON_MAX) e.reason = `Keep the reason under ${REASON_MAX} characters.`
-  if (form.file && form.file.size > MAX_FILE) e.file = 'The attachment must be 5 MB or smaller.'
+  if (!approverId.value) e.approver_id = 'Choose who should approve this request.'
   errors.value = e
   return Object.keys(e).length === 0
 }
 // After the first attempt, re-check as the person fixes things so errors clear immediately.
-watch(form, () => { if (tried.value) validate() }, { deep: true })
-const err = (key) => errors.value[key] || ''
+watch([form, approverId], () => { if (tried.value) validate() }, { deep: true })
+// Server errors arrive keyed by the API's field names.
+const err = (key) => errors.value[key] || serverErrors[{ start: 'start_date', end: 'end_date', type: 'leave_type' }[key] || key] || ''
 const describedBy = (key, hint) => (err(key) ? `lv-${key}-error` : hint || undefined)
 
-const pickFile = (event) => {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  if (!file) return
-  if (!/\.(pdf|jpe?g|png|webp)$/i.test(file.name)) { errors.value = { ...errors.value, file: 'Attach a PDF or an image (JPG, PNG or WebP).' }; return }
-  form.file = file
-  if (!tried.value) { const { file: _, ...rest } = errors.value; errors.value = rest }
-}
-const fileSize = (bytes) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`)
-
-const submit = async () => {
+const submit = () => {
   tried.value = true
-  if (!validate()) {
-    await nextTick()
-    // Fields first; an attachment problem has no input to mark, so focus its button instead.
-    const target = formEl.value?.querySelector('[aria-invalid="true"]') || (errors.value.file && formEl.value?.querySelector('.lv-file .lv-btn:last-of-type'))
-    target?.focus()
-    return
-  }
-  submitted.value = { type: form.type, start: form.start, end: form.end, days: duration.value.working, reason: form.reason.trim(), file: form.file?.name || '' }
-  emit('submitted', submitted.value)
-  await nextTick()
-  document.getElementById('lv-done-title')?.focus()
+  if (!validate()) { request.focusFirstError(); return }
+  request.submit({ leave_type: form.type, start_date: form.start, end_date: form.end, reason: form.reason.trim() })
 }
 const startAnother = () => {
-  Object.assign(form, { type: 'Annual', start: '', end: '', reason: '', file: null })
+  Object.assign(form, { type: 'annual', start: '', end: '', reason: '' })
   errors.value = {}
   tried.value = false
-  submitted.value = null
+  request.reset()
 }
 </script>
 
 <template>
   <div class="lv">
-    <header class="lv-head">
-      <h1>Leave Application</h1>
-      <p>Request time off. Your supervisor reviews it first, then HR gives final approval.</p>
-    </header>
-
-    <p class="lv-note" role="note"><AppIcon name="info" :size="18" /><span><strong>Preview.</strong> The leave workflow isn’t connected yet — balances are sample figures and requests aren’t sent to your supervisor.</span></p>
+    <header class="lv-head"><h1>Leave Application</h1></header>
 
     <div class="lv-layout">
-      <!-- Request form, or the confirmation once submitted -->
-      <section v-if="submitted" class="lv-card lv-done" aria-labelledby="lv-done-title">
-        <span class="lv-done__icon"><AppIcon name="check" :size="28" /></span>
-        <h2 id="lv-done-title" tabindex="-1">Leave request recorded</h2>
-        <p>It’s listed in <strong>My Requests</strong> as pending. In the live portal it would now go to your supervisor.</p>
-        <dl class="lv-summary">
-          <div><dt>Leave type</dt><dd>{{ submitted.type }}</dd></div>
-          <div><dt>Dates</dt><dd>{{ fmt(submitted.start) }} – {{ fmt(submitted.end) }}</dd></div>
-          <div><dt>Working days</dt><dd>{{ submitted.days }}</dd></div>
-          <div v-if="submitted.reason"><dt>Reason</dt><dd>{{ submitted.reason }}</dd></div>
-          <div v-if="submitted.file"><dt>Attachment</dt><dd>{{ submitted.file }}</dd></div>
-        </dl>
-        <div class="lv-done__actions">
-          <RouterLink :to="{ query: { section: 'my-requests' } }" class="lv-btn lv-btn--ghost">View My Requests</RouterLink>
-          <button type="button" class="lv-btn lv-btn--primary" @click="startAnother"><AppIcon name="plus" :size="16" />New request</button>
-        </div>
-      </section>
+      <RequestSubmitted v-if="saved" :request="saved" @again="startAnother" />
 
       <form v-else ref="formEl" class="lv-card lv-form" novalidate @submit.prevent="submit">
-        <h2 class="lv-card__title">New request</h2>
-        <p v-if="tried && Object.keys(errors).length" class="lv-alert" role="alert"><AppIcon name="alert-circle" :size="18" />Please fix {{ Object.keys(errors).length === 1 ? 'the highlighted field' : `the ${Object.keys(errors).length} highlighted fields` }}.</p>
+        <p v-if="formError" class="lv-alert" role="alert"><AppIcon name="alert-circle" :size="18" />{{ formError }}</p>
 
         <fieldset class="lv-field">
           <legend class="lv-label">Leave type <span class="lv-req" aria-hidden="true">*</span></legend>
@@ -132,7 +99,7 @@ const startAnother = () => {
             <label v-for="item in balances" :key="item.type" class="lv-type" :class="{ 'is-selected': form.type === item.type }">
               <input v-model="form.type" type="radio" name="lv-type" :value="item.type" />
               <span class="lv-type__icon"><AppIcon :name="item.icon" :size="18" /></span>
-              <span class="lv-type__text"><strong>{{ item.type }}</strong><small>{{ plural(item.remaining, 'day') }} left</small></span>
+              <span class="lv-type__text"><strong>{{ item.label }}</strong><small v-if="item.limited">{{ plural(item.remaining, 'day') }} left</small></span>
             </label>
           </div>
         </fieldset>
@@ -140,12 +107,12 @@ const startAnother = () => {
         <div class="lv-grid">
           <div class="lv-field">
             <label for="lv-start" class="lv-label">Start date <span class="lv-req" aria-hidden="true">*</span></label>
-            <input id="lv-start" v-model="form.start" type="date" required :aria-invalid="err('start') ? 'true' : undefined" :aria-describedby="describedBy('start')" />
+            <DateInput id="lv-start" v-model="form.start" class="rq-input" :aria-invalid="err('start') ? 'true' : undefined" :aria-describedby="describedBy('start')" />
             <p v-if="err('start')" id="lv-start-error" class="lv-error"><AppIcon name="alert-circle" :size="14" />{{ err('start') }}</p>
           </div>
           <div class="lv-field">
             <label for="lv-end" class="lv-label">End date <span class="lv-req" aria-hidden="true">*</span></label>
-            <input id="lv-end" v-model="form.end" type="date" required :min="form.start || undefined" :aria-invalid="err('end') ? 'true' : undefined" :aria-describedby="describedBy('end')" />
+            <DateInput id="lv-end" v-model="form.end" class="rq-input" :min="form.start || undefined" :aria-invalid="err('end') ? 'true' : undefined" :aria-describedby="describedBy('end')" />
             <p v-if="err('end')" id="lv-end-error" class="lv-error"><AppIcon name="alert-circle" :size="14" />{{ err('end') }}</p>
           </div>
         </div>
@@ -155,9 +122,9 @@ const startAnother = () => {
           <div v-if="duration">
             <strong>{{ plural(duration.working, 'working day') }}</strong>
             <span>{{ fmt(form.start, { year: form.start.slice(0, 4) !== form.end.slice(0, 4) }) }} – {{ fmt(form.end) }}<template v-if="duration.calendar !== duration.working"> · {{ plural(duration.calendar - duration.working, 'weekend day') }} not counted</template></span>
-            <small>{{ overBalance ? `More than your ${selected.remaining} remaining ${form.type.toLowerCase()} days` : `Leaves ${plural(selected.remaining - duration.working, 'day')} of ${form.type.toLowerCase()} leave` }}</small>
+            <small v-if="selected?.limited">{{ overBalance ? `More than your ${selected.remaining} remaining days` : `Leaves ${plural(selected.remaining - duration.working, 'day')} of ${selected.label.toLowerCase()} leave` }}</small>
           </div>
-          <div v-else><strong>Choose your dates</strong><span>We’ll count the working days for you.</span></div>
+          <div v-else><strong>Choose your dates</strong></div>
         </div>
 
         <div class="lv-field">
@@ -167,39 +134,28 @@ const startAnother = () => {
           <p v-else id="lv-reason-count" class="lv-hint lv-hint--right">{{ form.reason.length }} / {{ REASON_MAX }}</p>
         </div>
 
-        <div class="lv-field">
-          <span id="lv-file-label" class="lv-label">Attachment <span class="lv-optional">Optional</span></span>
-          <div class="lv-file" :class="{ 'has-error': err('file'), 'has-file': form.file }">
-            <AppIcon :name="form.file ? 'file-text' : 'upload'" :size="20" />
-            <div class="lv-file__text">
-              <strong>{{ form.file ? form.file.name : 'Supporting document' }}</strong>
-              <small>{{ form.file ? fileSize(form.file.size) : 'PDF or image, up to 5 MB — e.g. a medical certificate' }}</small>
-            </div>
-            <button v-if="form.file" type="button" class="lv-btn lv-btn--ghost lv-btn--sm" @click="form.file = null">Remove</button>
-            <button type="button" class="lv-btn lv-btn--ghost lv-btn--sm" aria-describedby="lv-file-label" @click="fileInput?.click()">{{ form.file ? 'Replace' : 'Choose file' }}</button>
-            <input ref="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" class="sr-only" tabindex="-1" aria-hidden="true" @change="pickFile" />
-          </div>
-          <p v-if="err('file')" id="lv-file-error" class="lv-error" role="alert"><AppIcon name="alert-circle" :size="14" />{{ err('file') }}</p>
-        </div>
+        <RequestFormParts v-model:approver-id="approverId" v-model:attachment="attachment" :approvers="approvers" :errors="{ ...serverErrors, ...errors }" />
 
         <footer class="lv-form__foot">
-          <p class="lv-hint">Fields marked <span class="lv-req">*</span> are required.</p>
-          <button type="submit" class="lv-btn lv-btn--primary lv-btn--lg"><AppIcon name="send" :size="17" />Submit request</button>
+          <span></span>
+          <button type="submit" class="lv-btn lv-btn--primary lv-btn--lg" :disabled="saving"><AppIcon name="send" :size="17" />{{ saving ? 'Submitting…' : 'Submit request' }}</button>
         </footer>
       </form>
 
       <!-- Balances -->
       <aside class="lv-card lv-balance" aria-labelledby="lv-balance-title">
         <h2 id="lv-balance-title" class="lv-card__title">Leave balance</h2>
-        <ul>
-          <li v-for="item in balances" :key="item.type" :class="{ 'is-selected': !submitted && form.type === item.type }">
+        <p v-if="balancesError" class="lv-error" role="alert"><AppIcon name="alert-circle" :size="14" />{{ balancesError }}</p>
+        <ul v-else>
+          <li v-for="item in capped" :key="item.type" :class="{ 'is-selected': !saved && form.type === item.type }">
             <div class="lv-balance__row">
-              <span class="lv-balance__name"><AppIcon :name="item.icon" :size="16" />{{ item.type }}</span>
-              <span class="lv-balance__left"><strong>{{ item.remaining }}</strong> of {{ item.entitled }} days left</span>
+              <span class="lv-balance__name"><AppIcon :name="item.icon" :size="16" />{{ item.label }}</span>
+              <span class="lv-balance__left"><strong>{{ item.remaining }}</strong> of {{ item.total }} days left</span>
             </div>
-            <div class="lv-track" role="progressbar" :aria-valuenow="item.used" aria-valuemin="0" :aria-valuemax="item.entitled" :aria-label="`${item.type} leave used`"><i :style="{ width: `${(item.used / item.entitled) * 100}%` }"></i></div>
-            <small>{{ item.used }} used · {{ item.entitled }} entitled</small>
+            <div class="lv-track" role="progressbar" :aria-valuenow="item.used" aria-valuemin="0" :aria-valuemax="item.total" :aria-label="`${item.label} leave used`"><i :style="{ width: `${item.total ? Math.min((item.used / item.total) * 100, 100) : 0}%` }"></i></div>
+            <small>{{ item.used }} used<template v-if="item.pending"> ({{ item.pending }} pending)</template></small>
           </li>
+          <li v-if="balances.length > capped.length" class="lv-balance__other"><small>Other leave types have no fixed allowance on record.</small></li>
         </ul>
       </aside>
     </div>
@@ -213,8 +169,6 @@ const startAnother = () => {
 .lv-head { margin-bottom: 16px; }
 .lv-head h1 { margin: 0 0 4px; font-size: 1.6rem; font-weight: 700; }
 .lv-head p { margin: 0; color: var(--lv-muted); }
-.lv-note { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 20px; padding: 11px 14px; border: 1px solid #f1dfae; border-radius: 10px; background: #fffaeb; color: #7a5a12; font-size: .9rem; }
-.lv-note svg { flex: none; margin-top: 2px; }
 
 .lv-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); align-items: start; gap: 20px; }
 .lv-card { border: 1px solid var(--lv-line); border-radius: 14px; background: #fff; box-shadow: 0 4px 14px rgba(23, 54, 95, .04); }
@@ -240,7 +194,7 @@ const startAnother = () => {
 .lv-alert { display: flex; align-items: center; gap: 9px; margin: 0; padding: 10px 14px; border: 1px solid #f2c4bf; border-radius: 10px; background: var(--lv-danger-soft); color: #9b2c22; font-size: .9rem; font-weight: 600; }
 
 /* Leave type cards */
-.lv-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.lv-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .lv-type { position: relative; display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cfdbe7; border-radius: 12px; background: #fff; cursor: pointer; transition: border-color .15s, background-color .15s, box-shadow .15s; }
 .lv-type:hover { border-color: #9fb3c8; }
 .lv-type input { position: absolute; opacity: 0; pointer-events: none; }
@@ -309,6 +263,33 @@ const startAnother = () => {
 .lv-summary dd { min-width: 0; margin: 0; color: var(--lv-ink); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
 .lv-done__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 
+/* Controls shared by the other request forms, in the same style as the leave form. */
+.lv input.rq-input, .lv select.rq-select { box-sizing: border-box; width: 100%; height: 44px; padding: 0 12px; border: 1px solid #cfdbe7; border-radius: 10px; background-color: #fff; color: var(--lv-ink); font: inherit; font-size: .95rem; }
+.lv select.rq-select:focus { border-color: var(--lv-brand); outline: 0; box-shadow: 0 0 0 3px rgba(11, 127, 98, .14); }
+.rq-form { max-width: 760px; }
+.rq-form--wide { max-width: 960px; }
+.rq-month { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; }
+.rq-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rq-chip { position: relative; display: inline-flex; min-height: 40px; align-items: center; padding: 0 16px; border: 1px solid #cfdbe7; border-radius: 99px; background: #fff; color: var(--lv-text); font-size: .9rem; cursor: pointer; }
+.rq-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.rq-chip:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(11, 127, 98, .25); }
+.rq-chip.is-selected { border-color: var(--lv-brand); background: var(--lv-brand-soft); color: var(--lv-brand-dark); font-weight: 600; }
+.rq-costs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rq-money { display: flex; height: 44px; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid #cfdbe7; border-radius: 10px; background: #fff; color: var(--lv-muted); }
+.rq-money:focus-within { border-color: var(--lv-brand); box-shadow: 0 0 0 3px rgba(11, 127, 98, .14); }
+.lv .rq-money input { width: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--lv-ink); font: inherit; box-shadow: none; }
+.rq-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--lv-brand-soft); color: var(--lv-text); font-size: .92rem; }
+.rq-total strong { color: var(--lv-brand-dark); font-size: 1.05rem; }
+.rq-table-wrap { overflow-x: auto; }
+.rq-table { width: 100%; min-width: 620px; border-collapse: collapse; text-align: left; font-size: .9rem; }
+.rq-table th { padding: 8px 10px; background: var(--lv-soft); color: var(--lv-muted); font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.rq-table td { padding: 8px 10px; border-top: 1px solid var(--lv-line); color: var(--lv-text); vertical-align: middle; }
+.rq-table .num { text-align: right; white-space: nowrap; }
+.rq-table__grow { width: 45%; }
+.rq-add { justify-self: start; }
+.lv-balance__other { border-style: dashed !important; }
+.lv-btn:disabled { opacity: .6; cursor: progress; }
+
 @media (max-width: 960px) {
   .lv-layout { grid-template-columns: 1fr; }
   .lv-balance ul { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -317,7 +298,8 @@ const startAnother = () => {
   .lv { padding-top: 16px; }
   .lv-head h1 { font-size: 1.35rem; }
   .lv-form { padding: 18px 16px; gap: 18px; }
-  .lv-types { grid-template-columns: 1fr; }
+  .lv-types { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rq-costs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lv-grid { grid-template-columns: 1fr; }
   .lv-balance { padding: 18px 16px; }
   .lv-balance ul { grid-template-columns: 1fr; }

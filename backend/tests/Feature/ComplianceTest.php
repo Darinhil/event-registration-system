@@ -129,4 +129,68 @@ class ComplianceTest extends TestCase
         $this->postJson("/api/me/compliances/{$retired->id}/complete", ['acknowledged' => true, 'signature' => 'Sokha Leng'])->assertNotFound();
         $this->postJson('/api/me/compliances/9999/complete', ['acknowledged' => true, 'signature' => 'Sokha Leng'])->assertNotFound();
     }
+
+    public function test_only_master_admins_can_manage_compliance_policies(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'event_admin']));
+
+        $this->getJson('/api/admin/compliance-policies')->assertForbidden();
+        $this->postJson('/api/admin/compliance-policies', [])->assertForbidden();
+    }
+
+    public function test_master_admin_can_create_update_and_delete_a_policy_without_responses(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $payload = [
+            'title' => 'Data Protection',
+            'category' => 'Data & Privacy',
+            'description' => 'Protect personal information.',
+            'requirement_type' => 'acknowledgement',
+            'statement' => 'I will protect personal information.',
+            'document_url' => 'https://example.test/policy',
+            'validity_months' => 12,
+            'is_active' => true,
+            'sort_order' => 9,
+        ];
+
+        $id = $this->postJson('/api/admin/compliance-policies', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.title', 'Data Protection')
+            ->json('data.id');
+
+        $this->getJson('/api/admin/compliance-policies')
+            ->assertOk()
+            ->assertJsonFragment(['title' => 'Data Protection']);
+        $this->putJson("/api/admin/compliance-policies/{$id}", [...$payload, 'title' => 'Information Security', 'is_active' => false])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Information Security')
+            ->assertJsonPath('data.is_active', false);
+        $this->deleteJson("/api/admin/compliance-policies/{$id}")->assertOk();
+        $this->assertDatabaseMissing('compliance_policies', ['id' => $id]);
+    }
+
+    public function test_policy_with_staff_responses_cannot_be_deleted_or_change_requirement_type(): void
+    {
+        $staff = User::factory()->create(['role' => 'officer_1', 'name' => 'Sokha Leng']);
+        $policy = $this->policy();
+        ComplianceRecord::create([
+            'compliance_policy_id' => $policy->id,
+            'user_id' => $staff->id,
+            'completed_at' => now(),
+            'expires_at' => now()->addYear(),
+            'signature' => $staff->name,
+        ]);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->deleteJson("/api/admin/compliance-policies/{$policy->id}")
+            ->assertStatus(409);
+        $this->putJson("/api/admin/compliance-policies/{$policy->id}", [
+            'title' => $policy->title,
+            'category' => $policy->category,
+            'description' => $policy->description,
+            'requirement_type' => 'declaration',
+            'statement' => $policy->statement,
+        ])->assertStatus(422)->assertJsonValidationErrors('requirement_type');
+        $this->assertDatabaseHas('compliance_records', ['compliance_policy_id' => $policy->id]);
+    }
 }

@@ -35,6 +35,8 @@ class User extends Authenticatable
         'personal_information',
         'professional_qualifications',
         'family_information',
+        'personnel_profile',
+        'personnel_profile_submitted_at',
         'password',
         'role',
     ];
@@ -47,6 +49,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'personnel_profile',
     ];
 
     /**
@@ -62,6 +65,8 @@ class User extends Authenticatable
             'personal_information' => 'array',
             'professional_qualifications' => 'array',
             'family_information' => 'array',
+            'personnel_profile' => 'array',
+            'personnel_profile_submitted_at' => 'datetime',
         ];
     }
 

@@ -59,9 +59,6 @@
 .ed-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .ed-title-row h1 { margin: 0; color: var(--rd-ink); font-size: clamp(1.5rem, 2.4vw, 2rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.2; overflow-wrap: anywhere; }
 .ed-desc { display: -webkit-box; max-width: 720px; margin: 6px 0 0; overflow: hidden; color: var(--rd-body); font-size: .95rem; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.ed-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; color: var(--rd-body); font-size: .86rem; }
-.ed-meta span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.ed-meta svg { color: var(--rd-muted); }
 .ed-header__actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
 /* Status pills always carry text, the dot is decoration only. */
@@ -93,15 +90,6 @@
 .ed-metrics dd { display: flex; flex-direction: column; margin: 4px 0 0; }
 .ed-metrics strong { color: var(--rd-ink); font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
 .ed-metrics small { margin-top: 4px; color: var(--rd-muted); font-size: .8rem; }
-.ed-bars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; }
-.ed-bar { --fill: var(--rd-primary); }
-.ed-bar.is-high { --fill: #d97706; }
-.ed-bar.is-full { --fill: #dc2626; }
-.ed-bar.is-checkin { --fill: #3b82f6; }
-.ed-bar__label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 7px; color: var(--rd-body); font-size: .84rem; font-weight: 600; }
-.ed-bar__label b { color: var(--rd-ink); }
-.ed-bar__track { height: 8px; overflow: hidden; border-radius: 999px; background: #e9eef3; }
-.ed-bar__track i { display: block; height: 100%; border-radius: inherit; background: var(--fill); transition: width .4s ease; }
 .ed-empty { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin-top: 18px; padding: 12px 14px; border: 1px dashed #d3dee6; border-radius: 12px; background: #fafcfd; color: var(--rd-body); font-size: .88rem; }
 .ed-empty > span { flex: 1 1 240px; }
 .ed-empty > svg { color: var(--rd-muted); }
@@ -143,7 +131,6 @@
 .ed-qr .qr { display: block; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
 .ed-qr canvas { display: block; width: 184px !important; height: 184px !important; }
 .ed-qr.is-muted { opacity: .45; }
-.ed-share__hint { margin: -2px 0 0; color: var(--rd-muted); font-size: .8rem; text-align: center; }
 .ed-link { display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 5px 0 12px; border: 1px solid #d9e2e9; border-radius: 10px; background: #fafcfd; }
 .ed-link:focus-within { border-color: var(--rd-primary); box-shadow: 0 0 0 3px rgba(11, 154, 118, .14); }
 .ed-page .ed-link input { flex: 1; min-width: 0; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--rd-ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; outline: 0; text-overflow: ellipsis; }
@@ -158,7 +145,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ed-skel, .ed-page .is-spinning { animation: none; }
-  .ed-bar__track i, .ed-action__go { transition: none; }
+  .ed-action__go { transition: none; }
 }
 
 /* ---------- Responsive ---------- */
@@ -178,7 +165,6 @@
   .ed-qr { grid-area: qr; }
   .ed-link { grid-area: link; }
   .ed-share__actions { grid-area: actions; }
-  .ed-share__hint { grid-area: hint; text-align: left; }
 }
 @media (max-width: 640px) {
   .ed-page { padding-top: 10px; }
@@ -192,13 +178,12 @@
   .ed-metrics > div:last-child { padding-bottom: 0; border-bottom: 0; }
   .ed-metrics dd { align-items: flex-end; margin: 0; text-align: right; }
   .ed-metrics strong { font-size: 1.5rem; }
-  .ed-bars, .ed-dl { grid-template-columns: minmax(0, 1fr); }
+  .ed-dl { grid-template-columns: minmax(0, 1fr); }
   .ed-group ul { grid-template-columns: minmax(0, 1fr); }
   .ed-action { min-height: 60px; }
   .ed-danger__actions { width: 100%; }
   .ed-danger__actions .es-btn { flex: 1 1 0; height: 44px; }
   .ed-share { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: none; }
   .ed-share > * { grid-area: auto !important; }
-  .ed-share__hint { text-align: center; }
   .ed-share__actions .es-btn { height: 44px; }
 }

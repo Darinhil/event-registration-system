@@ -10,7 +10,8 @@
  *  - `fields` + `steps` → multi-step form; renderStep controls which step shows
  */
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { COUNTRIES } from '../utils/formFieldTypes'
+import FormSelect from './FormSelect.vue'
+import { COUNTRIES, choiceLabel } from '../utils/formFieldTypes'
 import { validateFields } from '../utils/formValidation'
 import { isFieldVisible } from '../utils/formConditions'
 
@@ -255,7 +256,7 @@ const checkedState = (field) => {
           <div v-else class="fr-choices fr-choices--grid">
             <label v-for="(option, index) in field.options || []" :key="option" class="fr-choice">
               <input :id="index === 0 ? controlId(field) : undefined" type="checkbox" :checked="(values[field.id] || []).includes(option)" @change="toggleArrayValue(field, option)" />
-              <span>{{ option }}</span>
+              <span>{{ choiceLabel(field, option) }}</span>
             </label>
           </div>
         </fieldset>
@@ -288,27 +289,29 @@ const checkedState = (field) => {
           </label>
           <small v-if="field.description" :id="`${controlId(field)}-help`" class="fr-field-help">{{ field.description }}</small>
 
-          <div v-if="field.type === 'select'" class="fr-select-wrap">
-            <select
-              :id="controlId(field)"
-              :name="field.settings?.field_name || undefined"
-              :value="values[field.id] ?? ''"
-              :aria-required="field.required || undefined"
-              :aria-invalid="Boolean(errorFor(field)) || undefined"
-              :aria-describedby="describedBy(field)"
-              @change="setValue(field, $event.target.value)"
-            >
-              <option value="" disabled>{{ field.placeholder || 'Choose an option' }}</option>
-              <option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</option>
-            </select>
-          </div>
+          <FormSelect
+            v-if="field.type === 'select'"
+            :id="controlId(field)"
+            :model-value="values[field.id] ?? ''"
+            :options="field.options || []"
+            :placeholder="field.placeholder || 'Choose an option'"
+            :aria-required="field.required || undefined"
+            :aria-invalid="Boolean(errorFor(field)) || undefined"
+            :aria-describedby="describedBy(field)"
+            @update:model-value="setValue(field, $event)"
+          />
 
-          <div v-else-if="field.type === 'country'" class="fr-select-wrap">
-            <select :id="controlId(field)" :name="field.settings?.field_name || undefined" autocomplete="country-name" :value="values[field.id] ?? ''" :aria-required="field.required || undefined" :aria-invalid="Boolean(errorFor(field)) || undefined" :aria-describedby="describedBy(field)" @change="setValue(field, $event.target.value)">
-              <option value="" disabled>Choose a country</option>
-              <option v-for="country in COUNTRIES" :key="country" :value="country">{{ country }}</option>
-            </select>
-          </div>
+          <FormSelect
+            v-else-if="field.type === 'country'"
+            :id="controlId(field)"
+            :model-value="values[field.id] ?? ''"
+            :options="COUNTRIES"
+            placeholder="Choose a country"
+            :aria-required="field.required || undefined"
+            :aria-invalid="Boolean(errorFor(field)) || undefined"
+            :aria-describedby="describedBy(field)"
+            @update:model-value="setValue(field, $event)"
+          />
 
           <div v-else-if="field.type === 'file'" class="fr-file">
             <input

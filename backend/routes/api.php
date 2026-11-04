@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminCompliancePolicyController;
+use App\Http\Controllers\AdminTrainingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CheckInController;
 use App\Http\Controllers\ComplianceController;
@@ -11,6 +13,8 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\FinanceVoucherController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\OvertimeController;
+use App\Http\Controllers\PersonnelProfileController;
+use App\Http\Controllers\StaffRequestController;
 use App\Http\Controllers\SystemSettingsController;
 use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\TrainingController;
@@ -20,10 +24,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:10,1')->group(function (): void {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
-    Route::post('/auth/admin/login', [AuthController::class, 'adminLogin']);
 });
 Route::get('/events', [EventController::class, 'index']);
-Route::get('/events/{event}/banner', [EventController::class, 'banner']);
+Route::get('/events/{event}/banner', [EventController::class, 'banner'])->name('events.banner');
 Route::get('/events/{event}', [EventController::class, 'show']);
 Route::get('/events/{event}/form', [EventController::class, 'form']);
 Route::get('/settings', [SystemSettingsController::class, 'show']);
@@ -34,12 +37,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/me/profile-photo', [UserController::class, 'profilePhoto']);
     Route::post('/me/profile', [UserController::class, 'updateProfile']);
     Route::patch('/me/password', [UserController::class, 'updatePassword'])->middleware('throttle:10,1');
-    Route::post('/registrations', [RegistrationController::class, 'store']);
+    Route::post('/registrations', [RegistrationController::class, 'store'])->middleware('throttle:30,1');
     Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
     Route::get('/registrations/{registration}/qr', [RegistrationController::class, 'qr']);
     Route::put('/registrations/{registration}', [RegistrationController::class, 'update']);
     Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
-    Route::post('/check-ins', [CheckInController::class, 'store']);
+    Route::post('/check-ins', [CheckInController::class, 'store'])->middleware('throttle:120,1');
     Route::post('/check-ins/preview', [CheckInController::class, 'preview']);
 
     // Personnel portal: a staff member's own compliance requirements.
@@ -69,6 +72,18 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/timesheets/{timesheet}/attachments/{day}', [TimesheetController::class, 'attachment'])->whereNumber('day');
         Route::post('/timesheets/{timesheet}/decision', [TimesheetController::class, 'decide']);
         Route::post('/timesheets/{timesheet}/process', [TimesheetController::class, 'process']);
+        Route::get('/me/requests', [StaffRequestController::class, 'index']);
+        Route::post('/me/requests', [StaffRequestController::class, 'store'])->middleware('throttle:30,1');
+        Route::get('/me/requests/approvals', [StaffRequestController::class, 'approvals']);
+        Route::post('/requests/{staffRequest}/cancel', [StaffRequestController::class, 'cancel']);
+        Route::post('/requests/{staffRequest}/decision', [StaffRequestController::class, 'decide']);
+        Route::get('/requests/{staffRequest}/attachment', [StaffRequestController::class, 'attachment']);
+        Route::get('/me/personnel-profile', [PersonnelProfileController::class, 'show']);
+        Route::put('/me/personnel-profile', [PersonnelProfileController::class, 'save'])->middleware('throttle:60,1');
+        Route::post('/me/personnel-profile/documents/{slot}', [PersonnelProfileController::class, 'uploadDocument'])->middleware('throttle:30,1');
+        Route::delete('/me/personnel-profile/documents/{slot}', [PersonnelProfileController::class, 'deleteDocument']);
+        // The owner or a Master Admin; checked in the controller.
+        Route::get('/personnel-profiles/{user}/documents/{slot}', [PersonnelProfileController::class, 'document']);
         Route::get('/me/contracts', [ContractController::class, 'mine']);
         // The owner or a Master Admin; checked in the controller.
         Route::get('/contracts/{contract}/file', [ContractController::class, 'file']);
@@ -101,12 +116,22 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/check-ins', [AdminController::class, 'checkIns']);
         Route::get('/events/{event}/check-ins', [AdminController::class, 'eventCheckIns'])->middleware('can:view,event');
         Route::middleware('can:manage-admin-accounts')->group(function (): void {
+            Route::get('/training-courses', [AdminTrainingController::class, 'index']);
+            Route::post('/training-courses', [AdminTrainingController::class, 'store']);
+            Route::put('/training-courses/{course}', [AdminTrainingController::class, 'update']);
+            Route::delete('/training-courses/{course}', [AdminTrainingController::class, 'destroy']);
+            Route::put('/training-courses/{course}/assignments', [AdminTrainingController::class, 'assign']);
+            Route::get('/compliance-policies', [AdminCompliancePolicyController::class, 'index']);
+            Route::post('/compliance-policies', [AdminCompliancePolicyController::class, 'store']);
+            Route::put('/compliance-policies/{policy}', [AdminCompliancePolicyController::class, 'update']);
+            Route::delete('/compliance-policies/{policy}', [AdminCompliancePolicyController::class, 'destroy']);
             Route::get('/settings', [SystemSettingsController::class, 'show']);
             Route::put('/settings', [SystemSettingsController::class, 'update']);
             Route::get('/contracts', [ContractController::class, 'index']);
             Route::post('/contracts', [ContractController::class, 'store']);
             Route::post('/contracts/{contract}', [ContractController::class, 'update']);
             Route::delete('/contracts/{contract}', [ContractController::class, 'destroy']);
+            Route::get('/personnel-profiles/{user}', [PersonnelProfileController::class, 'showFor']);
             Route::get('/admin-accounts', [AdminController::class, 'adminAccounts']);
             Route::post('/admin-accounts', [AdminController::class, 'createAdminAccount']);
             Route::put('/admin-accounts/{user}', [AdminController::class, 'updateAdminAccount']);

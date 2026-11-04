@@ -4,3 +4,8 @@ export const getTrainingCourse = (courseId) => api.get(`/me/training/${courseId}
 export const completeTrainingLesson = (courseId, lessonId) => api.post(`/me/training/${courseId}/lessons/${lessonId}/complete`)
 export const getTrainingQuiz = (courseId) => api.get(`/me/training/${courseId}/quiz`)
 export const submitTrainingQuiz = (courseId, answers) => api.post(`/me/training/${courseId}/quiz`, { answers })
+export const getTrainingCoursesForAdmin = () => api.get('/admin/training-courses')
+export const createTrainingCourse = (data) => api.post('/admin/training-courses', data)
+export const updateTrainingCourse = (courseId, data) => api.put(`/admin/training-courses/${courseId}`, data)
+export const deleteTrainingCourse = (courseId) => api.delete(`/admin/training-courses/${courseId}`)
+export const assignTrainingCourse = (courseId, userIds) => api.put(`/admin/training-courses/${courseId}/assignments`, { user_ids: userIds })

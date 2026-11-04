@@ -51,36 +51,16 @@ watch(viewingId, () => { toast.value = ''; load() })
 const viewingName = computed(() => (viewingId.value === auth.user?.id ? 'you' : staff.value.find((person) => person.id === viewingId.value)?.name || 'this person'))
 
 /* ---------- Formatting ---------- */
-const toDate = (iso) => (iso ? new Date(`${iso}T00:00:00`) : null)
-const formatDate = (iso) => (iso ? toDate(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+const formatDate = (iso) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
 const period = (contract) => `${formatDate(contract.start_date)} – ${contract.end_date ? formatDate(contract.end_date) : 'Open-ended'}`
-const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
-const spanText = (days) => {
-  const months = Math.round(days / 30.44)
-  if (months < 1) return plural(Math.max(days, 1), 'day')
-  if (months % 12 === 0) return plural(months / 12, 'year')
-  return plural(months, 'month')
-}
-const duration = (contract) => (contract.end_date ? spanText(Math.round((toDate(contract.end_date) - toDate(contract.start_date)) / 864e5) + 1) : 'Open-ended')
-const today = () => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), now.getDate()) }
 const money = (contract) => {
   if (contract.salary === null || contract.salary === undefined || contract.salary === '') return 'Not recorded'
   const amount = Number(contract.salary)
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: contract.currency, maximumFractionDigits: Number.isInteger(amount) ? 0 : 2 }).format(amount)
 }
 
-/* ---------- The contract that applies now (or next) ---------- */
+/* Use the active or next contract's department as a convenience when adding another entry. */
 const current = computed(() => contracts.value.find((contract) => contract.status === 'active') || [...contracts.value].reverse().find((contract) => contract.status === 'upcoming') || null)
-const currentProgress = computed(() => {
-  const contract = current.value
-  if (!contract) return null
-  if (contract.status === 'upcoming') return { label: `Starts in ${spanText(Math.round((toDate(contract.start_date) - today()) / 864e5))}`, percent: 0 }
-  if (!contract.end_date) return { label: `Started ${spanText(Math.round((today() - toDate(contract.start_date)) / 864e5) + 1)} ago`, percent: null }
-  const total = toDate(contract.end_date) - toDate(contract.start_date)
-  const elapsed = today() - toDate(contract.start_date)
-  const daysLeft = Math.round((toDate(contract.end_date) - today()) / 864e5)
-  return { label: daysLeft <= 0 ? 'Ends today' : `${spanText(daysLeft)} left`, percent: Math.min(100, Math.max(0, Math.round((elapsed / total) * 100))) }
-})
 
 /* ---------- Download ---------- */
 const downloading = ref(null)
@@ -209,11 +189,18 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
     <header class="ch-head">
       <div>
         <h1>Contract History</h1>
-        <p>{{ canManage ? 'Employment contracts on record. Choose a staff member to view or manage theirs.' : 'Your employment contracts on record, with signed copies to download.' }}</p>
+        <p>All contracts on record — probationary, full-time, part-time, and more.</p>
       </div>
+    </header>
+
+    <p v-if="toast" class="ch-toast" role="status"><AppIcon name="check-circle" :size="18" /><span>{{ toast }}</span><button type="button" class="ch-icon-btn" aria-label="Dismiss" @click="toast = ''"><AppIcon name="x" :size="16" /></button></p>
+    <p v-if="alertMessage" class="ch-alert" role="alert"><AppIcon name="alert-circle" :size="18" /><span>{{ alertMessage }}</span><button type="button" class="ch-icon-btn" aria-label="Dismiss" @click="alertMessage = ''"><AppIcon name="x" :size="16" /></button></p>
+
+    <div class="ch-managebar">
+      <p>{{ canManage ? 'View and maintain your recorded contract history.' : 'View your recorded contract history and download signed copies.' }}</p>
       <div v-if="canManage" class="ch-head__actions">
         <label class="ch-staff">
-          <span>Staff member</span>
+          <span class="sr-only">Staff member</span>
           <select v-model="viewingId" :disabled="loading">
             <option :value="auth.user?.id">Me ({{ auth.user?.name }})</option>
             <option v-for="person in staff.filter((item) => item.id !== auth.user?.id)" :key="person.id" :value="person.id">{{ person.name }}</option>
@@ -221,12 +208,9 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
         </label>
         <button type="button" class="ch-btn ch-btn--primary" :disabled="loading || !!loadError" @click="openForm()"><AppIcon name="plus" :size="16" />Add contract</button>
       </div>
-    </header>
+    </div>
 
-    <p v-if="toast" class="ch-toast" role="status"><AppIcon name="check-circle" :size="18" /><span>{{ toast }}</span><button type="button" class="ch-icon-btn" aria-label="Dismiss" @click="toast = ''"><AppIcon name="x" :size="16" /></button></p>
-    <p v-if="alertMessage" class="ch-alert" role="alert"><AppIcon name="alert-circle" :size="18" /><span>{{ alertMessage }}</span><button type="button" class="ch-icon-btn" aria-label="Dismiss" @click="alertMessage = ''"><AppIcon name="x" :size="16" /></button></p>
-
-    <div v-if="loading" class="ch-skeleton" aria-busy="true" aria-label="Loading contracts"><span class="ch-skeleton__hero"></span><span v-for="n in 3" :key="n" class="ch-skeleton__row"></span></div>
+    <div v-if="loading" class="ch-skeleton" aria-busy="true" aria-label="Loading contracts"><span v-for="n in 3" :key="n" class="ch-skeleton__row"></span></div>
 
     <section v-else-if="loadError" class="ch-state ch-state--error" role="alert">
       <AppIcon name="alert-circle" :size="28" />
@@ -235,51 +219,34 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
       <button type="button" class="ch-btn ch-btn--primary" @click="load()"><AppIcon name="refresh" :size="16" />Try again</button>
     </section>
 
-    <section v-else-if="!contracts.length" class="ch-state">
-      <AppIcon name="file-text" :size="28" />
-      <h2>No contracts on record</h2>
-      <p v-if="canManage">{{ viewingName === 'you' ? 'You don’t' : `${viewingName} doesn’t` }} have any contracts yet. Add the first one with its signed copy.</p>
-      <p v-else>HR adds your contracts here once they’re signed. Contact HR if you think one is missing.</p>
-      <button v-if="canManage" type="button" class="ch-btn ch-btn--primary" @click="openForm()"><AppIcon name="plus" :size="16" />Add contract</button>
-    </section>
-
-    <template v-else>
-      <!-- Current (or next) contract -->
-      <section v-if="current" class="ch-current" :aria-label="current.status === 'upcoming' ? 'Next contract' : 'Current contract'">
-        <div class="ch-current__main">
-          <p class="ch-eyebrow">{{ current.status === 'upcoming' ? 'Next contract' : 'Current contract' }}</p>
-          <h2>{{ current.position }}</h2>
-          <p class="ch-current__sub">{{ current.type_label }}<template v-if="current.department"> · {{ current.department }}</template></p>
-          <span class="ch-badge" :class="`is-${statusOf(current).tone}`"><AppIcon :name="statusOf(current).icon" :size="14" />{{ statusOf(current).label }}</span>
-        </div>
-        <dl class="ch-facts">
-          <div><dt>Period</dt><dd>{{ period(current) }}</dd></div>
-          <div><dt>Duration</dt><dd>{{ duration(current) }}</dd></div>
-          <div><dt>Salary</dt><dd>{{ money(current) }}</dd></div>
-          <div class="ch-facts__progress">
-            <dt>{{ current.status === 'upcoming' ? 'Starts' : 'Time remaining' }}</dt>
-            <dd>{{ currentProgress.label }}</dd>
-            <div v-if="currentProgress.percent !== null" class="ch-track" role="progressbar" :aria-valuenow="currentProgress.percent" aria-valuemin="0" aria-valuemax="100" aria-label="Contract time elapsed"><i :style="{ width: `${currentProgress.percent}%` }"></i></div>
-          </div>
-        </dl>
-        <div class="ch-current__actions">
-          <button v-if="current.has_file" type="button" class="ch-btn ch-btn--ghost" :disabled="downloading === current.id" @click="download(current)"><AppIcon :name="downloading === current.id ? 'refresh' : 'download'" :size="16" :class="{ 'ch-spin': downloading === current.id }" />Download signed copy</button>
-          <span v-else class="ch-nofile"><AppIcon name="info" :size="15" />No signed copy uploaded yet</span>
-        </div>
-      </section>
-      <p v-if="current?.ending_soon" class="ch-notice"><AppIcon name="clock" :size="18" /><span><strong>This contract ends on {{ formatDate(current.end_date) }}.</strong> {{ canManage ? 'Add the renewal or next contract when it’s signed.' : 'Talk to HR about renewal if you haven’t already.' }}</span></p>
-
-      <section class="ch-card" aria-labelledby="ch-all-title">
-        <header class="ch-card__head"><h2 id="ch-all-title">All contracts</h2><span class="ch-count">{{ plural(contracts.length, 'contract') }}</span></header>
+    <section v-else class="ch-card" aria-label="Contract history">
+      <div class="ch-table-scroll">
         <table class="ch-table">
-          <thead><tr><th scope="col">Contract</th><th scope="col">Period</th><th scope="col">Salary</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">Contract</th>
+              <th scope="col">Position</th>
+              <th scope="col">Department</th>
+              <th scope="col">Start date</th>
+              <th scope="col">End date</th>
+              <th scope="col">Salary</th>
+              <th scope="col">Status</th>
+              <th scope="col">Update</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr v-for="contract in contracts" :key="contract.id" :class="{ 'is-current': contract.id === current?.id }">
-              <td data-label="Contract"><div class="ch-cell"><strong>{{ contract.position }}</strong><small>{{ contract.type_label }}<template v-if="contract.department"> · {{ contract.department }}</template></small></div></td>
-              <td data-label="Period"><div class="ch-cell"><span>{{ period(contract) }}</span><small>{{ duration(contract) }}</small></div></td>
-              <td data-label="Salary"><div class="ch-cell ch-num">{{ money(contract) }}</div></td>
+            <tr v-if="!contracts.length">
+              <td colspan="8" class="ch-empty">No contract history has been recorded yet.</td>
+            </tr>
+            <tr v-for="contract in contracts" :key="contract.id">
+              <td data-label="Contract">{{ contract.type_label }}</td>
+              <td data-label="Position"><strong>{{ contract.position }}</strong></td>
+              <td data-label="Department">{{ contract.department || '—' }}</td>
+              <td data-label="Start date">{{ formatDate(contract.start_date) }}</td>
+              <td data-label="End date">{{ contract.end_date ? formatDate(contract.end_date) : 'Open-ended' }}</td>
+              <td data-label="Salary" class="ch-num">{{ money(contract) }}</td>
               <td data-label="Status"><div class="ch-cell"><span class="ch-badge" :class="`is-${statusOf(contract).tone}`"><AppIcon :name="statusOf(contract).icon" :size="14" />{{ statusOf(contract).label }}</span></div></td>
-              <td class="ch-actions-cell"><div class="ch-actions">
+              <td data-label="Update" class="ch-actions-cell"><div class="ch-actions">
                 <button v-if="contract.has_file" type="button" class="ch-btn ch-btn--ghost ch-btn--sm" :disabled="downloading === contract.id" :aria-label="`Download signed ${contract.type_label} contract, ${period(contract)}`" @click="download(contract)"><AppIcon :name="downloading === contract.id ? 'refresh' : 'download'" :size="15" :class="{ 'ch-spin': downloading === contract.id }" />PDF</button>
                 <span v-else class="ch-nofile ch-nofile--sm" title="No signed copy uploaded">No file</span>
                 <template v-if="canManage">
@@ -290,8 +257,8 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
             </tr>
           </tbody>
         </table>
-      </section>
-    </template>
+      </div>
+    </section>
 
     <!-- Add / edit -->
     <dialog ref="formDialog" class="ch-dialog" aria-labelledby="ch-form-title" @click="onBackdrop($event, formDialog)">
@@ -366,9 +333,11 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
 .ch { --ch-ink: #17365f; --ch-text: #3d5470; --ch-muted: #6b8099; --ch-line: #dfe7ef; --ch-soft: #f6f9fc; --ch-brand: #0b7f62; --ch-brand-dark: #086a51; --ch-brand-soft: #e8f5f0; --ch-success: #14804a; --ch-success-soft: #e7f6ee; --ch-warning: #a35f00; --ch-warning-soft: #fff4dc; --ch-info: #2b5ea8; --ch-info-soft: #e9f1fd; --ch-danger: #c0392b; --ch-danger-soft: #fdf1f0; width: min(100%, 1180px); margin: 0 auto; padding: 24px 0 48px; color: var(--ch-text); font-size: 14px; line-height: 1.5; }
 .ch button { margin: 0; } /* older global styles give every button a top margin and large padding */
 .ch h1, .ch h2, .ch h3 { color: var(--ch-ink); letter-spacing: -.01em; }
-.ch-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.ch-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 38px; }
 .ch-head h1 { margin: 0 0 4px; font-size: 1.6rem; font-weight: 700; }
 .ch-head p { margin: 0; color: var(--ch-muted); }
+.ch-managebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 10px; }
+.ch-managebar > p { margin: 0; color: var(--ch-muted); font-size: .86rem; }
 .ch-head__actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
 .ch-staff { display: grid; gap: 4px; color: var(--ch-muted); font-size: .8rem; font-weight: 600; }
 .ch-staff select { min-width: 220px; }
@@ -384,27 +353,16 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
 .ch-toast span, .ch-alert span, .ch-notice span { flex: 1; }
 .ch-toast svg, .ch-alert svg, .ch-notice svg { flex: none; }
 
-/* Current contract */
-.ch-current { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 24px; margin-bottom: 16px; padding: 22px 24px; border: 1px solid var(--ch-line); border-radius: 14px; background: #fff; box-shadow: 0 4px 14px rgba(23, 54, 95, .04); }
-.ch-eyebrow { margin: 0 0 4px; color: var(--ch-brand); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.ch-current h2 { margin: 0; font-size: 1.3rem; font-weight: 700; }
-.ch-current__sub { margin: 2px 0 10px; color: var(--ch-muted); }
-.ch-facts { display: grid; grid-template-columns: repeat(3, max-content) minmax(140px, 1fr); gap: 16px 32px; margin: 0; padding: 0 0 0 24px; border-left: 1px solid var(--ch-line); }
-.ch-facts dt { color: var(--ch-muted); font-size: .8rem; font-weight: 600; }
-.ch-facts dd { margin: 2px 0 0; color: var(--ch-ink); font-weight: 600; }
-.ch-track { height: 6px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: #e6edf3; }
-.ch-track i { display: block; height: 100%; border-radius: inherit; background: var(--ch-brand); }
 .ch-nofile { display: inline-flex; align-items: center; gap: 6px; color: var(--ch-muted); font-size: .86rem; }
 .ch-nofile--sm { padding: 0 6px; font-size: .82rem; }
 
-/* All contracts */
-.ch-card { overflow: hidden; border: 1px solid var(--ch-line); border-radius: 14px; background: #fff; box-shadow: 0 4px 14px rgba(23, 54, 95, .04); }
-.ch-card__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--ch-line); }
-.ch-card__head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
-.ch-count { color: var(--ch-muted); font-size: .85rem; }
-.ch-table { width: 100%; border-collapse: collapse; text-align: left; }
-.ch-table th { padding: 10px 20px; background: var(--ch-soft); color: var(--ch-muted); font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
-.ch-table td { padding: 14px 20px; border-top: 1px solid var(--ch-line); color: var(--ch-ink); font-size: .92rem; vertical-align: middle; white-space: normal; }
+.ch-card { padding: 16px 18px; border: 1px solid var(--ch-line); border-radius: 14px; background: #fff; box-shadow: 0 4px 14px rgba(23, 54, 95, .04); }
+.ch-table-scroll { overflow-x: auto; border: 1px solid var(--ch-line); border-radius: 10px; }
+.ch-table { width: 100%; min-width: 900px; border-collapse: collapse; text-align: left; }
+.ch-table th { padding: 11px 12px; background: var(--ch-soft); color: var(--ch-muted); font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.ch-table td { padding: 13px 12px; border-top: 1px solid var(--ch-line); color: var(--ch-ink); font-size: .84rem; vertical-align: middle; white-space: normal; }
+.ch-table td strong { font-weight: 600; }
+.ch-table .ch-empty { height: 64px; color: var(--ch-muted); text-align: center; }
 .ch-cell > strong, .ch-cell > span:not(.ch-badge) { display: block; font-size: .92rem; font-weight: 600; }
 .ch-cell small { display: block; color: var(--ch-muted); font-size: .82rem; }
 .ch-actions-cell { width: 1%; white-space: nowrap; }
@@ -471,31 +429,18 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
 .ch-file__name { min-width: 0; flex: 1; overflow: hidden; color: var(--ch-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 1100px) {
-  .ch-current { grid-template-columns: 1fr; gap: 16px; }
-  .ch-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 16px 0 0; border-top: 1px solid var(--ch-line); border-left: 0; }
 }
-/* Phones: each table row becomes a card with labelled values. */
 @media (max-width: 760px) {
   .ch { padding-top: 16px; }
   .ch-head h1 { font-size: 1.35rem; }
+  .ch-head { margin-bottom: 28px; }
+  .ch-managebar { align-items: stretch; }
+  .ch-managebar > p { flex-basis: 100%; }
   .ch-head__actions, .ch-staff { width: 100%; }
   .ch-head__actions .ch-btn { flex: 1; }
   .ch-staff select { min-width: 0; }
-  .ch-current { padding: 18px; }
-  .ch-facts { grid-template-columns: 1fr 1fr; }
-  .ch-current__actions .ch-btn { width: 100%; }
-  .ch-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .ch-table, .ch-table tbody, .ch-table tr, .ch-table td { display: block; }
-  .ch-table tr { padding: 14px 16px; border-top: 1px solid var(--ch-line); }
-  .ch-table tr.is-current { box-shadow: inset 3px 0 0 var(--ch-brand); }
-  .ch-table tr.is-current td:first-child { box-shadow: none; }
-  .ch-table td { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: start; gap: 12px; width: auto; padding: 5px 0; border: 0; background: transparent !important; }
-  .ch-table td::before { padding-top: 1px; color: var(--ch-muted); font-size: .8rem; font-weight: 600; content: attr(data-label); }
-  .ch-table td[data-label="Contract"] { display: block; padding-bottom: 8px; }
-  .ch-table td[data-label="Contract"]::before, .ch-table td.ch-actions-cell::before { content: none; }
-  .ch-table td.ch-actions-cell { display: block; padding-top: 8px; }
-  .ch-cell { min-width: 0; }
-  .ch-actions { justify-content: flex-end; }
+  .ch-card { padding: 10px; }
+  .ch-table { min-width: 900px; }
   .ch-grid { grid-template-columns: 1fr; }
   .ch-dialog { width: 100%; max-width: none; max-height: 92%; margin: auto 0 0; border-radius: 16px 16px 0 0; }
   .ch-dialog--sm { margin: auto 16px; width: auto; border-radius: 16px; }

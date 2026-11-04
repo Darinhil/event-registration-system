@@ -14,9 +14,11 @@ const normalizeUserPhoto = (user) => {
 
 let profileStateVersion = 0
 
+const storedUser = () => { try { return JSON.parse(localStorage.getItem('event_user') || 'null') } catch { return null } }
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: JSON.parse(localStorage.getItem('event_user') || 'null'),
+    user: storedUser(),
     token: localStorage.getItem('event_token'),
     profilePhotoPreview: null,
     loading: false,
@@ -26,6 +28,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => Boolean(state.token),
     isAdmin: (state) => state.user?.role === 'admin',
     isEventAdmin: (state) => state.user?.role === 'event_admin',
+    canManageEvents: (state) => ['admin', 'event_admin'].includes(state.user?.role),
     canAccessAdmin: (state) => ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'].includes(state.user?.role),
     roleLabel: (state) => ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[state.user?.role] || 'Attendee'),
   },
@@ -45,10 +48,10 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('event_token', data.token)
       localStorage.setItem('event_user', JSON.stringify(this.user))
     },
-    async login(credentials, endpoint = '/auth/login') {
+    async login(credentials) {
       this.loading = true
       this.error = null
-      try { this.saveSession((await api.post(endpoint, credentials)).data) } catch (error) { this.error = error.response?.data?.message || 'Unable to sign in.'; throw error } finally { this.loading = false }
+      try { this.saveSession((await api.post('/auth/login', credentials)).data) } catch (error) { this.error = error.response?.data?.message || 'Unable to sign in.'; throw error } finally { this.loading = false }
     },
     async registerAccount(details) {
       this.loading = true

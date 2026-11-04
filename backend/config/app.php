@@ -66,6 +66,9 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost:3000')),
 
+    // Registration dates are calendar days where the organisation works.
+    'business_timezone' => env('BUSINESS_TIMEZONE', 'Asia/Phnom_Penh'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

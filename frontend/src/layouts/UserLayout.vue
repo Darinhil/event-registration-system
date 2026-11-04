@@ -6,10 +6,6 @@ import { useSettingsStore } from '../stores/settings'
 import AppIcon from '../components/AppIcon.vue'
 import logo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
-// Onboarding pages (the /me profile steps) use a full-screen layout without the top bar.
-const props = defineProps({
-  onboarding: { type: Boolean, default: false },
-})
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -17,10 +13,8 @@ const settings = useSettingsStore()
 
 // The bar uses its own un-* classes: older global stylesheets style .topbar / .nav-link heavily.
 // No Check in link: attendees reach /check-in only by scanning the entrance QR at the venue.
-const links = computed(() => (auth.isAuthenticated
-  ? [{ to: '/', label: 'Home', icon: 'layout-grid', exact: true }, { to: '/me', label: 'My information', icon: 'user' }]
-  : [{ to: '/', label: 'Home', icon: 'layout-grid', exact: true }]))
-const isActive = (link) => (link.exact ? route.path === link.to : route.path === link.to || route.path.startsWith(`${link.to}/`))
+const links = computed(() => (auth.isAuthenticated ? [{ to: '/me', label: 'My information', icon: 'user' }] : []))
+const isActive = (link) => route.path === link.to || route.path.startsWith(`${link.to}/`)
 const firstName = computed(() => auth.user?.name?.trim().split(/\s+/)[0] || 'Account')
 const initials = computed(() => (auth.user?.name || '').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?')
 const photo = computed(() => auth.profilePhotoPreview || auth.user?.profile_photo || '')
@@ -59,9 +53,9 @@ const logout = async () => {
 </script>
 
 <template>
-  <div class="shell" :class="{ 'onboarding-shell': props.onboarding }">
+  <div class="shell">
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <header v-if="!props.onboarding" class="un-bar">
+    <header class="un-bar">
       <div class="un-inner">
         <RouterLink to="/" class="un-brand" aria-label="Live & Learn Cambodia — home">
           <img :src="logo" alt="" />
@@ -197,5 +191,4 @@ const logout = async () => {
   .site-notices { padding: 0 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .un-account__chev, .un-link, .un-link::after { transition: none; } }
-.shell.onboarding-shell { min-height: 100vh; background: #f5f7fc; }
 </style>

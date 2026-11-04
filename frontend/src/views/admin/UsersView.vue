@@ -481,7 +481,6 @@ onBeforeUnmount(() => {
     <section class="at-page">
       <header class="at-header">
         <h1>Attendance by Event</h1>
-        <p>Pick an event to see who registered, who has arrived, and check people in.</p>
       </header>
 
       <p v-if="eventsError" class="at-alert" role="alert">
@@ -574,11 +573,6 @@ onBeforeUnmount(() => {
                   <dt><AppIcon name="timer" :size="16" />Not checked in</dt>
                   <dd>{{ attendeesLoading ? '—' : remainingCount }}</dd>
                   <small>still to arrive</small>
-                </div>
-                <div class="at-stat at-stat--rate">
-                  <dt><AppIcon name="chart-pie" :size="16" />Check-in rate</dt>
-                  <dd>{{ attendeesLoading ? '—' : `${checkInRate}%` }}</dd>
-                  <span class="at-progress" role="progressbar" aria-label="Check-in progress" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="checkInRate"><span :style="{ width: `${checkInRate}%` }" /></span>
                 </div>
               </dl>
             </section>
@@ -780,7 +774,6 @@ onBeforeUnmount(() => {
           </div>
 
           <footer class="at-drawer__foot">
-            <RouterLink :to="`/admin/users/${detailRow.user.id}`" class="at-btn at-btn--ghost">Open full profile<AppIcon name="arrow-up-right" :size="16" /></RouterLink>
           </footer>
         </aside>
       </div>

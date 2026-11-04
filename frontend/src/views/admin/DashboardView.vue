@@ -6,6 +6,9 @@ import { getAdminEvents, getDashboard, getReports } from '../../services/adminSe
 import { useAuthStore } from '../../stores/auth'
 import { getMyCompliances } from '../../services/complianceService'
 import { getMyTraining } from '../../services/trainingService'
+import { getMyContracts } from '../../services/contractService'
+import { getMyRequests, getPersonnelProfile } from '../../services/staffRequestService'
+import { getTimesheet } from '../../services/timesheetService'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -72,7 +75,7 @@ const upcomingEvents = computed(() => events.value
 const checkInRate = computed(() => percent(stats.value.check_ins, stats.value.registrations))
 const statCards = computed(() => [
   { key: 'events', label: 'Total Events', value: events.value.length, tone: 'teal', note: `${number(phaseTotals.value.upcoming + phaseTotals.value.ongoing)} upcoming or live`, to: '/admin/events', icon: 'calendar' },
-  { key: 'users', label: 'Total Participants', value: stats.value.users, tone: 'blue', note: 'Unique registered people', to: '/admin/users', icon: 'users-group' },
+  { key: 'users', label: 'Total Participants', value: stats.value.users, tone: 'blue', note: 'Unique people', to: '/admin/users', icon: 'users-group' },
   { key: 'registrations', label: 'Registrations', value: stats.value.registrations, tone: 'amber', note: `Across ${number(events.value.length)} ${events.value.length === 1 ? 'event' : 'events'}`, to: '/admin/reports', icon: 'user-plus' },
   { key: 'check_ins', label: 'Checked In', value: stats.value.check_ins, tone: 'purple', note: `${checkInRate.value}% of registrations`, to: '/admin/check-ins', icon: 'user-check' },
 ])
@@ -118,34 +121,45 @@ const loadDashboard = async () => {
     loading.value = false
   }
 }
-// Staff home: the compliance card shows the person's real progress from their saved confirmations.
+// Staff home: each card shows the person's real records; a card that can't load shows a dash.
 const complianceSummary = ref(null)
-const loadComplianceSummary = async () => { try { complianceSummary.value = (await getMyCompliances()).data.summary } catch { complianceSummary.value = null } }
 const training = ref(null)
-const loadTraining = async () => { try { training.value = (await getMyTraining()).data } catch { training.value = null } }
+const profile = ref(null)
+const contract = ref(null)
+const leaveBalances = ref([])
+const recentRequests = ref([])
 const upcomingTraining = computed(() => (training.value?.data || []).filter((course) => course.status !== 'completed').slice(0, 3))
-onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else { loading.value = false; loadComplianceSummary(); loadTraining() } })
+const profileLabel = computed(() => !profile.value ? '—' : profile.value.submitted_at ? 'Submitted' : profile.value.profile ? 'In progress' : 'Not started')
+const shortDay = (iso) => new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+const loadStaffHome = () => {
+  const today = new Date()
+  getMyCompliances().then(({ data }) => { complianceSummary.value = data.summary }).catch(() => {})
+  getMyTraining().then(({ data }) => { training.value = data }).catch(() => {})
+  getPersonnelProfile().then(({ data }) => { profile.value = data.data }).catch(() => {})
+  getMyContracts().then(({ data }) => { contract.value = data.data.find((item) => item.status === 'active') || null }).catch(() => {})
+  getMyRequests().then(({ data }) => { recentRequests.value = data.data.slice(0, 3) }).catch(() => {})
+  getTimesheet(today.getFullYear(), today.getMonth() + 1).then(({ data }) => { leaveBalances.value = data.data.balances.filter((item) => item.limited) }).catch(() => {})
+}
+onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.value = false; loadStaffHome() } })
 </script>
 
 <template>
   <AdminLayout>
-    <section v-if="!auth.isAdmin && !auth.isEventAdmin" class="staff-home">
-      <header class="staff-home__title"><h1>Dashboard</h1></header>
-      <section class="staff-home__welcome"><div><h2>Welcome, {{ auth.user?.name || 'Staff member' }}</h2><p>Here’s an overview of your information and current activities.</p></div><RouterLink to="/admin/personnel-profile?section=my-profile">Complete your profile</RouterLink></section>
+    <section v-if="!auth.canManageEvents" class="staff-home">
+      <header class="staff-home__title"><h1>Welcome, {{ firstName || 'there' }}</h1></header>
       <section class="staff-home__metrics" aria-label="Your staff overview">
-        <article><small>Profile Completion</small><strong>—</strong><div class="staff-home__track"><i></i></div><RouterLink to="/admin/personnel-profile?section=my-profile">View profile <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
-        <article><small>Training Progress</small><strong>{{ training ? `${training.summary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${training?.summary.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=training">View training <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
-        <article><small>Active Contract</small><strong>—</strong><div class="staff-home__metric-note">Contract information</div><RouterLink to="/admin/personnel-profile?section=contract-history">View contract <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
-        <article><small>Compliance Status</small><strong>{{ complianceSummary ? `${complianceSummary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${complianceSummary?.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=compliances">View compliance <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
+        <article><small>Profile</small><strong>{{ profileLabel }}</strong><RouterLink to="/admin/personnel-profile?section=my-profile">View profile <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
+        <article><small>Training</small><strong>{{ training ? `${training.summary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${training?.summary.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=training">View training <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
+        <article><small>Contract</small><strong>{{ contract ? contract.position : 'No active contract' }}</strong><div v-if="contract" class="staff-home__metric-note">{{ contract.end_date ? `Ends ${shortDay(contract.end_date)}` : 'Open-ended' }}</div><RouterLink to="/admin/personnel-profile?section=contract-history">View contract <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
+        <article><small>Compliance</small><strong>{{ complianceSummary ? `${complianceSummary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${complianceSummary?.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=compliances">View compliance <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
       </section>
-      <section class="staff-home__panel staff-home__quick"><h2>Quick Actions</h2><div class="staff-home__quick-grid">
-        <RouterLink to="/admin/personnel-profile?section=leave-application"><span><AppIcon name="calendar-check" :size="18" /></span>Apply for Leave</RouterLink><RouterLink to="/admin/personnel-profile?section=overtime-request"><span><AppIcon name="timer" :size="18" /></span>Request Overtime</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span><AppIcon name="plane" :size="18" /></span>Travel Application</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span><AppIcon name="cart" :size="18" /></span>Purchase Request</RouterLink><RouterLink to="/admin/personnel-profile?section=other-requests"><span><AppIcon name="fuel" :size="18" /></span>Fuel Log-sheet</RouterLink><RouterLink to="/admin/personnel-profile?section=finance-management"><span><AppIcon name="receipt" :size="18" /></span>Submit Voucher</RouterLink>
+      <section class="staff-home__panel staff-home__quick"><h2>Quick actions</h2><div class="staff-home__quick-grid">
+        <RouterLink to="/admin/personnel-profile?section=leave-application"><span><AppIcon name="calendar-check" :size="18" /></span>Apply for leave</RouterLink><RouterLink to="/admin/personnel-profile?section=overtime-request"><span><AppIcon name="timer" :size="18" /></span>Request overtime</RouterLink><RouterLink to="/admin/personnel-profile?section=travel-application"><span><AppIcon name="plane" :size="18" /></span>Travel application</RouterLink><RouterLink to="/admin/personnel-profile?section=purchase-request"><span><AppIcon name="cart" :size="18" /></span>Purchase request</RouterLink><RouterLink to="/admin/personnel-profile?section=fuel-log-sheet"><span><AppIcon name="fuel" :size="18" /></span>Fuel log-sheet</RouterLink><RouterLink to="/admin/personnel-profile?section=finance-management"><span><AppIcon name="receipt" :size="18" /></span>Voucher</RouterLink>
       </div></section>
       <div class="staff-home__columns">
-        <section class="staff-home__panel"><header><h2>My Recent Requests</h2><RouterLink to="/admin/personnel-profile?section=my-requests">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><p class="staff-home__empty">Your recent requests will appear here.</p></section>
-        <section class="staff-home__panel"><header><h2>Upcoming Training</h2><RouterLink to="/admin/personnel-profile?section=training">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><ul v-if="upcomingTraining.length" class="staff-home__list"><li v-for="course in upcomingTraining" :key="course.id"><RouterLink :to="{ path: '/admin/personnel-profile', query: { section: 'training', course: course.id } }"><strong>{{ course.title }}</strong><small :class="{ 'is-overdue': course.overdue }">{{ course.overdue ? 'Overdue' : course.due_date ? `Due ${new Date(`${course.due_date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : `${course.percent}% done` }}</small></RouterLink></li></ul><p v-else class="staff-home__empty">{{ training ? 'You’re up to date with your training.' : 'No upcoming training to show.' }}</p></section>
-        <section class="staff-home__panel"><header><h2>Leave Balance</h2><RouterLink to="/admin/personnel-profile?section=time-management">Apply <AppIcon name="chevron-right" :size="13" /></RouterLink></header><p class="staff-home__empty">Leave balances will appear when available.</p></section>
-        <section class="staff-home__panel"><header><h2>Recent Activities</h2></header><p class="staff-home__empty">Your recent activities will appear here.</p></section>
+        <section class="staff-home__panel"><header><h2>My requests</h2><RouterLink to="/admin/personnel-profile?section=my-requests">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><ul v-if="recentRequests.length" class="staff-home__list"><li v-for="request in recentRequests" :key="request.id"><RouterLink to="/admin/personnel-profile?section=my-requests"><strong>{{ request.type_label }}</strong><small>{{ request.status }}</small></RouterLink></li></ul><p v-else class="staff-home__empty">No requests yet.</p></section>
+        <section class="staff-home__panel"><header><h2>Training to finish</h2><RouterLink to="/admin/personnel-profile?section=training">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><ul v-if="upcomingTraining.length" class="staff-home__list"><li v-for="course in upcomingTraining" :key="course.id"><RouterLink :to="{ path: '/admin/personnel-profile', query: { section: 'training', course: course.id } }"><strong>{{ course.title }}</strong><small :class="{ 'is-overdue': course.overdue }">{{ course.overdue ? 'Overdue' : course.due_date ? `Due ${new Date(`${course.due_date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : `${course.percent}% done` }}</small></RouterLink></li></ul><p v-else class="staff-home__empty">You’re up to date.</p></section>
+        <section class="staff-home__panel"><header><h2>Leave balance</h2><RouterLink to="/admin/personnel-profile?section=leave-application">Apply <AppIcon name="chevron-right" :size="13" /></RouterLink></header><ul v-if="leaveBalances.length" class="staff-home__list"><li v-for="item in leaveBalances" :key="item.type"><RouterLink to="/admin/personnel-profile?section=leave-application"><strong>{{ item.label }}</strong><small>{{ item.remaining }} of {{ item.entitlement + item.carried_over }} days left</small></RouterLink></li></ul><p v-else class="staff-home__empty">No leave allowance on record.</p></section>
       </div>
     </section>
 
@@ -153,7 +167,6 @@ onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else {
       <header class="reference-dashboard__heading">
         <div>
           <h1>Dashboard</h1>
-          <p>{{ firstName ? `Welcome back, ${firstName}.` : 'Welcome back.' }} Here’s what’s happening across your events.</p>
         </div>
         <div class="reference-dashboard__heading-actions">
           <time class="reference-dashboard__date" :datetime="today.toISOString().slice(0, 10)">{{ dateLabel(today, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) }}</time>
@@ -206,7 +219,7 @@ onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else {
         </article>
 
         <article class="reference-card reference-upcoming">
-          <header><div><h2>Upcoming Events</h2><p>Next on your schedule</p></div><RouterLink to="/admin/events">View all<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
+          <header><h2>Upcoming Events</h2><RouterLink to="/admin/events">View all<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
           <ul v-if="upcomingEvents.length" class="reference-event-list">
             <li v-for="event in upcomingEvents" :key="event.id">
               <RouterLink :to="`/admin/events/${event.id}`" class="reference-event">
@@ -226,28 +239,6 @@ onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else {
             <span class="reference-empty__icon"><AppIcon name="calendar-plus" :size="22" /></span>
             <p>No upcoming events scheduled.</p>
             <RouterLink to="/admin/events/new" class="rd-button rd-button--soft"><AppIcon name="plus" :size="16" />Create an event</RouterLink>
-          </div>
-        </article>
-
-        <article class="reference-card reference-performance">
-          <header><div><h2>Event Performance</h2><p>Registrations and attendance for your most recent events</p></div><RouterLink to="/admin/reports">Full report<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
-          <div v-if="performanceRows.length" class="reference-table-wrap">
-            <table class="reference-table">
-              <thead><tr><th scope="col">Event</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Registered</th><th scope="col" class="num col-checked">Checked in</th><th scope="col" class="col-rate">Attendance</th></tr></thead>
-              <tbody>
-                <tr v-for="row in performanceRows" :key="row.id">
-                  <td><RouterLink :to="`/admin/events/${row.id}`" class="reference-table__event"><span class="reference-table__thumb" aria-hidden="true"><img v-if="eventById.get(String(row.id))?.branding?.image" :src="eventById.get(String(row.id)).branding.image" alt="" /><template v-else>{{ initials(row.name) }}</template></span><span><strong>{{ row.name }}</strong><small><AppIcon name="calendar" :size="13" />{{ dateLabel(row.starts_at) }}</small></span></RouterLink></td>
-                  <td class="col-status"><em class="rd-badge" :class="`rd-badge--${row.phase}`">{{ phases[row.phase].label }}</em></td>
-                  <td class="num">{{ number(row.registrations) }}<small v-if="row.capacity"> / {{ number(row.capacity) }}</small></td>
-                  <td class="num col-checked">{{ number(row.checked_in) }}</td>
-                  <td class="col-rate"><span class="reference-meter" role="img" :aria-label="`${row.rate}% attendance`"><span><i :style="{ width: `${Math.min(row.rate, 100)}%` }"></i></span><b>{{ row.rate }}%</b></span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="reference-empty">
-            <span class="reference-empty__icon"><AppIcon name="trending-up" :size="22" /></span>
-            <p>Event performance appears once registrations start coming in.</p>
           </div>
         </article>
 
@@ -271,6 +262,28 @@ onMounted(() => { if (auth.isAdmin || auth.isEventAdmin) loadDashboard(); else {
               <AppIcon name="chevron-right" :size="18" class="reference-actions__chevron" />
             </RouterLink>
           </nav>
+        </article>
+
+        <article class="reference-card reference-performance">
+          <header><h2>Event list</h2><RouterLink to="/admin/reports">Full report<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
+          <div v-if="performanceRows.length" class="reference-table-wrap">
+            <table class="reference-table">
+              <thead><tr><th scope="col">Event</th><th scope="col" class="col-status">Status</th><th scope="col" class="num">Registered</th><th scope="col" class="num col-checked">Checked in</th><th scope="col" class="col-rate">Attendance</th></tr></thead>
+              <tbody>
+                <tr v-for="row in performanceRows" :key="row.id">
+                  <td><RouterLink :to="`/admin/events/${row.id}`" class="reference-table__event"><span class="reference-table__thumb" aria-hidden="true"><img v-if="eventById.get(String(row.id))?.branding?.image" :src="eventById.get(String(row.id)).branding.image" alt="" /><template v-else>{{ initials(row.name) }}</template></span><span><strong>{{ row.name }}</strong><small><AppIcon name="calendar" :size="13" />{{ dateLabel(row.starts_at) }}</small></span></RouterLink></td>
+                  <td class="col-status"><em class="rd-badge" :class="`rd-badge--${row.phase}`">{{ phases[row.phase].label }}</em></td>
+                  <td class="num">{{ number(row.registrations) }}<small v-if="row.capacity"> / {{ number(row.capacity) }}</small></td>
+                  <td class="num col-checked">{{ number(row.checked_in) }}</td>
+                  <td class="col-rate"><span class="reference-meter" role="img" :aria-label="`${row.rate}% attendance`"><span><i :style="{ width: `${Math.min(row.rate, 100)}%` }"></i></span><b>{{ row.rate }}%</b></span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="reference-empty">
+            <span class="reference-empty__icon"><AppIcon name="trending-up" :size="22" /></span>
+            <p>Event performance appears once registrations start coming in.</p>
+          </div>
         </article>
       </div>
     </section>
