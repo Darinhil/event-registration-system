@@ -33,9 +33,9 @@ const submitLeave = () => {
 const startNewLeave = () => { Object.assign(leaveForm, { type: 'annual', start: '', end: '', reason: '' }); leaveRequest.reset() }
 
 const forms = [
-  { id: 'leave', title: 'Leave Application', description: 'Request time off and review your leave balance.', action: 'Apply for leave', icon: 'calendar-check', section: 'leave-application' },
-  { id: 'overtime', title: 'Overtime Request', description: 'Record extra hours and send them for approval.', action: 'Request overtime', icon: 'timer', section: 'overtime-request' },
-  { id: 'timesheet', title: 'Monthly Timesheet', description: 'Enter daily hours and submit your monthly timesheet.', action: 'Open timesheet', icon: 'calendar', section: 'monthly-timesheet' },
+  { id: 'leave', title: 'Leave Application', description: 'Request time off.', action: 'Apply for leave', icon: 'calendar-check', section: 'leave-application' },
+  { id: 'overtime', title: 'Overtime Request', description: 'Submit extra hours.', action: 'Request overtime', icon: 'timer', section: 'overtime-request' },
+  { id: 'timesheet', title: 'Monthly Timesheet', description: 'Record and submit hours.', action: 'Open timesheet', icon: 'calendar', section: 'monthly-timesheet' },
 ]
 const filteredRequests = computed(() => statusFilter.value === 'all' ? requests.value : requests.value.filter((item) => item.type_label?.toLowerCase().includes(statusFilter.value)))
 const statuses = ['all', 'leave', 'overtime']
@@ -77,7 +77,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
 <template>
   <main class="tm" aria-labelledby="tm-title">
     <header class="tm-heading">
-      <div><h1 id="tm-title">Time Management</h1><p>Review your time off, overtime and monthly work record.</p></div>
+      <div><h1 id="tm-title">Time Management</h1><p>Leave, overtime, and timesheets.</p></div>
     </header>
 
     <p v-if="loadError" class="tm-notice" role="status">{{ loadError }}</p>
@@ -85,7 +85,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
     <section class="tm-metrics" aria-label="Time management summary">
       <article class="tm-metric">
         <span class="tm-icon tm-icon--green"><AppIcon name="calendar-check" :size="18" /></span><small>Annual leave balance</small>
-        <strong>{{ loading ? 'â€”' : remainingAnnual ?? 'â€”' }}<span v-if="!loading && remainingAnnual !== undefined"> days remaining</span></strong><p>Available leave days</p>
+        <strong>{{ loading ? 'â€”' : remainingAnnual ?? 'â€”' }}<span v-if="!loading && remainingAnnual !== undefined"> days remaining</span></strong>
       </article>
       <article class="tm-metric">
         <span class="tm-icon tm-icon--blue"><AppIcon name="clock" :size="18" /></span><small>Overtime this month</small>
@@ -98,7 +98,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
     </section>
 
     <section class="tm-panel" aria-labelledby="tm-access-title">
-      <div class="tm-panel-heading"><div><h2 id="tm-access-title">Direct Access Workstation</h2><p>Choose a form to start or continue your request.</p></div><button class="tm-text-link" type="button" @click="router.push({ path: '/admin/personnel-profile', query: { section: 'my-requests' } })">Track requests <span aria-hidden="true">â†’</span></button></div>
+      <div class="tm-panel-heading"><div><h2 id="tm-access-title">Direct Access Workstation</h2><p>Choose a form to open.</p></div><button class="tm-text-link" type="button" @click="router.push({ path: '/admin/personnel-profile', query: { section: 'my-requests' } })">Track requests <span aria-hidden="true">â†’</span></button></div>
       <div class="tm-shortcuts">
         <button v-for="form in forms" :key="form.id" type="button" class="tm-shortcut" @click="openForm(form.id)">
           <span class="tm-shortcut-icon" :class="`tm-shortcut-icon--${form.id}`"><AppIcon :name="form.icon" :size="17" /></span><strong>{{ form.title }}</strong><span>{{ form.description }}</span><b>{{ form.action }}</b>
@@ -107,12 +107,12 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
     </section>
 
     <section id="tm-workstation" class="tm-panel tm-workstation" aria-labelledby="tm-form-title">
-      <div class="tm-panel-heading"><div><h2 id="tm-form-title">Direct Form Access Workstation</h2><p>Complete and submit your selected time management form.</p></div><button class="tm-full-link" type="button" @click="openFullPage">Full page view <span aria-hidden="true">↗</span></button></div>
+      <div class="tm-panel-heading"><div><h2 id="tm-form-title">Direct Form Access Workstation</h2><p>Open your selected form.</p></div><button class="tm-full-link" type="button" @click="openFullPage">Full page view <span aria-hidden="true">↗</span></button></div>
       <div class="tm-tabs" role="tablist" aria-label="Time management forms">
         <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="activeForm === form.id" :class="{ 'is-active': activeForm === form.id }" @click="openForm(form.id)">{{ form.title }}</button>
       </div>
       <div v-if="activeForm === 'leave'" class="tm-direct-form">
-        <div v-if="leaveRequest.saved.value" class="tm-success" role="status"><span class="tm-icon tm-icon--green"><AppIcon name="check-circle" :size="18" /></span><div><strong>Leave request submitted</strong><p>Your request has been sent to your approver.</p></div><button type="button" class="tm-secondary" @click="startNewLeave">New request</button></div>
+        <div v-if="leaveRequest.saved.value" class="tm-success" role="status"><span class="tm-icon tm-icon--green"><AppIcon name="check-circle" :size="18" /></span><div><strong>Leave request submitted</strong><p>Sent to your approver.</p></div><button type="button" class="tm-secondary" @click="startNewLeave">New request</button></div>
         <form v-else class="tm-leave-form" @submit.prevent="submitLeave">
           <p v-if="leaveRequest.formError.value" class="tm-notice" role="alert">{{ leaveRequest.formError.value }}</p>
           <div class="tm-field"><label>Employee name</label><input :value="auth.user?.name || ''" readonly /></div>
@@ -123,14 +123,14 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
           </div>
           <div class="tm-field"><label for="tm-leave-reason">Reason / message to supervisor</label><textarea id="tm-leave-reason" v-model="leaveForm.reason" rows="2" maxlength="500" placeholder="Add a short reason or handover note"></textarea></div>
           <div class="tm-assignee"><RequestFormParts v-model:approver-id="leaveRequest.approverId.value" v-model:attachment="leaveRequest.attachment.value" :approvers="leaveRequest.approvers.value" :errors="leaveRequest.errors" :with-attachment="false" /></div>
-          <footer class="tm-form-footer"><span>Required fields are marked. Your request will be sent for approval.</span><div><button type="submit" class="tm-submit" :disabled="leaveRequest.saving.value">{{ leaveRequest.saving.value ? 'Submitting…' : 'Submit leave request' }}</button><button type="button" class="tm-secondary" @click="openFullPage">Full page view</button></div></footer>
+          <footer class="tm-form-footer"><span>Required fields are marked.</span><div><button type="submit" class="tm-submit" :disabled="leaveRequest.saving.value">{{ leaveRequest.saving.value ? 'Submitting…' : 'Submit leave request' }}</button><button type="button" class="tm-secondary" @click="openFullPage">Full page view</button></div></footer>
         </form>
       </div>
       <KeepAlive v-else><component :is="activeForm === 'overtime' ? OvertimeRequest : MonthlyTimesheet" /></KeepAlive>
     </section>
 
     <section class="tm-panel tm-ledger" aria-labelledby="tm-ledger-title">
-      <div class="tm-panel-heading"><div><h2 id="tm-ledger-title">Recent Activity &amp; Approvals Ledger</h2><p>Follow the status of your submitted time requests.</p></div><div class="tm-filters" aria-label="Filter requests by status"><button v-for="status in statuses" :key="status" type="button" :class="{ 'is-active': statusFilter === status }" @click="statusFilter = status">{{ statusLabel(status) }}</button></div></div>
+      <div class="tm-panel-heading"><div><h2 id="tm-ledger-title">Recent Activity &amp; Requests</h2><p>Your latest submissions.</p></div><div class="tm-filters" aria-label="Filter requests by status"><button v-for="status in statuses" :key="status" type="button" :class="{ 'is-active': statusFilter === status }" @click="statusFilter = status">{{ statusLabel(status) }}</button></div></div>
       <div class="tm-table-wrap"><table><thead><tr><th>Request</th><th>Module</th><th>Request / Description</th><th>Submitted</th><th>Approver</th><th>Status</th></tr></thead><tbody>
         <tr v-if="loading"><td colspan="6" class="tm-empty">Loading recent activity…</td></tr>
         <tr v-else-if="!filteredRequests.length"><td colspan="6" class="tm-empty">No requests match this filter.</td></tr>

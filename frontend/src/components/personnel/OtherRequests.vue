@@ -6,9 +6,9 @@ import AppIcon from '../AppIcon.vue'
 import { getMyRequests } from '../../services/staffRequestService'
 
 const forms = [
-  { id: 'travel', title: 'Travel Application', short: 'Travel Applications', description: 'Plan a work trip, estimate costs, and add supporting details.', action: 'Apply for travel', icon: 'plane', section: 'travel-application', tone: 'green' },
-  { id: 'fuel', title: 'Fuel Log-sheet', short: 'Fuel Log-sheets', description: 'Record vehicle mileage, fuel usage, and monthly costs.', action: 'Open fuel log', icon: 'fuel', section: 'fuel-log-sheet', tone: 'blue' },
-  { id: 'purchase', title: 'Purchase Request', short: 'Purchase Requests', description: 'List requested items, quantities, and estimated costs.', action: 'Request a purchase', icon: 'cart', section: 'purchase-request', tone: 'orange' },
+  { id: 'travel', title: 'Travel Application', short: 'Travel Applications', description: 'Request work travel.', action: 'Apply for travel', icon: 'plane', section: 'travel-application', tone: 'green' },
+  { id: 'fuel', title: 'Fuel Log-sheet', short: 'Fuel Log-sheets', description: 'Record fuel and mileage.', action: 'Open fuel log', icon: 'fuel', section: 'fuel-log-sheet', tone: 'blue' },
+  { id: 'purchase', title: 'Purchase Request', short: 'Purchase Requests', description: 'Request items and estimates.', action: 'Request a purchase', icon: 'cart', section: 'purchase-request', tone: 'orange' },
 ]
 const selectedForm = ref('travel')
 const router = useRouter()
@@ -37,7 +37,7 @@ onMounted(async () => {
 
 <template>
   <main class="or" aria-labelledby="or-title">
-    <header class="or-head"><div><h1 id="or-title">Other Requests</h1><p>Start a travel, fuel, or purchase request and review recent activity.</p></div></header>
+    <header class="or-head"><div><h1 id="or-title">Other Requests</h1><p>Travel, fuel, and purchase requests.</p></div></header>
 
     <section class="or-metrics" aria-label="Other request summary">
       <article v-for="form in forms" :key="form.id" class="or-metric" :class="`is-${form.tone}`">
@@ -46,25 +46,24 @@ onMounted(async () => {
     </section>
 
     <section class="or-panel" aria-labelledby="or-access-title">
-      <div class="or-panel-head"><div><h2 id="or-access-title">Direct Access Workstation</h2><p>Choose a task to open its request form.</p></div><span class="or-quick-label">Quick launch</span></div>
+      <div class="or-panel-head"><div><h2 id="or-access-title">Direct Access Workstation</h2><p>Choose a form to open.</p></div></div>
       <div class="or-cards">
         <RouterLink v-for="form in forms" :key="form.id" :to="{ path: '/admin/personnel-profile', query: { section: form.section } }" class="or-card" :class="`is-${form.tone}`">
-          <span class="or-card-icon"><AppIcon :name="form.icon" :size="17" /></span><strong>{{ form.title }}</strong><span>{{ form.description }}</span><small>Ready to start</small><b>{{ form.action }}</b>
+          <span class="or-card-icon"><AppIcon :name="form.icon" :size="17" /></span><strong>{{ form.title }}</strong><span>{{ form.description }}</span><b>{{ form.action }}</b>
         </RouterLink>
       </div>
     </section>
 
     <section class="or-panel or-workstation" aria-labelledby="or-form-title">
-      <div class="or-panel-head"><div><h2 id="or-form-title">Direct Form Access Workstation</h2><p>Choose a form below, then open it to fill in the details.</p></div><RouterLink class="or-full-link" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Full page view</RouterLink></div>
+      <div class="or-panel-head"><div><h2 id="or-form-title">Direct Form Access</h2><p>Choose a form to continue.</p></div><RouterLink class="or-full-link" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Full page view</RouterLink></div>
       <div class="or-tabs" role="tablist" aria-label="Other request forms">
         <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="selectedForm === form.id" :class="{ 'is-active': selectedForm === form.id }" @click="openForm(form)">{{ form.title }}</button>
       </div>
-      <div class="or-selected-form"><div><strong>{{ selected.title }}</strong><p>{{ selected.description }}</p></div><RouterLink class="or-submit" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Open {{ selected.title }} form</RouterLink></div>
-      <p class="or-note"><strong>Request workflow:</strong> Complete the form and submit it to your approver. Submitted requests and their status will appear in the activity ledger below.</p>
+      <div class="or-selected-form"><strong>{{ selected.title }}</strong><RouterLink class="or-submit" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Open form</RouterLink></div>
     </section>
 
     <section class="or-panel or-ledger" aria-labelledby="or-ledger-title">
-      <div class="or-panel-head"><div><h2 id="or-ledger-title">Recent Activity &amp; Requests</h2><p>Review submitted requests and their approval status.</p></div><div class="or-filters" aria-label="Filter requests"><button v-for="form in [{ id: 'all', title: 'All activity' }, ...forms.map(({ id, title }) => ({ id, title }))]" :key="form.id" type="button" :class="{ 'is-active': filter === form.id }" @click="filter = form.id">{{ form.title }}</button></div></div>
+      <div class="or-panel-head"><div><h2 id="or-ledger-title">Recent Requests</h2><p>Latest submissions and status.</p></div><div class="or-filters" aria-label="Filter requests"><button v-for="form in [{ id: 'all', title: 'All' }, ...forms.map(({ id, title }) => ({ id, title }))]" :key="form.id" type="button" :class="{ 'is-active': filter === form.id }" @click="filter = form.id">{{ form.title }}</button></div></div>
       <p v-if="error" class="or-empty" role="alert">{{ error }}</p>
       <div v-else class="or-table-wrap"><table><thead><tr><th>Request ID</th><th>Module</th><th>Request / Description</th><th>Date</th><th>Approver</th><th>Status</th></tr></thead><tbody>
         <tr v-if="loading"><td colspan="6" class="or-empty">Loading recent activity…</td></tr>
