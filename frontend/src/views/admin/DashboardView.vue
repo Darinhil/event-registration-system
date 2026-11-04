@@ -87,6 +87,25 @@ const performanceRows = computed(() => reports.value.slice(0, 6).map((report) =>
   return { ...report, phase, rate: Number(report.attendance_rate || 0) }
 }))
 
+const yearRows = computed(() => {
+  const grouped = new Map()
+  events.value.forEach((event) => {
+    const date = event.starts_at ? new Date(event.starts_at) : null
+    if (!date || Number.isNaN(date.getTime())) return
+    const year = date.getFullYear()
+    grouped.set(year, (grouped.get(year) || 0) + 1)
+  })
+  return [...grouped.entries()].map(([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+})
+const yearMax = computed(() => Math.max(...yearRows.value.map((row) => row.value), 1))
+
+const quickActions = [
+  { label: 'Create Event', hint: 'Set up a new event', to: '/admin/events/new', tone: 'teal', icon: 'calendar-plus' },
+  { label: 'Attendance', hint: 'Browse participants', to: '/admin/users', tone: 'blue', icon: 'users-group' },
+  { label: 'Check-in', hint: 'Scan or confirm arrivals', to: '/admin/check-ins', tone: 'amber', icon: 'scan' },
+  { label: 'Reports', hint: 'Attendance and exports', to: '/admin/reports', tone: 'purple', icon: 'chart-column' },
+]
+
 const loadDashboard = async () => {
   loading.value = true
   error.value = ''
@@ -223,6 +242,28 @@ onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.valu
           </div>
         </article>
 
+        <article class="reference-card reference-years">
+          <header><div><h2>Events by Year</h2><p>Events scheduled in your workspace</p></div><RouterLink to="/admin/events">View all<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
+          <div v-if="yearRows.length" class="reference-year-bars">
+            <div v-for="row in yearRows" :key="row.year" class="reference-year-bar"><b>{{ number(row.value) }}</b><span><i :style="{ height: `${Math.max(row.value / yearMax * 100, 6)}%` }"></i></span><small>{{ row.year }}</small></div>
+          </div>
+          <div v-else class="reference-empty">
+            <span class="reference-empty__icon"><AppIcon name="chart-column" :size="22" /></span>
+            <p>Yearly totals appear after events are scheduled.</p>
+          </div>
+        </article>
+
+        <article class="reference-card reference-actions">
+          <header><h2>Quick Actions</h2></header>
+          <nav aria-label="Quick actions">
+            <RouterLink v-for="action in quickActions" :key="action.to" :to="action.to" :class="`qa-${action.tone}`">
+              <span class="reference-stat__icon qa-icon" aria-hidden="true"><AppIcon :name="action.icon" :size="20" /></span>
+              <span><strong>{{ action.label }}</strong><small>{{ action.hint }}</small></span>
+              <AppIcon name="chevron-right" :size="18" class="reference-actions__chevron" />
+            </RouterLink>
+          </nav>
+        </article>
+
         <article class="reference-card reference-performance">
           <header><h2>Event list</h2><RouterLink to="/admin/reports">Full report<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
           <div v-if="performanceRows.length" class="reference-table-wrap">
@@ -244,7 +285,6 @@ onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.valu
             <p>Event performance appears once registrations start coming in.</p>
           </div>
         </article>
-
       </div>
     </section>
   </AdminLayout>

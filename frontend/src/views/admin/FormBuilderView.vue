@@ -47,9 +47,10 @@ const previewDevice = ref('desktop')
 const previewStep = ref(0)
 const previewKey = ref(0)
 const previewPassed = ref(false)
+// A passed test goes stale as soon as the form or its settings change.
+const tested = ref(false)
 const settingsOpen = ref(false)
 const addPaletteOpen = ref(false)
-const impactOpen = ref(false)
 const paletteQuery = ref('')
 const paletteSearch = ref(null)
 const toast = reactive({ show: false, message: '', kind: 'success' })
@@ -76,7 +77,6 @@ const fieldStep = (field) => Number(field.settings?.step ?? 0)
 const visibleFields = computed(() => fields.value.filter((field) => fieldStep(field) === activeStepIndex.value))
 const stepCount = (index) => fields.value.filter((field) => fieldStep(field) === index).length
 const inputCount = computed(() => fields.value.filter((field) => field.type !== 'heading').length)
-const requiredCount = computed(() => fields.value.filter((field) => field.required && field.type !== 'heading').length)
 const filteredPalette = computed(() => {
   const query = paletteQuery.value.trim().toLowerCase()
   if (!query) return FIELD_CATEGORIES
@@ -287,6 +287,7 @@ const runConfirm = async () => { const run = confirmBox.run; confirmBox.open = f
 /* ---------------- Field mutations ---------------- */
 const touch = () => {
   dirty.value = true
+  tested.value = false
   if (saveState.value === 'saved') saveState.value = 'idle'
   if (isLive.value) return
   clearTimeout(autosaveTimer)
@@ -592,11 +593,17 @@ onBeforeUnmount(() => {
 })
 
 const iconPath = (name) => FIELD_ICONS[name] || FIELD_ICONS.text
+const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+const settingsSummary = computed(() => [
+  settings.registration_end ? `Closes ${shortDate(settings.registration_end)}` : 'No closing date',
+  settings.max_participants ? `max ${settings.max_participants}` : '',
+].filter(Boolean).join(' · '))
+// Each step shows its real state; "done" is a tick, "alert" counts what needs fixing.
 const workflow = computed(() => [
-  { key: 'builder', label: 'Build form', meta: `${inputCount.value} ${inputCount.value === 1 ? 'question' : 'questions'}`, alert: buildIssues.value.length },
-  { key: 'settings', label: 'Registration settings', meta: settingsIssues.value.length ? 'Needs attention' : 'Dates, limits, consent', alert: settingsIssues.value.length },
-  { key: 'preview', label: 'Preview & test', meta: 'Try it as an attendee' },
-  { key: 'publish', label: isPublished.value ? 'Share' : 'Publish', meta: isPublished.value ? 'Live' : eventStatus.value === 'closed' ? 'Closed' : 'Not live yet' },
+  { key: 'builder', label: 'Build form', meta: `${inputCount.value} ${inputCount.value === 1 ? 'question' : 'questions'}`, alert: buildIssues.value.length, done: inputCount.value > 0 },
+  { key: 'settings', label: 'Settings', meta: settingsSummary.value, alert: settingsIssues.value.length, done: true },
+  { key: 'preview', label: 'Preview & test', meta: tested.value ? 'Test passed' : 'Try it as an attendee', done: tested.value },
+  { key: 'publish', label: isPublished.value ? 'Share' : 'Publish', meta: isPublished.value ? 'Live — share the link' : eventStatus.value === 'closed' ? 'Registration closed' : 'Not live yet', done: isPublished.value },
 ])
 const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeTab.value = key }
 </script>
@@ -646,7 +653,7 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
               <template v-if="saveState === 'saving'">Saving…</template>
               <template v-else-if="saveState === 'error'">Couldn’t save</template>
               <template v-else-if="dirty">{{ isLive ? 'Unsaved — not live yet' : 'Unsaved changes' }}</template>
-              <template v-else>{{ isLive ? 'Attendees see the latest version' : 'Draft saved' }}</template>
+              <template v-else>{{ isLive ? 'Live and up to date' : 'Draft saved' }}</template>
             </span>
             <div class="fb-icon-group">
               <button class="fb-icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl+Z)" :disabled="!canUndo" @click="undo">
@@ -674,28 +681,19 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
             :key="item.key"
             type="button"
             class="fb-flow-step"
-            :class="{ 'is-active': activeTab === item.key }"
+            :class="{ 'is-active': activeTab === item.key, 'is-done': item.done && !item.alert }"
             :aria-current="activeTab === item.key ? 'step' : undefined"
             @click="goWorkflow(item.key)"
           >
-            <span class="fb-flow-num" :class="{ 'is-alert': item.alert }">{{ item.alert ? '!' : index + 1 }}</span>
-            <span class="fb-flow-text"><strong>{{ item.label }}</strong><small>{{ item.alert ? `${item.alert} to fix` : item.meta }}</small></span>
+            <span class="fb-flow-num" :class="{ 'is-alert': item.alert }">
+              <template v-if="item.alert">!</template>
+              <AppIcon v-else-if="item.done" name="check" :size="14" />
+              <template v-else>{{ index + 1 }}</template>
+            </span>
+            <span class="fb-flow-text"><strong>{{ item.label }}<span v-if="item.done && !item.alert" class="sr-only"> (done)</span></strong><small>{{ item.alert ? `${item.alert} to fix` : item.meta }}</small></span>
           </button>
         </nav>
       </header>
-
-      <!-- Registrations notice (always available; expands for detail) -->
-      <section v-if="hasRegistrations && activeTab === 'builder'" class="fb-notice">
-        <AppIcon name="info" :size="18" />
-        <p><strong>{{ registrationsCount }} {{ registrationsCount === 1 ? 'person has' : 'people have' }} already registered.</strong> Their answers are kept when you edit this form.</p>
-        <button type="button" class="fb-link" :aria-expanded="impactOpen" aria-controls="fb-impact" @click="impactOpen = !impactOpen">{{ impactOpen ? 'Hide details' : 'What changes affect them?' }}</button>
-        <ul v-if="impactOpen" id="fb-impact" class="fb-impact">
-          <li><b>Rename, reword or reorder a question:</b> existing answers stay linked to it.</li>
-          <li><b>Delete a question:</b> new attendees aren’t asked it; past answers stay in exports under the old label.</li>
-          <li><b>Change options:</b> answers already given are not changed.</li>
-          <li><b>Make a question required:</b> only applies to new registrations and to people editing theirs.</li>
-        </ul>
-      </section>
 
       <!-- ============ Build ============ -->
       <div v-if="activeTab === 'builder'" class="fb-workspace">
@@ -741,8 +739,11 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
             <textarea v-model="formDescription" class="fb-form-desc" rows="2" aria-label="Form description" placeholder="Add a short description for attendees (optional)" maxlength="1000" @input="touch" @change="pushHistory"></textarea>
           </div>
 
-          <!-- Steps -->
-          <div class="fb-steps">
+          <!-- Steps: a single step is never shown to attendees, so only offer to add one. -->
+          <div v-if="steps.length === 1" class="fb-steps">
+            <button class="fb-step-add" type="button" @click="addStep"><AppIcon name="plus" :size="14" />Split into steps</button>
+          </div>
+          <div v-else class="fb-steps">
             <div class="fb-step-tabs" role="tablist" aria-label="Form steps">
               <button
                 v-for="(step, index) in steps"
@@ -844,17 +845,20 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
           <template v-if="!selectedField">
             <div class="fb-panel-head"><div><h2>Field settings</h2><p>Select a field to edit it</p></div></div>
             <div class="fb-panel-scroll fb-intro">
-              <dl class="fb-summary">
-                <div><dt>Questions</dt><dd>{{ inputCount }}</dd></div>
-                <div><dt>Required</dt><dd>{{ requiredCount }}</dd></div>
-                <div><dt>Steps</dt><dd>{{ steps.length }}</dd></div>
-              </dl>
-              <ol class="fb-tips">
-                <li><b>Click a field</b> in the form to change its label, options and rules here.</li>
-                <li><b>Drag the handle</b> or use the arrows to reorder. Drop on a step tab to move a field to that step.</li>
-                <li><b>Make questions conditional</b> — for example, ask for details only when someone answers “Yes”.</li>
-                <li><b>Preview</b> to test the form as an attendee before you publish.</li>
-              </ol>
+              <ul class="fb-tips">
+                <li><b>Click a field</b> to edit its question, options and rules.</li>
+                <li><b>Drag</b> a field to reorder it.</li>
+              </ul>
+              <section v-if="hasRegistrations" class="fb-impact" aria-labelledby="fb-impact-title">
+                <h3 id="fb-impact-title"><AppIcon name="info" :size="15" />{{ registrationsCount }} {{ registrationsCount === 1 ? 'person has' : 'people have' }} registered</h3>
+                <p>Their answers are kept when you edit:</p>
+                <ul>
+                  <li><b>Reword or reorder</b> — answers stay linked.</li>
+                  <li><b>Delete</b> — past answers stay in exports.</li>
+                  <li><b>Change options</b> — given answers don’t change.</li>
+                  <li><b>Make required</b> — applies to new registrations only.</li>
+                </ul>
+              </section>
             </div>
           </template>
 
@@ -1167,7 +1171,7 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
               :settings="settings"
               submit-label="Submit test"
               @step-change="previewStep = $event"
-              @submit="previewPassed = true"
+              @submit="previewPassed = true; tested = true"
             />
           </div>
         </div>
