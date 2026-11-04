@@ -110,7 +110,6 @@ const printSummary = () => window.print()
     <header class="pd-head">
       <div>
         <h1 id="pd-title">Personnel Dashboard</h1>
-        <p>Overview of your profile, compliance status, contracts and training.</p>
       </div>
       <div class="pd-head__actions">
         <button type="button" class="pd-btn" @click="printSummary"><AppIcon name="download" :size="16" />Download summary PDF</button>
@@ -123,14 +122,14 @@ const printSummary = () => window.print()
         <span class="pd-metric__top"><span class="pd-icon pd-icon--teal"><AppIcon name="user" /></span><span v-if="!profile.loading && !profile.error" class="pd-pill" :class="stepsLeft ? 'is-warning' : 'is-success'">{{ stepsLeft ? `${plural(stepsLeft, 'step')} to finish` : 'Complete' }}</span></span>
         <small>Profile completion</small>
         <strong>{{ profile.loading || profile.error ? '—' : `${profilePercent}%` }}</strong>
-        <span class="pd-metric__note">{{ profile.body ? `${stepsDone} of ${profileSteps.length} steps completed` : 'Not available yet' }}</span>
+        <span v-if="profile.body" class="pd-metric__note">{{ stepsDone }} of {{ profileSteps.length }} steps completed</span>
         <span class="pd-track"><i :style="{ width: `${profilePercent}%` }"></i></span>
       </RouterLink>
       <RouterLink class="pd-metric" :to="to('compliances')">
         <span class="pd-metric__top"><span class="pd-icon pd-icon--blue"><AppIcon name="shield-check" /></span><span v-if="complianceSummary" class="pd-pill" :class="complianceAttention ? 'is-warning' : 'is-success'">{{ complianceAttention ? `${complianceAttention} need${complianceAttention === 1 ? 's' : ''} action` : 'Up to date' }}</span></span>
         <small>Compliance status</small>
         <strong>{{ complianceSummary ? `${complianceSummary.percent}%` : '—' }}</strong>
-        <span class="pd-metric__note">{{ complianceSummary ? `${complianceSummary.completed} of ${complianceSummary.required} completed` : 'Not available yet' }}</span>
+        <span v-if="complianceSummary" class="pd-metric__note">{{ complianceSummary.completed }} of {{ complianceSummary.required }} completed</span>
         <span class="pd-track"><i :style="{ width: `${complianceSummary?.percent || 0}%` }"></i></span>
       </RouterLink>
       <RouterLink class="pd-metric" :to="to('contract-history')">
@@ -143,7 +142,6 @@ const printSummary = () => window.print()
         <span class="pd-metric__top"><span class="pd-icon pd-icon--amber"><AppIcon name="graduation" /></span><span v-if="trainingSummary" class="pd-pill" :class="trainingLeft ? 'is-info' : 'is-success'">{{ trainingLeft ? `${trainingLeft} to complete` : 'All complete' }}</span></span>
         <small>Staff online training</small>
         <strong>{{ trainingSummary ? `${trainingSummary.completed} of ${trainingSummary.assigned}` : '—' }}</strong>
-        <span class="pd-metric__note">assigned courses completed</span>
         <span class="pd-track"><i :style="{ width: `${trainingSummary?.percent || 0}%` }"></i></span>
       </RouterLink>
     </div>
@@ -153,7 +151,7 @@ const printSummary = () => window.print()
         <section class="pd-panel">
           <header class="pd-panel__head">
             <span class="pd-icon pd-icon--teal"><AppIcon name="user" /></span>
-            <div><h2>My Profile (5 steps)</h2><p>Review and finalize your personal records, qualifications and declaration.</p></div>
+            <div><h2>My Profile (5 steps)</h2></div>
             <RouterLink :to="to('my-profile')">Open full profile <AppIcon name="arrow-right" :size="14" /></RouterLink>
           </header>
           <p v-if="profile.error" class="pd-error" role="alert">{{ profile.error }}</p>
@@ -170,7 +168,7 @@ const printSummary = () => window.print()
         <section class="pd-panel">
           <header class="pd-panel__head">
             <span class="pd-icon pd-icon--violet"><AppIcon name="file-text" /></span>
-            <div><h2>Contract History &amp; Assignments</h2><p>Recorded contracts, positions, dates and employment status.</p></div>
+            <div><h2>Contract History &amp; Assignments</h2></div>
             <RouterLink :to="to('contract-history')">View all contracts <AppIcon name="arrow-right" :size="14" /></RouterLink>
           </header>
           <p v-if="contractSource.error" class="pd-error" role="alert">{{ contractSource.error }}</p>
@@ -194,7 +192,7 @@ const printSummary = () => window.print()
         <section class="pd-panel">
           <header class="pd-panel__head">
             <span class="pd-icon pd-icon--amber"><AppIcon name="graduation" /></span>
-            <div><h2>Staff Online Training</h2><p>Open assigned courses, track progress and view certificates.</p></div>
+            <div><h2>Staff Online Training</h2></div>
             <RouterLink :to="to('training')">Certificates ({{ trainingSummary?.completed || 0 }}) <AppIcon name="arrow-right" :size="14" /></RouterLink>
           </header>
           <p v-if="training.error" class="pd-error" role="alert">{{ training.error }}</p>
@@ -218,7 +216,7 @@ const printSummary = () => window.print()
         <section class="pd-panel">
           <header class="pd-panel__head">
             <span class="pd-icon pd-icon--blue"><AppIcon name="shield-check" /></span>
-            <div><h2>Required Compliances</h2><p>Policy and legal clearances</p></div>
+            <div><h2>Required Compliances</h2></div>
             <RouterLink :to="to('compliances')">View all</RouterLink>
           </header>
           <p v-if="compliance.error" class="pd-error" role="alert">{{ compliance.error }}</p>
@@ -235,20 +233,14 @@ const printSummary = () => window.print()
         <section class="pd-panel">
           <header class="pd-panel__head">
             <span class="pd-icon pd-icon--teal"><AppIcon name="activity" /></span>
-            <div><h2>Recent Activity</h2><p>Latest personnel updates</p></div>
+            <div><h2>Recent Activity</h2></div>
           </header>
           <ol v-if="recentActivity.length" class="pd-activity">
             <li v-for="activity in recentActivity" :key="activity.id">
               <RouterLink :to="to(activity.section)"><strong>{{ activity.title }}</strong><small>{{ activity.detail }}</small><time :datetime="activity.date">{{ formatDate(activity.date) }}</time></RouterLink>
             </li>
           </ol>
-          <p v-else class="pd-empty">Your recent contract and training activity will appear here.</p>
-        </section>
-
-        <section class="pd-support">
-          <h2>Need personnel support?</h2>
-          <p>Questions about your profile, contracts or compliance documents? Contact your People &amp; Operations team.</p>
-          <RouterLink :to="to('my-profile')">Review your profile <AppIcon name="arrow-right" :size="14" /></RouterLink>
+          <p v-else class="pd-empty">No recent activity.</p>
         </section>
       </aside>
     </div>

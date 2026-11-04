@@ -433,7 +433,6 @@ const printPreview = async () => {
   <div class="pp">
     <header class="pp-head">
       <div>
-        <RouterLink class="pp-home" to="/admin"><AppIcon name="arrow-left" :size="15" />Home</RouterLink>
         <h1>Personnel Profile</h1>
         <p v-if="savedAt && !finished">Saved at {{ savedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) }}</p>
       </div>
@@ -839,14 +838,16 @@ const printPreview = async () => {
 
 /* Step navigation */
 .pp-steps li { min-width: 0; }
-.pp-steps ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 8px; list-style: none; border: 1px solid var(--pp-line); border-radius: 14px; background: #fff; }
-.pp-steps__item { display: flex; box-sizing: border-box; width: 100%; height: 100%; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--pp-text); text-align: left; cursor: pointer; }
+.pp-steps ol { display: grid; grid-template-columns: 1fr 1.3fr 1.05fr 1.15fr .85fr; gap: 4px; margin: 0; padding: 8px; list-style: none; border: 1px solid var(--pp-line); border-radius: 16px; background: #fff; box-shadow: 0 4px 16px rgba(23, 54, 95, .035); }
+.pp-steps li { min-width: 0; }
+.pp-steps__item { display: flex; box-sizing: border-box; width: 100%; min-height: 68px; align-items: center; gap: 8px; padding: 8px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--pp-text); text-align: left; cursor: pointer; transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease; }
 .pp-steps__item:hover { background: var(--pp-soft); transform: none !important; }
-.pp-steps__dot { display: grid; width: 30px; height: 30px; flex: none; place-items: center; border: 1.5px solid #cdd9e5; border-radius: 50%; background: #fff; color: var(--pp-muted); font-size: .85rem; font-weight: 700; }
-.pp-steps__text { display: grid; min-width: 0; }
-.pp-steps__text strong { color: var(--pp-ink); font-size: .9rem; font-weight: 600; }
-.pp-steps__text small { overflow: hidden; color: var(--pp-muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
-.pp-steps__item.is-current { background: var(--pp-brand-soft); }
+.pp-steps__item:focus-visible { outline: 3px solid rgba(11, 127, 98, .25); outline-offset: 2px; }
+.pp-steps__dot { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border: 1.5px solid #cdd9e5; border-radius: 50%; background: #fff; color: var(--pp-muted); font-size: .9rem; font-weight: 700; }
+.pp-steps__text { display: grid; min-width: 0; gap: 2px; }
+.pp-steps__text strong { overflow: hidden; color: var(--pp-ink); font-size: .84rem; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.pp-steps__text small { overflow: hidden; color: var(--pp-muted); font-size: .8rem; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.pp-steps__item.is-current { border-color: #dcefe8; background: var(--pp-brand-soft); box-shadow: inset 0 0 0 1px rgba(11, 127, 98, .025); }
 .pp-steps__item.is-current .pp-steps__dot { border-color: var(--pp-brand); background: var(--pp-brand); color: #fff; }
 .pp-steps__item.is-current strong { color: var(--pp-brand-dark); font-weight: 700; }
 .pp-steps__item.is-done .pp-steps__dot { border-color: #bfe3d6; background: var(--pp-brand-soft); color: var(--pp-brand); }
@@ -978,11 +979,11 @@ const printPreview = async () => {
 .pp-requests__main small { flex-basis: 100%; color: var(--pp-muted); }
 .pp-badge { padding: 3px 10px; border-radius: 99px; background: #fff3d6; color: #8a5a00; font-size: .78rem; font-weight: 700; }
 
-/* Tablet: steps become a horizontal strip above the form */
+/* Keep all five steps on one line without horizontal scrolling. */
 @media (max-width: 1080px) {
-  .pp-steps ol { display: flex; overflow-x: auto; scrollbar-width: none; }
-  .pp-steps li { flex: 1 0 auto; }
-  .pp-steps__item { padding: 8px 12px; }
+  .pp-steps__item { gap: 6px; padding: 6px; }
+  .pp-steps__dot { width: 30px; height: 30px; }
+  .pp-steps__text strong { font-size: .76rem; }
   .pp-steps__text small { display: none; }
 }
 @media (max-width: 760px) {
@@ -991,10 +992,11 @@ const printPreview = async () => {
   .pp-head h1 { font-size: 1.35rem; }
   .pp-progress { width: 100%; }
   .pp-progress__text { text-align: left; }
+  .pp-steps__item { min-height: 48px; justify-content: center; gap: 4px; padding: 4px; }
+  .pp-steps__item.is-current { min-height: 48px; }
   .pp-steps__text { display: none; }
   .pp-steps__item.is-current .pp-steps__text { display: grid; }
-  .pp-steps li { flex: 0 0 auto; }
-  .pp-steps li:has(.is-current) { flex: 1 0 auto; }
+  .pp-steps__text strong { font-size: .66rem; }
   .pp-form { padding: 20px 16px; }
   .pp-form__head { margin-bottom: 18px; padding-bottom: 16px; }
   .pp-form__icon { display: none; }
