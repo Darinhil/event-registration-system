@@ -37,6 +37,7 @@ const searchQuery = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const statusFilter = ref(typeof route.query.status === 'string' ? route.query.status : 'all')
 const timingFilter = ref(typeof route.query.when === 'string' ? route.query.when : 'all')
 const exporting = ref(false)
+const exportingPdf = ref(false)
 const notice = ref('')
 const exportError = ref('')
 
@@ -67,13 +68,6 @@ const timingOptions = [
 const phaseOf = (row) => eventPhase(row)
 const hasStarted = (row) => ['ongoing', 'past'].includes(phaseOf(row))
 const dateLine = (value) => value ? new Date(value).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be confirmed'
-const timeLine = (row) => {
-  if (!row.starts_at) return ''
-  const clock = (value) => new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  if (!row.ends_at) return clock(row.starts_at)
-  const sameDay = new Date(row.starts_at).toDateString() === new Date(row.ends_at).toDateString()
-  return sameDay ? `${clock(row.starts_at)} – ${clock(row.ends_at)}` : `${clock(row.starts_at)} – ${new Date(row.ends_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-}
 
 const filteredReports = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -116,6 +110,16 @@ const overallRate = computed(() => totals.value.startedRegistrations ? Math.roun
 const rateTone = (rate) => (Number(rate) >= 70 ? 'good' : Number(rate) >= 40 ? 'mid' : 'low')
 const rateWord = { good: 'Strong', mid: 'Moderate', low: 'Low' }
 const capacityPercent = (row) => row.capacity ? Math.min(100, Math.round((Number(row.registrations || 0) / Number(row.capacity)) * 100)) : null
+const demographicLines = (row) => {
+  const genders = { F: 0, M: 0, Other: 0, ...(row.demographics?.gender || {}) }
+  const ages = { 'Under 18': 0, '18–29': 0, '30–45': 0, '46–59': 0, '60+': 0, ...(row.demographics?.age || {}) }
+  const format = (counts) => Object.entries(counts || {}).map(([name, count]) => `${name} ${count}`).join(' · ')
+  return [
+    `Gender: ${format(genders)}`,
+    `Age: ${format(ages)}`,
+    `Nationality: ${format(row.demographics?.nationality) || 'No data yet'}`,
+  ]
+}
 
 const loadReports = async () => {
   loading.value = true
@@ -168,6 +172,23 @@ const exportReport = async () => {
   } finally {
     exporting.value = false
   }
+}
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]))
+const exportReportPdf = () => {
+  if (exportingPdf.value || !filteredReports.value.length) return
+  exportingPdf.value = true
+  exportError.value = ''
+  const popup = window.open('', '_blank')
+  if (!popup) {
+    exportError.value = 'Allow pop-ups to print this report as a PDF.'
+    exportingPdf.value = false
+    return
+  }
+  const rows = filteredReports.value.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(statusLabel(row.status))}</td><td>${Number(row.registrations || 0)}</td><td>${Number(row.checked_in || 0)}</td><td>${row.no_show == null ? 'Not ended' : Number(row.no_show)}</td></tr>`).join('')
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Event reports</title><style>body{font:14px Arial,sans-serif;color:#152238;padding:24px}h1{font-size:22px}p{color:#64748b}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:10px;text-align:left;border:1px solid #dbe3ec}th{background:#f1f5f9}@media print{body{padding:0}tr{break-inside:avoid}}</style></head><body><h1>Event reports</h1><p>${filteredReports.value.length} events · ${hasFilters.value ? 'Filtered report' : 'All events'}</p><table><thead><tr><th>Event</th><th>Status</th><th>Registered</th><th>Checked in</th><th>No-show</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()}<\/script></body></html>`)
+  popup.document.close()
+  exportingPdf.value = false
 }
 
 /* ---------- Per-event attendee report ---------- */
@@ -228,7 +249,6 @@ const closeAttendees = () => {
 }
 
 const summary = computed(() => detail.value?.summary || { total: 0, checked_in: 0, not_checked_in: 0 })
-
 const expandedId = ref(null)
 const toggleProfile = (row) => { expandedId.value = expandedId.value === row.id ? null : row.id }
 const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?'
@@ -287,9 +307,14 @@ onMounted(loadReports)
         <div>
           <h1>Reports</h1>
         </div>
-        <button type="button" class="rp-btn rp-btn--secondary" :disabled="loading || exporting || !filteredReports.length" :aria-busy="exporting" :title="hasFilters ? 'Exports only the events matching your filters' : 'Exports every event in the report'" @click="exportReport">
-          <AppIcon name="download" :size="17" />{{ exporting ? 'Exporting…' : hasFilters ? `Export ${filteredReports.length} to Excel` : 'Export to Excel' }}
-        </button>
+        <div class="rp-export-actions">
+          <button type="button" class="rp-btn rp-btn--primary" :disabled="loading || exporting || !filteredReports.length" :aria-busy="exporting" :title="hasFilters ? 'Exports only the events matching your filters' : 'Exports every event in the report'" @click="exportReport">
+            <AppIcon name="download" :size="17" />{{ exporting ? 'Exporting…' : 'Excel' }}
+          </button>
+          <button type="button" class="rp-btn rp-btn--primary" :disabled="loading || exportingPdf || !filteredReports.length" :aria-busy="exportingPdf" title="Print or save the report as PDF" @click="exportReportPdf">
+            <AppIcon name="file-text" :size="17" />PDF
+          </button>
+        </div>
       </header>
 
       <p v-if="error" class="rp-alert" role="alert">
@@ -369,12 +394,10 @@ onMounted(loadReports)
             <thead>
               <tr>
                 <th scope="col">Event</th>
-                <th scope="col">Date</th>
                 <th scope="col">Status</th>
                 <th scope="col" class="rp-num">Registered</th>
                 <th scope="col" class="rp-num">Checked in</th>
                 <th scope="col" class="rp-num"><span title="Registered but not checked in, counted once the event has ended">No-show</span></th>
-                <th scope="col">Attendance</th>
                 <th scope="col"><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -384,7 +407,6 @@ onMounted(loadReports)
                   <strong>{{ row.name }}</strong>
                   <span class="rp-sub"><AppIcon name="pin" :size="13" />{{ row.location || 'Location to be announced' }}</span>
                 </td>
-                <td data-label="Date"><span class="rp-date">{{ dateLine(row.starts_at) }}</span><span class="rp-sub">{{ timeLine(row) }}</span></td>
                 <td data-label="Status">
                   <span class="rp-badge" :class="`rp-badge--${row.status}`">{{ statusLabel(row.status) }}</span>
                   <span class="rp-sub rp-phase" :class="`rp-phase--${phaseOf(row)}`">{{ phaseLabels[phaseOf(row)] }}</span>
@@ -392,19 +414,12 @@ onMounted(loadReports)
                 <td data-label="Registered" class="rp-num">
                   <strong>{{ Number(row.registrations || 0).toLocaleString() }}</strong>
                   <span v-if="row.capacity" class="rp-sub" :title="`${capacityPercent(row)}% of capacity`">of {{ Number(row.capacity).toLocaleString() }} · {{ capacityPercent(row) }}%</span>
+                  <span v-for="line in demographicLines(row)" :key="line" class="rp-demographic-line">{{ line }}</span>
                 </td>
                 <td data-label="Checked in" class="rp-num"><strong>{{ Number(row.checked_in || 0).toLocaleString() }}</strong></td>
                 <td data-label="No-show" class="rp-num">
                   <strong v-if="row.no_show !== null && row.no_show !== undefined">{{ Number(row.no_show).toLocaleString() }}</strong>
                   <span v-else class="rp-sub" title="No-shows are counted once the event has ended">Not ended</span>
-                </td>
-                <td data-label="Attendance" class="rp-cell-rate">
-                  <div v-if="hasStarted(row) && Number(row.registrations)" class="rp-rate" :class="`rp-rate--${rateTone(row.attendance_rate)}`">
-                    <span class="rp-rate__track" role="progressbar" :aria-valuenow="Number(row.attendance_rate) || 0" aria-valuemin="0" aria-valuemax="100" :aria-label="`Attendance for ${row.name}`"><span :style="{ width: `${Math.min(100, Number(row.attendance_rate) || 0)}%` }" /></span>
-                    <b>{{ row.attendance_rate }}%</b>
-                    <small>{{ rateWord[rateTone(row.attendance_rate)] }}</small>
-                  </div>
-                  <span v-else class="rp-sub">{{ Number(row.registrations) ? 'Not started' : 'No registrations' }}</span>
                 </td>
                 <td class="rp-cell-action">
                   <button type="button" class="rp-btn rp-btn--secondary rp-btn--sm" :data-report-action="row.id" title="View attendees" :aria-expanded="selectedEvent?.id === row.id" aria-controls="rp-attendees" @click="selectEvent(row)">
@@ -531,6 +546,7 @@ onMounted(loadReports)
 
 <style scoped>
 .reports-page { display: grid; gap: 18px; max-width: 1280px; }
+.rp-export-actions { display: flex; align-items: center; gap: 10px; }
 .reports-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin: 30px 0 4px; }
 .reports-heading p:not(.admin-eyebrow) { margin: 6px 0 0; color: #7890a8; font-size: .8rem; }
 .reports-heading button { margin: 0; white-space: nowrap; }

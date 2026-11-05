@@ -48,7 +48,7 @@ const eventItems = [
   { to: '/admin/events/new', label: 'Create event', icon: 'plus' },
   { to: '/admin/users', label: 'Event Detail', icon: 'user-check' },
   { to: '/admin/check-ins', label: 'Check-in', icon: 'scan' },
-  { to: '/admin/reports', label: 'Event report', icon: 'chart-column' },
+  { to: '/admin/reports', label: 'Event Report', icon: 'chart-column' },
 ]
 const underPath = (path, base) => path === base || path.startsWith(`${base}/`)
 const isEventsActive = computed(() => underPath(route.path, '/admin/events') && !underPath(route.path, '/admin/events/new'))

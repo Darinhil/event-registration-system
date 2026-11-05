@@ -18,6 +18,7 @@
 .rp-btn--text { min-height: 38px; padding: 0 8px; background: transparent; color: #086a51; }
 .rp-btn--text:hover { text-decoration: underline; }
 .rp-btn--sm { min-height: 36px; padding: 0 12px; border-radius: 9px; font-size: .86rem; }
+.rp-demographic-line { display: block; max-width: 250px; margin: 3px auto 0; color: #64748b; font-size: .72rem; line-height: 1.35; white-space: normal; }
 
 .rp-alert { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 14px; border: 1px solid #f4d0cc; border-radius: 12px; background: #fff6f5; color: #b42318; font-weight: 600; }
 .rp-alert span { flex: 1 1 220px; }
