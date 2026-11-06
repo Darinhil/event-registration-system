@@ -25,7 +25,6 @@ const attendeesLoading = ref(false)
 const attendeesError = ref('')
 
 const search = ref('')
-const checkFilter = ref('all')
 const ageFilter = ref('all')
 const genderFilter = ref('all')
 const ethnicityFilter = ref('all')
@@ -175,7 +174,7 @@ const genderOptions = computed(() => distinct(rows.value.map((row) => row.gender
 const ethnicityOptions = computed(() => distinct(rows.value.map((row) => row.ethnicity)))
 const disabilityOptions = computed(() => distinct(rows.value.flatMap((row) => row.disabilities)))
 const activeFilterCount = computed(() => [ageFilter, genderFilter, ethnicityFilter, disabilityFilter].filter((filter) => filter.value !== 'all').length)
-const hasNarrowing = computed(() => Boolean(search.value.trim()) || activeFilterCount.value > 0 || checkFilter.value !== 'all')
+const hasNarrowing = computed(() => Boolean(search.value.trim()) || activeFilterCount.value > 0)
 
 const matchesFilters = (row) => {
   const query = search.value.trim().toLowerCase()
@@ -186,13 +185,6 @@ const matchesFilters = (row) => {
   if (disabilityFilter.value !== 'all' && !row.disabilities.includes(disabilityFilter.value)) return false
   return true
 }
-// Rows matching search + filters, before the check-in status tab is applied (used for tab counts).
-const matchingRows = computed(() => rows.value.filter(matchesFilters))
-const statusCounts = computed(() => ({
-  all: matchingRows.value.length,
-  in: matchingRows.value.filter((row) => row.checkedInAt).length,
-  out: matchingRows.value.filter((row) => !row.checkedInAt).length,
-}))
 const time = (date) => date ? date.getTime() : 0
 const sorters = {
   'name-asc': (a, b) => a.name.localeCompare(b.name),
@@ -210,9 +202,7 @@ const sortOptions = [
   { value: 'checkin-desc', label: 'Latest check-ins' },
   { value: 'checkin-asc', label: 'Earliest check-ins' },
 ]
-const filteredRows = computed(() => matchingRows.value
-  .filter((row) => checkFilter.value === 'all' || (checkFilter.value === 'in' ? row.checkedInAt : !row.checkedInAt))
-  .sort(sorters[sortBy.value] || sorters['name-asc']))
+const filteredRows = computed(() => rows.value.filter(matchesFilters).sort(sorters[sortBy.value] || sorters['name-asc']))
 const sortColumn = (column) => {
   const [current, direction] = sortBy.value.split('-')
   const first = column === 'name' ? 'asc' : 'desc'
@@ -235,16 +225,20 @@ const pageItems = computed(() => {
   return pages.flatMap((page, index) => index && page - pages[index - 1] > 1 ? [`gap-${page}`, page] : [page])
 })
 const goToPage = (page) => { currentPage.value = Math.min(Math.max(page, 1), pageCount.value) }
-watch([search, checkFilter, ageFilter, genderFilter, ethnicityFilter, disabilityFilter, sortBy, pageSize, selectedEventId], () => { currentPage.value = 1 })
+watch([search, ageFilter, genderFilter, ethnicityFilter, disabilityFilter, sortBy, pageSize, selectedEventId], () => { currentPage.value = 1 })
 watch(pageCount, (count) => { if (currentPage.value > count) currentPage.value = count })
 
 const dateLabel = (date) => date ? date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be announced'
+const dateRangeLabel = (event) => {
+  if (!event?.starts) return dateLabel(null)
+  if (!event.ends || event.starts.toDateString() === event.ends.toDateString()) return dateLabel(event.starts)
+  return `${dateLabel(event.starts)} – ${dateLabel(event.ends)}`
+}
 const clock = (date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-const timeLabel = (event) => {
+const timeRangeLabel = (event) => {
   if (!event?.starts) return ''
   if (!event.ends) return clock(event.starts)
-  const sameDay = event.starts.toDateString() === event.ends.toDateString()
-  return sameDay ? `${clock(event.starts)} – ${clock(event.ends)}` : `${clock(event.starts)} – ${event.ends.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${clock(event.ends)}`
+  return `${clock(event.starts)} – ${clock(event.ends)}`
 }
 const dateTimeLabel = (date) => date ? date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'
 const checkedTimeLabel = (date) => {
@@ -330,7 +324,6 @@ const loadWorkspace = async () => {
 
 const resetFilters = () => {
   search.value = ''
-  checkFilter.value = 'all'
   ageFilter.value = 'all'
   genderFilter.value = 'all'
   ethnicityFilter.value = 'all'
@@ -464,6 +457,31 @@ const exportFilteredExcel = async () => {
   }
 }
 
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[character]))
+const exportFilteredPdf = () => {
+  if (!filteredRows.value.length) return
+  exportError.value = ''
+  const popup = window.open('', '_blank')
+  if (!popup) {
+    exportError.value = 'Allow pop-ups to print or save the attendee list as a PDF.'
+    return
+  }
+  popup.onload = () => { popup.focus(); popup.print() }
+  const headers = ['#', 'Full name', 'Registration code', 'Email', 'Phone', 'Status', 'Checked-in time', ...dynamicColumns.value.map((field) => field.label)]
+  const rowsHtml = filteredRows.value.map((row, index) => {
+    const values = [index + 1, row.name, row.code || '—', row.email || '—', row.phone || '—', row.checkedInAt ? 'Checked in' : 'Not checked in', row.checkedInAt ? dateTimeLabel(row.checkedInAt) : '—', ...dynamicColumns.value.map((field) => formatAnswer(formFieldAnswer(row.registration, field)))]
+    return `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`
+  }).join('')
+  const title = selectedEvent.value?.name || 'Attendee list'
+  const date = selectedEvent.value ? dateRangeLabel(selectedEvent.value) : ''
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)} — Attendees</title><style>
+    @page{size:landscape;margin:12mm}*{box-sizing:border-box}body{font:12px/1.4 Arial,sans-serif;color:#18324b;margin:0}h1{font-size:20px;margin:0 0 4px}p{margin:0 0 16px;color:#61758a}table{width:100%;border-collapse:collapse}th,td{padding:7px 8px;border:1px solid #d9e2e9;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#eaf3f1;color:#17365f;font-size:11px}tr:nth-child(even){background:#f7f9fb}thead{display:table-header-group}tr{break-inside:avoid}
+    </style></head><body><h1>${escapeHtml(title)} — Attendees</h1><p>${escapeHtml(date)} · ${filteredRows.value.length} ${filteredRows.value.length === 1 ? 'attendee' : 'attendees'}</p><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`)
+  popup.document.close()
+}
+
 onMounted(() => {
   loadWorkspace()
   document.addEventListener('keydown', onKeydown)
@@ -480,7 +498,7 @@ onBeforeUnmount(() => {
   <AdminLayout>
     <section class="at-page">
       <header class="at-header">
-        <h1>Attendance by Event</h1>
+        <h1>Event Detail</h1>
       </header>
 
       <p v-if="eventsError" class="at-alert" role="alert">
@@ -515,12 +533,11 @@ onBeforeUnmount(() => {
                 <span class="at-thumb"><img v-if="eventImage(event)" :src="eventImage(event)" alt="" /><b v-else>{{ initials(event.name) }}</b></span>
                 <span class="at-event__body">
                   <strong class="at-event__name">{{ event.name }}</strong>
-                  <span class="at-meta"><AppIcon name="calendar" :size="14" />{{ dateLabel(event.starts) }}</span>
-                  <span v-if="event.starts" class="at-meta"><AppIcon name="clock" :size="14" />{{ timeLabel(event) }}</span>
+                  <span class="at-meta"><AppIcon name="calendar" :size="14" />{{ dateRangeLabel(event) }}</span>
                   <span class="at-meta"><AppIcon name="pin" :size="14" />{{ event.location || 'Location to be announced' }}</span>
                   <span class="at-event__foot">
                     <span class="at-badge" :class="`at-badge--${eventPhase(event)}`">{{ phaseLabels[eventPhase(event)] }}</span>
-                    <span class="at-event__count"><b>{{ registeredFor(event) }}</b> registered<template v-if="event.capacity"> · {{ event.capacity }} spots</template></span>
+                    <span class="at-event__count"><b>{{ registeredFor(event) }}</b> registered</span>
                   </span>
                 </span>
               </button>
@@ -545,14 +562,16 @@ onBeforeUnmount(() => {
                 <div class="at-overview__copy">
                   <span class="at-badge" :class="`at-badge--${eventPhase(selectedEvent)}`">{{ phaseLabels[eventPhase(selectedEvent)] }}</span>
                   <h2 id="at-event-title">{{ selectedEvent.name }}</h2>
-                  <p class="at-meta"><AppIcon name="calendar" :size="15" />{{ dateLabel(selectedEvent.starts) }}<template v-if="selectedEvent.starts"> · {{ timeLabel(selectedEvent) }}</template></p>
+                  <p class="at-meta"><AppIcon name="calendar" :size="15" />{{ dateRangeLabel(selectedEvent) }}</p>
+                  <p v-if="selectedEvent.starts" class="at-meta"><AppIcon name="clock" :size="15" />{{ timeRangeLabel(selectedEvent) }}</p>
                   <p class="at-meta"><AppIcon name="pin" :size="15" />{{ selectedEvent.location || 'Location to be announced' }}</p>
                 </div>
                 <div class="at-overview__actions">
                   <button type="button" class="at-btn at-btn--secondary" :disabled="exporting || attendeesLoading || !filteredRows.length" :aria-busy="exporting" @click="exportFilteredExcel">
-                    <AppIcon name="download" :size="17" />{{ exporting ? 'Exporting…' : 'Export to Excel' }}
+                    <AppIcon name="download" :size="17" />{{ exporting ? 'Exporting…' : 'Excel' }}
                   </button>
-                  <button type="button" class="at-btn at-btn--primary" @click="openCheckInDesk"><AppIcon name="scan" :size="17" />Check In Attendance</button>
+                  <button type="button" class="at-btn at-btn--secondary" aria-label="Export filtered attendees to PDF" :disabled="attendeesLoading || !filteredRows.length" @click="exportFilteredPdf"><AppIcon name="file-text" :size="17" />PDF</button>
+                  <button type="button" class="at-btn at-btn--primary" @click="openCheckInDesk"><AppIcon name="scan" :size="17" />Check-in</button>
                 </div>
               </div>
               <p v-if="exportError" class="at-inline-error" role="alert">{{ exportError }}</p>
@@ -562,7 +581,6 @@ onBeforeUnmount(() => {
                 <div class="at-stat">
                   <dt><AppIcon name="users" :size="16" />Registered</dt>
                   <dd>{{ attendeesLoading ? '—' : totalCount }}</dd>
-                  <small v-if="selectedEvent.capacity">of {{ selectedEvent.capacity }} spots</small>
                 </div>
                 <div class="at-stat at-stat--in">
                   <dt><AppIcon name="user-check" :size="16" />Checked in</dt>
@@ -580,11 +598,6 @@ onBeforeUnmount(() => {
             <section class="at-card at-roster" aria-labelledby="at-roster-title">
               <div class="at-roster__head">
                 <h2 id="at-roster-title">Attendees</h2>
-                <div class="at-tabs" role="group" aria-label="Filter by check-in status">
-                  <button type="button" :aria-pressed="checkFilter === 'all'" :class="{ 'is-active': checkFilter === 'all' }" @click="checkFilter = 'all'">All <span>{{ statusCounts.all }}</span></button>
-                  <button type="button" :aria-pressed="checkFilter === 'in'" :class="{ 'is-active': checkFilter === 'in' }" @click="checkFilter = 'in'">Checked in <span>{{ statusCounts.in }}</span></button>
-                  <button type="button" :aria-pressed="checkFilter === 'out'" :class="{ 'is-active': checkFilter === 'out' }" @click="checkFilter = 'out'">Not checked in <span>{{ statusCounts.out }}</span></button>
-                </div>
               </div>
 
               <div class="at-toolbar">

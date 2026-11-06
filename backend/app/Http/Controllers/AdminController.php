@@ -69,11 +69,35 @@ class AdminController extends Controller
     {
         $events = Event::query()
             ->withCount(['registrations', 'registrations as checked_in_count' => fn ($query) => $query->whereHas('checkIn')])
+            ->with(['registrations:id,event_id,gender,age,age_group,form_data', 'formFields'])
             ->visibleTo($request->user())
             ->latest('starts_at')
             ->get();
 
-        return response()->json(['data' => $events->map(fn (Event $event) => [
+        return response()->json(['data' => $events->map(function (Event $event) {
+            $demographics = ['gender' => [], 'age' => [], 'nationality' => []];
+            foreach ($event->registrations as $registration) {
+                $registration->append_form_values($event->formFields);
+                $answers = collect($registration->form_values ?? [])->mapWithKeys(fn ($value, $label) => [mb_strtolower(trim((string) $label)) => $value]);
+                $increment = function (string $group, $value) use (&$demographics): void {
+                    $label = trim((string) $value);
+                    if ($label !== '') $demographics[$group][$label] = ($demographics[$group][$label] ?? 0) + 1;
+                };
+                $gender = strtolower(trim((string) ($registration->gender ?: ($answers->get('gender') ?: $answers->get('sex')))));
+                $gender = match (true) {
+                    in_array($gender, ['m', 'male'], true) => 'M',
+                    in_array($gender, ['f', 'female'], true) => 'F',
+                    $gender !== '' => 'Other',
+                    default => '',
+                };
+                $increment('gender', $gender);
+                $age = $registration->age_group ?: $answers->get('age group');
+                if (! $age && $registration->age !== null) $age = $registration->age < 18 ? 'Under 18' : ($registration->age < 30 ? '18–29' : ($registration->age <= 45 ? '30–45' : ($registration->age < 60 ? '46–59' : '60+')));
+                $increment('age', $age);
+                $increment('nationality', $answers->get('nationality') ?: ($answers->get('ethnicity') ?: ($answers->get('race') ?: $answers->get('ជនជាតិ'))));
+            }
+
+            return [
             'id' => $event->id,
             'name' => $event->name,
             'location' => $event->location,
@@ -93,7 +117,9 @@ class AdminController extends Controller
             'capacity_used' => $event->capacity > 0
                 ? round($event->registrations_count / $event->capacity * 1000) / 10
                 : 0.0,
-        ])]);
+            'demographics' => $demographics,
+            ];
+        })]);
     }
     private function eventHasEnded(Event $event): bool
     {
@@ -130,7 +156,6 @@ class AdminController extends Controller
             ->get()
             ->map(function (Registration $registration) use ($formFields) {
                 $registration->append_form_values($formFields);
-
                 return [
                     'id' => $registration->id,
                     'registration_code' => $registration->registration_code,

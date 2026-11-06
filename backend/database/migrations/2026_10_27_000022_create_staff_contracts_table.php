@@ -19,12 +19,12 @@ return new class extends Migration {
             $table->date('end_date')->nullable(); // null = open-ended
             $table->decimal('salary', 12, 2)->nullable();
             $table->string('currency', 3)->default('USD');
-            $table->string('file_path')->nullable(); // private disk, served only through an authorised download
+            $table->string('file_path')->nullable(); // private disk, served only through an authorised download​ 
             $table->string('file_name')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->index(['user_id', 'start_date']);
-            
+
         });
     }
 
