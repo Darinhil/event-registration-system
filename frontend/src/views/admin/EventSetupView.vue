@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
                 <textarea v-model="event.description" rows="4" placeholder="What is this event about, and who should attend?"></textarea>
               </label>
               <label class="es-field"><span class="es-label">Category</span>
-                <select v-model="event.category"><option>Conference</option><option>Workshop</option><option>Community</option><option>Training</option><option>Other</option></select>
+                <select v-model="event.category"><option>Conference</option><option>Workshop</option><option>Community</option><option>Training</option><option>Forum</option><option>Other</option></select>
               </label>
               <div id="ev-banner" class="es-field" tabindex="-1">
                 <span class="es-label">Event banner</span>
