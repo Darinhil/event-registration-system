@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import { getEventReportAttendees, getReports } from '../../services/adminService'
+import { requestErrorMessage } from '../../utils/apiError'
 import { formatDate } from '../../utils/formatDate'
 import { eventPhase, phaseLabels } from '../../utils/eventStats'
 
@@ -130,8 +131,8 @@ const loadReports = async () => {
     if (statusFilter.value !== 'all' && !reports.value.some((row) => row.status === statusFilter.value)) statusFilter.value = 'all'
     const requested = reports.value.find((row) => String(row.id) === String(route.query.event))
     if (requested && !selectedEvent.value) selectEvent(requested, { scroll: false })
-  } catch {
-    error.value = 'We couldn’t load the reports. Check your connection or admin session and try again.'
+  } catch (requestError) {
+    error.value = requestErrorMessage(requestError, 'the reports')
   } finally {
     loading.value = false
   }

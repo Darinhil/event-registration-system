@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import { getAdminEvents, getDashboard, getReports } from '../../services/adminService'
+import { requestErrorMessage } from '../../utils/apiError'
 import { useAuthStore } from '../../stores/auth'
 import { getMyCompliances } from '../../services/complianceService'
 import { getMyTraining } from '../../services/trainingService'
@@ -106,20 +107,29 @@ const quickActions = [
   { label: 'Reports', hint: 'Attendance and exports', to: '/admin/reports', tone: 'purple', icon: 'chart-column' },
 ]
 
+// Names every part that failed, so the message points at the right endpoint.
+const describeFailures = (failures) => {
+  const parts = failures.map((failure) => failure.part)
+  const what = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]
+  return requestErrorMessage((failures.find((failure) => failure.error.response) || failures[0]).error, what)
+}
+
 const loadDashboard = async () => {
   loading.value = true
   error.value = ''
-  try {
-    const [dashboardResponse, eventsResponse, reportsResponse] = await Promise.all([getDashboard(), getAdminEvents(), getReports()])
+  const requests = [['dashboard totals', getDashboard()], ['events', getAdminEvents()], ['reports', getReports()]]
+  const results = await Promise.allSettled(requests.map(([, request]) => request))
+  const failures = results.flatMap((result, index) => (result.status === 'rejected' ? [{ part: requests[index][0], error: result.reason }] : []))
+  if (failures.length) {
+    error.value = describeFailures(failures)
+  } else {
+    const [dashboardResponse, eventsResponse, reportsResponse] = results.map((result) => result.value)
     stats.value = dashboardResponse.data
     events.value = (eventsResponse.data.data || eventsResponse.data || []).map(normalizeEvent)
     reports.value = reportsResponse.data.data || reportsResponse.data || []
     loaded.value = true
-  } catch (requestError) {
-    error.value = requestError.response?.data?.message || 'Unable to load dashboard data. Check your connection and try again.'
-  } finally {
-    loading.value = false
   }
+  loading.value = false
 }
 // Staff home: each card shows the person's real records; a card that can't load shows a dash.
 const complianceSummary = ref(null)
