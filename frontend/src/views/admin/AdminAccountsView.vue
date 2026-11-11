@@ -275,9 +275,7 @@ onMounted(load)
       <header class="aa-head">
         <div>
           <p class="aa-eyebrow">Administration</p>
-          <h1 id="aa-title">Admin Accounts</h1>
-          <p class="aa-lead">Create staff accounts and decide how much each person can access.</p>
-        </div>
+          <h1 id="aa-title">Admin Accounts</h1>        </div>
         <dl v-if="!loading && !loadError" class="aa-stats">
           <div><dt>Accounts</dt><dd>{{ accounts.length }}</dd></div>
           <div><dt>Master Admins</dt><dd>{{ masterCount }}</dd></div>
@@ -556,7 +554,6 @@ onMounted(load)
 .aa-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
 .aa-eyebrow { margin: 0 0 6px; color: var(--aa-green); font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .aa-head h1 { margin: 0; color: var(--aa-ink); font-size: clamp(1.5rem, 2.4vw, 1.85rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
-.aa-lead { margin: 6px 0 0; color: var(--aa-muted); font-size: .92rem; }
 .aa-stats { display: flex; gap: 10px; margin: 0; }
 .aa-stats div { min-width: 104px; padding: 10px 14px; border: 1px solid var(--aa-line); border-radius: 10px; background: #fff; }
 .aa-stats dt { color: var(--aa-muted); font-size: .7rem; font-weight: 600; }

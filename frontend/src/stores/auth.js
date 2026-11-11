@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../services/api'
+import { clearActivity, markActive } from '../utils/idleLogout'
 
 const normalizeUserPhoto = (user) => {
   if (!user?.profile_photo) return user
@@ -47,6 +48,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = data.token
       localStorage.setItem('event_token', data.token)
       localStorage.setItem('event_user', JSON.stringify(this.user))
+      markActive()
     },
     async login(credentials) {
       this.loading = true
@@ -106,9 +108,14 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('event_user')
       // Cached admin data belongs to this account; the next person on this browser must not see it.
       localStorage.removeItem('event_list')
+      clearActivity()
     },
     async logout() {
-      try { if (this.token) await api.post('/auth/logout') } catch { /* the session is cleared locally either way */ } finally { this.clearSession() }
+      // Sign out here straight away, then revoke the token on the server (it is no longer in storage, so pass it).
+      const token = this.token
+      this.clearSession()
+      if (!token) return
+      try { await api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }) } catch { /* already signed out locally */ }
     },
   },
 })

@@ -27,7 +27,11 @@ const rememberMe = ref(Boolean(rememberedIdentifier))
 const loginPasswordVisible = ref(false)
 const loginErrors = reactive({})
 const loginFormError = ref('')
-const sessionExpired = computed(() => route.query.expired === '1' && !loginFormError.value)
+const sessionNotice = computed(() => {
+  if (loginFormError.value) return ''
+  if (route.query.idle === '1') return 'You were signed out because this browser wasn’t used for a while. Sign in again to continue.'
+  return route.query.expired === '1' ? 'Your session has expired. Sign in again to continue.' : ''
+})
 
 const validateLogin = () => {
   Object.keys(loginErrors).forEach((key) => delete loginErrors[key])
@@ -133,7 +137,7 @@ const clearSignup = (key) => { delete signupErrors[key]; signupFormError.value =
               <h1 id="au-title">Welcome back</h1>
               <p>Sign in to see your registrations and event passes.</p>
             </header>
-            <div v-if="sessionExpired" class="au-alert au-alert--info" role="status"><AppIcon name="info" :size="18" /><span>Your session has expired. Sign in again to continue.</span></div>
+            <div v-if="sessionNotice" class="au-alert au-alert--info" role="status"><AppIcon name="info" :size="18" /><span>{{ sessionNotice }}</span></div>
             <div v-if="loginFormError" class="au-alert" role="alert"><AppIcon name="alert-circle" :size="18" /><span>{{ loginFormError }}</span></div>
             <form class="au-form" novalidate :aria-busy="auth.loading" @submit.prevent="login">
               <div class="au-field">
@@ -157,7 +161,7 @@ const clearSignup = (key) => { delete signupErrors[key]; signupFormError.value =
                 <label class="au-check" for="remember-me"><input id="remember-me" v-model="rememberMe" type="checkbox" name="remember_me" />Remember me</label>
                 <button type="button" class="au-link" :aria-expanded="forgotOpen" aria-controls="forgot-help" @click="forgotOpen = !forgotOpen">Forgot password?</button>
               </div>
-              <p v-if="forgotOpen" id="forgot-help" class="au-note" role="status"><AppIcon name="info" :size="16" />Password resets aren’t available online yet. Staff can ask a Master Admin to reset theirs; attendees can create a new account with another email or phone.</p>
+              <p v-if="forgotOpen" id="forgot-help" class="au-note" role="status"><AppIcon name="info" :size="16" />Password reset isn’t available online. Staff: ask a Master Admin. Attendees: create a new account with another email or phone.</p>
               <button type="submit" class="au-submit" :disabled="auth.loading"><span v-if="auth.loading" class="au-spinner" aria-hidden="true"></span>{{ auth.loading ? 'Signing in…' : 'Sign in' }}</button>
             </form>
             <p class="au-foot">Don’t have an account? <RouterLink :to="{ path: '/account/register', query: keepRedirect }">Create one — it’s free</RouterLink></p>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { takeIdleSignOut } from '../utils/idleLogout'
 
 // Keep the initial bundle small. Admin tools, the QR scanner, and form builder
 // are only downloaded when the user navigates to them. Each import() must use a
@@ -70,16 +71,21 @@ const homeAfterSignIn = (auth, requested) => (auth.canAccessAdmin
   ? (requested.startsWith('/admin') ? requested : '/admin')
   : (requested && !requested.startsWith('/admin') ? requested : '/me'))
 
+// After an idle sign-out, the sign-in page explains why the person was signed out.
+const signIn = (path, to) => ({ path, query: { redirect: to.fullPath, ...(takeIdleSignOut() ? { idle: '1' } : {}) } })
+
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.meta.staff && !auth.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
+  if (to.meta.staff && !auth.isAuthenticated) return signIn('/login', to)
   if (to.meta.staff && !auth.canAccessAdmin) return '/'
   if (to.meta.adminOnly && !auth.isAdmin) return '/admin'
   if (to.meta.events && !auth.canManageEvents) return '/admin'
-  if (to.meta.auth && !auth.isAuthenticated) return { path: to.meta.signupFirst ? '/account/register' : '/login', query: { redirect: to.fullPath } }
+  if (to.meta.auth && !auth.isAuthenticated) return signIn(to.meta.signupFirst ? '/account/register' : '/login', to)
   if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated) {
     return homeAfterSignIn(auth, typeof to.query.redirect === 'string' ? to.query.redirect : '')
   }
+  // Staff accounts only use the admin area: public and attendee pages send them to the dashboard.
+  if (auth.isAuthenticated && auth.canAccessAdmin && !to.path.startsWith('/admin')) return '/admin'
 })
 
 export default router

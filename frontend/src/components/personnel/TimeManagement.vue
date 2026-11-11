@@ -77,7 +77,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
 <template>
   <main class="tm" aria-labelledby="tm-title">
     <header class="tm-heading">
-      <div><h1 id="tm-title">Time Management</h1><p>Leave, overtime, and timesheets.</p></div>
+      <div><h1 id="tm-title">Time Management</h1></div>
     </header>
 
     <p v-if="loadError" class="tm-notice" role="status">{{ loadError }}</p>

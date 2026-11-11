@@ -24,7 +24,7 @@ class AuthController extends Controller
         }
 
         $user = User::create([...$account, 'name' => $data['name'], 'password' => $data['password'], 'role' => 'attendee']);
-        return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('web')->plainTextToken], 201);
+        return response()->json(['data' => new UserResource($user), 'token' => $this->issueToken($user)], 201);
     }
 
     public function login(Request $request): \Illuminate\Http\JsonResponse
@@ -33,8 +33,15 @@ class AuthController extends Controller
         $identifier = trim($data['identifier']);
         $user = User::where('email', $identifier)->orWhere('phone', $identifier)->first();
         abort_unless($user && Hash::check($data['password'], $user->password), 422, 'Invalid credentials.');
-        return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('web')->plainTextToken]);
+        return response()->json(['data' => new UserResource($user), 'token' => $this->issueToken($user)]);
     }
 
     public function logout(Request $request): \Illuminate\Http\JsonResponse { $request->user()->currentAccessToken()?->delete(); return response()->json(['message' => 'Logged out.']); }
+
+    // A forgotten sign-in must not last forever: staff tokens expire after a working day, attendee tokens after
+    // a month. The browser also signs out after inactivity (frontend/src/utils/idleLogout.js).
+    private function issueToken(User $user): string
+    {
+        return $user->createToken('web', ['*'], $user->isStaff() ? now()->addHours(12) : now()->addDays(30))->plainTextToken;
+    }
 }

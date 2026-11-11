@@ -143,7 +143,7 @@ watch(() => ({ ...form }), (now, before) => {
     <header class="cc-head">
       <div>
         <h1>Compliances</h1>
-        <p>Policies and declarations you need to confirm. Each confirmation is saved to your HR record.</p>
+        <p>Policies and declarations you need to confirm.</p>
       </div>
     </header>
 

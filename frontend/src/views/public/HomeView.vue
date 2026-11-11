@@ -18,7 +18,6 @@ const steps = [
     <section class="hp-hero" aria-labelledby="hp-title">
       <div class="hp-hero__inner">
         <div class="hp-hero__copy">
-          <p class="hp-eyebrow">Live &amp; Learn Cambodia · Events</p>
           <h1 id="hp-title">Register for events and check in <em>with a QR code.</em></h1>
           <div class="hp-actions">
             <RouterLink v-if="auth.isAuthenticated" class="hp-btn hp-btn--primary" to="/me"><AppIcon name="ticket" :size="17" />My registrations</RouterLink>

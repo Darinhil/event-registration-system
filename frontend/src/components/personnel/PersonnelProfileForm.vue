@@ -551,7 +551,7 @@ const printPreview = async () => {
 
         <!-- 4. Supporting documents -->
         <template v-else-if="current.section === 'documents'">
-          <p class="pp-section__help">Acceptable formats: PDF, JPG and PNG. Examples include ID cards, birth certificates, passports, visas, work permits, employment books, family or residential books, and certificates.</p>
+          <p class="pp-section__help">PDF, JPG or PNG — e.g. ID card, passport, visa, work permit or certificates.</p>
           <ul class="pp-docs">
             <li v-for="slot in [...documentSlots, ...extraDocumentSlots]" :key="slot.key" class="pp-doc" :class="{ 'is-uploaded': form.documents[slot.key], 'has-error': err(`doc.${slot.key}`) || fileErrors[`doc.${slot.key}`] }">
               <span class="pp-doc__icon"><AppIcon :name="form.documents[slot.key] ? 'check' : 'file-text'" :size="18" /></span>

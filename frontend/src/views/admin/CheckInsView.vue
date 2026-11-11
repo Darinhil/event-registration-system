@@ -607,8 +607,7 @@ onBeforeUnmount(() => { cameraOn.value = false })
                 <AppIcon name="alert-circle" :size="20" />
                 <div>
                   <strong>Test mode — this link only works on this computer</strong>
-                  <p>Phones can’t open <code>{{ publicBase }}</code>. To test, open the link here while signed in as a participant. Before printing, set <code>VITE_PUBLIC_APP_URL</code> in <code>frontend/.env</code> to your site’s public address and rebuild.</p>
-                  <a class="ck-btn ck-btn--ghost ck-btn--sm ck-qr__try" :href="entranceUrl" target="_blank" rel="noopener"><AppIcon name="link" :size="16" />Open check-in link</a>
+                  <p>Phones can’t open <code>{{ publicBase }}</code>. Before printing, set <code>VITE_PUBLIC_APP_URL</code> in <code>frontend/.env</code> to your site’s public address and rebuild.</p>
                 </div>
               </div>
               <div class="ck-qr__actions">

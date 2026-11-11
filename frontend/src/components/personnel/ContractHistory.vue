@@ -188,9 +188,7 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
   <div class="ch">
     <header class="ch-head">
       <div>
-        <h1>Contract History</h1>
-        <p>All contracts on record — probationary, full-time, part-time, and more.</p>
-      </div>
+        <h1>Contract History</h1>      </div>
     </header>
 
     <p v-if="toast" class="ch-toast" role="status"><AppIcon name="check-circle" :size="18" /><span>{{ toast }}</span><button type="button" class="ch-icon-btn" aria-label="Dismiss" @click="toast = ''"><AppIcon name="x" :size="16" /></button></p>

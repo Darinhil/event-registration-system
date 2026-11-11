@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
 import { useRegistrationStore } from '../../stores/registration'
 import { getRegistration } from '../../services/registrationService'
 import { buildPassImage } from '../../utils/passImage'
@@ -96,22 +97,6 @@ const downloadQr = () => {
 const copyCode = async () => {
   try { await navigator.clipboard.writeText(String(code.value)); flash('Registration ID copied') } catch { flash('Couldn’t copy — select the ID and copy it manually') }
 }
-const printPass = () => window.print()
-const icsDate = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-const icsText = (value) => String(value || '').replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\n/g, '\\n')
-const addToCalendar = () => {
-  const start = new Date(startsAt.value)
-  const end = endsAt.value ? new Date(endsAt.value) : new Date(start.getTime() + 60 * 60 * 1000)
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Live & Learn Cambodia//Events//EN', 'BEGIN:VEVENT',
-    `UID:registration-${registration.value.id}@events`, `DTSTAMP:${icsDate(new Date())}`, `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(end)}`,
-    `SUMMARY:${icsText(registration.value.event_name)}`, `LOCATION:${icsText(location.value)}`,
-    `DESCRIPTION:${icsText(`Registration ID: ${code.value}\nScan the check-in QR code at the entrance when you arrive.`)}`, 'END:VEVENT', 'END:VCALENDAR']
-  const anchor = document.createElement('a')
-  anchor.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }))
-  anchor.download = `${fileSafe(registration.value.event_name)}.ics`
-  anchor.click()
-  setTimeout(() => URL.revokeObjectURL(anchor.href), 1000)
-}
 
 const steps = [
   { icon: 'pin', title: 'Arrive at the venue', text: 'Bring your phone and be signed in to this account.' },
@@ -172,7 +157,7 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
                 <span v-if="timeLabel"><AppIcon name="clock" :size="15" />{{ timeLabel }}</span>
               </div>
             </div>
-            <p class="rp-where"><AppIcon name="pin" :size="17" /><span>{{ location || 'Venue to be confirmed' }}</span></p>
+            <p class="rp-where"><AppIcon name="pin" :size="17" /><LocationLink :location="location" fallback="Venue to be confirmed" /></p>
 
             <dl class="rp-facts">
               <div><dt>Participant</dt><dd>{{ registration.full_name || 'Attendee' }}</dd></div>
@@ -188,7 +173,7 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
             </dl>
 
             <div class="rp-row rp-actions">
-              <button v-if="startsAt && status.key === 'ok'" type="button" class="rp-btn rp-btn--ghost" @click="addToCalendar"><AppIcon name="calendar-plus" :size="16" />Add to calendar</button>
+              <RouterLink v-if="registration.event_id" class="rp-btn rp-btn--ghost" :to="`/events/${registration.event_id}#agenda`"><AppIcon name="list" :size="16" />View agenda</RouterLink>
               <RouterLink v-if="registration.can_edit && status.key === 'ok'" class="rp-btn rp-btn--ghost" :to="`/registration/${registration.id}/edit`"><AppIcon name="pen" :size="16" />Edit details</RouterLink>
             </div>
           </div>
@@ -197,10 +182,9 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
             <p class="rp-stub__label">Personal pass</p>
             <div v-if="qrValue" class="rp-qr" :class="{ 'is-used': status.key !== 'ok' }"><QRCodeDisplay :value="qrValue" /></div>
             <p class="rp-stub__code">{{ code }}</p>
-            <p class="rp-stub__hint">If you can’t scan the entrance QR, show this pass at the check-in desk.</p>
-            <div class="rp-row rp-stub__actions">
-              <button v-if="qrValue" type="button" class="rp-btn rp-btn--primary" @click="downloadQr"><AppIcon name="download" :size="16" />Download</button>
-              <button type="button" class="rp-btn rp-btn--ghost" @click="printPass"><AppIcon name="file-text" :size="16" />Print</button>
+            <p class="rp-stub__hint">Please download your personal QR Code pass for the event day in advance.</p>
+            <div v-if="qrValue" class="rp-row rp-stub__actions">
+              <button type="button" class="rp-btn rp-btn--primary" @click="downloadQr"><AppIcon name="download" :size="16" />Download</button>
             </div>
           </div>
         </article>
@@ -253,18 +237,18 @@ watch(() => route.query.id, loadRegistration, { immediate: true })
 
 /* Ticket */
 .rp-ticket { display: grid; grid-template-columns: minmax(0, 1fr) 320px; overflow: hidden; border: 1px solid var(--rp-line); border-radius: 20px; background: #fff; box-shadow: 0 12px 32px rgba(23, 54, 95, .08); }
-.rp-ticket__main { display: grid; align-content: start; gap: 18px; padding: 28px; }
+.rp-ticket__main { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 18px; padding: 28px; }
 .rp-ticket__stub { position: relative; display: grid; justify-items: center; align-content: start; gap: 10px; padding: 28px 24px; border-left: 2px dashed var(--rp-line); background: var(--rp-soft); text-align: center; }
 .rp-ticket__stub::before, .rp-ticket__stub::after { position: absolute; left: -13px; width: 24px; height: 24px; border: 1px solid var(--rp-line); border-radius: 50%; background: #f4f7fa; content: ''; }
 .rp-ticket__stub::before { top: -13px; }
 .rp-ticket__stub::after { bottom: -13px; }
 .rp-when { display: flex; align-items: center; gap: 14px; }
-.rp-when > div { display: grid; gap: 2px; }
+.rp-when > div { display: grid; gap: 2px; min-width: 0; }
 .rp-when strong { color: var(--rp-ink); font-size: 1.08rem; }
-.rp-when > div > span { display: inline-flex; align-items: center; gap: 6px; color: var(--rp-muted); }
+.rp-when > div > span { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--rp-muted); }
 .rp-cal { display: grid; width: 58px; height: 62px; flex: none; place-items: center; align-content: center; border-radius: 14px; background: var(--rp-brand); color: #fff; font-size: 1.5rem; font-weight: 700; line-height: 1.05; }
 .rp-cal b { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; opacity: .9; }
-.rp-where { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--rp-text); font-weight: 500; }
+.rp-where { display: flex; align-items: flex-start; gap: 8px; min-width: 0; margin: 0; color: var(--rp-text); font-weight: 500; overflow-wrap: anywhere; }
 .rp-where svg { flex: none; margin-top: 3px; color: var(--rp-brand); }
 .rp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; border-top: 1px solid var(--rp-line); }
 .rp-facts > div { display: grid; gap: 2px; padding: 14px 0; border-bottom: 1px solid var(--rp-line); }

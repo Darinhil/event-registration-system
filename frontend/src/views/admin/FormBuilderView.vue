@@ -1008,7 +1008,7 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
                 <summary>Advanced</summary>
                 <label class="fb-field-label" for="fb-f-name">Field name</label>
                 <input id="fb-f-name" v-model="selectedField.settings.field_name" class="fb-input" type="text" placeholder="first_name" @input="selectedField.settings.field_name_locked = true; touch()" @change="pushHistory" />
-                <p class="fb-hint">Used for browser autofill. Answers are stored by the question itself, so changing this never affects existing answers.</p>
+                <p class="fb-hint">Used for browser autofill. Changing it never affects existing answers.</p>
               </details>
             </div>
 
@@ -1107,7 +1107,6 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
             <div class="fb-row">
               <button v-if="!isPublished" class="fb-btn fb-btn--primary" type="button" :disabled="!canPublish" @click="openPublishModal">{{ eventStatus === 'closed' ? 'Reopen registration…' : 'Publish form…' }}</button>
               <template v-else>
-                <a class="fb-btn fb-btn--ghost" :href="registrationLink" target="_blank" rel="noopener"><AppIcon name="link" :size="15" />Open live form</a>
                 <button class="fb-btn fb-btn--ghost is-danger" type="button" @click="requestClose">Close registration</button>
               </template>
             </div>
@@ -1240,7 +1239,6 @@ const goWorkflow = (key) => { if (key === 'preview') openPreview(); else activeT
         <div class="fb-qr fb-qr--modal"><QRCodeDisplay :value="registrationLink" /></div>
         <footer class="fb-row fb-modal-foot">
           <button class="fb-btn fb-btn--ghost" type="button" @click="downloadQr('.fb-qr--modal')"><AppIcon name="download" :size="15" />Download QR</button>
-          <a class="fb-btn fb-btn--primary" :href="registrationLink" target="_blank" rel="noopener">Open the live form</a>
         </footer>
       </div>
     </div>

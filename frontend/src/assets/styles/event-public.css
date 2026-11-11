@@ -39,7 +39,8 @@
 
 /* ---------- Hero ---------- */
 .pe-hero { overflow: hidden; margin-bottom: 28px; border: 1px solid var(--pe-border); border-radius: 20px; background: linear-gradient(135deg, #0c5a4f 0%, #0a4a46 100%); color: #fff; }
-.pe-hero__image { display: block; width: 100%; max-height: 360px; aspect-ratio: 21 / 8; object-fit: cover; }
+/* Whole picture, never cropped; very tall images are capped and centred. */
+.pe-hero__image { display: block; width: 100%; height: auto; max-height: 560px; object-fit: contain; background: #f1f4f7; }
 .pe-hero__body { padding: 30px 36px 32px; }
 .pe-hero__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .pe-tag { padding: 4px 11px; border-radius: 999px; background: rgba(255, 255, 255, .14); color: #e2fbf3; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
@@ -49,12 +50,14 @@
 .pe-pill.is-closed { background: rgba(255, 255, 255, .18); color: #fff; }
 .pe-hero h1 { max-width: 820px; margin: 0; color: #fff; font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -.03em; line-height: 1.12; overflow-wrap: anywhere; }
 .pe-hero__facts { display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 18px 0 0; padding: 0; list-style: none; color: #d6efe8; font-size: 15px; }
-.pe-hero__facts li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pe-hero__facts li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.pe-hero__facts li > svg { flex: none; margin-top: 2px; }
 .pe-hero__facts svg { color: #8fe0c6; }
 
 /* ---------- Layout ---------- */
 .pe-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 32px; }
 .pe-main { display: grid; gap: 36px; min-width: 0; }
+.pe-section { scroll-margin-top: 84px; } /* clears the sticky top bar when linked to with #agenda */
 .pe-section h2 { margin: 0 0 14px; color: var(--pe-ink); font-size: 21px; font-weight: 750; letter-spacing: -.015em; }
 .pe-section__head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 14px; }
 .pe-section__head h2 { margin: 0; }
@@ -118,7 +121,7 @@
 @media (max-width: 640px) {
   .pe-page { padding: 12px 0 104px; } /* room for the sticky register bar */
   .pe-hero { margin-bottom: 22px; border-radius: 16px; }
-  .pe-hero__image { aspect-ratio: 16 / 9; }
+  .pe-hero__image { max-height: 360px; }
   .pe-hero__body { padding: 22px 20px 24px; }
   .pe-hero__facts { flex-direction: column; gap: 8px; font-size: 14.5px; }
   .pe-session { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 16px; }

@@ -200,7 +200,6 @@ const actionGroups = computed(() => [
             </div>
           </div>
           <div class="ed-header__actions">
-            <a class="es-btn" :href="link" target="_blank" rel="noreferrer"><AppIcon name="eye" :size="16" />Preview<span class="sr-only"> (opens in a new tab)</span></a>
             <RouterLink class="es-btn es-btn--primary" :to="`/admin/events/${event.id}/edit`"><AppIcon name="pen" :size="16" />Edit event</RouterLink>
           </div>
         </header>

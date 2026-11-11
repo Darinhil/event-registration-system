@@ -196,9 +196,7 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
   <main class="tm">
     <header class="tm-hero">
       <div>
-        <p class="tm-eyebrow">Learning &amp; Development</p>
         <h1>Staff Online Training</h1>
-        <p>Assigned courses, practical learning, and certificates — all in one place.</p>
       </div>
       <button type="button" class="tm-btn tm-btn--primary" :disabled="loading || !!loadError" @click="openCreate"><AppIcon name="plus" :size="16" />Create course</button>
     </header>
@@ -264,7 +262,7 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
     <dialog ref="formDialog" class="tm-dialog tm-dialog--form" aria-labelledby="tm-form-title" @click="onBackdrop($event, formDialog)">
       <form class="tm-dialog__inner" novalidate @submit.prevent="saveCourse">
         <header class="tm-dialog__head">
-          <div><p class="tm-eyebrow">Learning &amp; Development</p><h2 id="tm-form-title">{{ editing ? 'Edit course' : 'Create course' }}</h2></div>
+          <div><h2 id="tm-form-title">{{ editing ? 'Edit course' : 'Create course' }}</h2></div>
           <button type="button" class="tm-icon-btn" aria-label="Close" @click="closeDialog(formDialog)"><AppIcon name="x" :size="19" /></button>
         </header>
         <div class="tm-dialog__body">

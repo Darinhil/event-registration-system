@@ -121,6 +121,9 @@
   .rp-page .rp-table td[data-label]::before { display: block; margin-bottom: 2px; color: #6f8295; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; content: attr(data-label); }
   .rp-num .rp-sub { justify-content: flex-start; }
   .rp-cell-event, .rp-cell-rate, .rp-cell-action, .rp-table td[data-label="Date"], .rp-table td[data-label="Status"] { grid-column: 1 / -1; min-width: 0; }
+  /* Registered carries the gender / age / nationality breakdown: give it the full card width. */
+  .rp-table td[data-label="Registered"] { grid-column: 1 / -1; }
+  .rp-demographic-line { max-width: none; margin: 3px 0 0; }
   .rp-cell-action .rp-btn { width: 100%; min-height: 44px; padding: 0 12px; }
   .rp-cell-action .rp-btn__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   .rp-date { white-space: normal; }

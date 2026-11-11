@@ -164,9 +164,7 @@ const decide = async (item, decision) => {
   <div class="ot">
     <header class="ot-head">
       <div>
-        <h1>Overtime</h1>
-        <p>Request overtime and track your supervisor’s decision.</p>
-      </div>
+        <h1>Overtime</h1>      </div>
       <dl v-if="summary" class="ot-stats">
         <div><dt>Pending</dt><dd>{{ summary.pending }}</dd></div>
         <div><dt>Approved this month</dt><dd>{{ hours(summary.approved_this_month_minutes) }}</dd></div>

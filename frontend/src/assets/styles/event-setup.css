@@ -384,7 +384,6 @@
 .es-done__link:focus-within { border-color: var(--rd-primary); box-shadow: 0 0 0 3px rgba(11, 154, 118, .14); }
 .es-page .es-done__link input { flex: 1; min-width: 0; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--rd-ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; outline: 0; text-overflow: ellipsis; }
 .es-done__link .es-btn { flex: none; min-width: 88px; }
-.es-done__open { margin: 10px 0 0 -6px; }
 
 .es-done__next { display: grid; gap: 8px; margin-top: 12px; }
 .es-done__next a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--rd-border); border-radius: 11px; color: inherit; transition: border-color .15s ease, background-color .15s ease; }

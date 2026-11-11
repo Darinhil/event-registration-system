@@ -62,7 +62,7 @@ const logout = async () => {
         </RouterLink>
 
         <nav class="un-links" aria-label="Main navigation">
-          <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="un-link" :class="{ 'is-active': isActive(link) }" :aria-current="isActive(link) ? 'page' : undefined">{{ link.label }}</RouterLink>
+          <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="un-link" :class="{ 'is-active': isActive(link) }" :aria-current="isActive(link) ? 'page' : undefined"><AppIcon :name="link.icon" :size="16" class="un-link__icon" />{{ link.label }}</RouterLink>
         </nav>
 
         <div class="un-right">
@@ -100,7 +100,6 @@ const logout = async () => {
           <span class="un-avatar un-avatar--lg"><img v-if="photo" :src="photo" alt="" /><template v-else>{{ initials }}</template></span>
           <span><strong>{{ auth.user?.name }}</strong><small v-if="contact">{{ contact }}</small></span>
         </div>
-        <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="un-menu__item" :class="{ 'is-active': isActive(link) }" :aria-current="isActive(link) ? 'page' : undefined"><AppIcon :name="link.icon" :size="18" />{{ link.label }}</RouterLink>
         <template v-if="auth.isAuthenticated">
           <RouterLink to="/profile" class="un-menu__item" :class="{ 'is-active': route.path === '/profile' }"><AppIcon name="pen" :size="18" />Profile settings</RouterLink>
           <button type="button" class="un-menu__item is-danger" @click="logout"><AppIcon name="log-out" :size="18" />Log out</button>
@@ -136,6 +135,7 @@ const logout = async () => {
 .un-link::after { position: absolute; right: 12px; bottom: -1px; left: 12px; height: 3px; border-radius: 3px 3px 0 0; background: transparent; content: ""; transition: background .15s; }
 .un-link.is-active { color: #0b6e57; }
 .un-link.is-active::after { background: #0b7f62; }
+.un-link__icon { display: none; flex: none; }
 
 .un-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .un-btn { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 16px; border: 1px solid transparent; border-radius: 10px; font-size: .92rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
@@ -182,13 +182,26 @@ const logout = async () => {
 @media (max-width: 720px) {
   .un-inner { height: 60px; gap: 12px; padding: 0 16px; }
   .un-brand img { height: 36px; }
-  .un-links, .un-account, .un-right > .un-btn { display: none; }
+  .un-account, .un-right > .un-btn { display: none; }
   .un-burger { display: grid; }
+  /* Keep My information one tap away instead of hiding it in the menu. */
+  .un-links { order: 2; height: auto; margin-left: auto; }
+  .un-right { order: 3; margin-left: 0; }
+  .un-link { gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid #e3eaf1; border-radius: 999px; background: #fff; font-size: .88rem; white-space: nowrap; }
+  .un-link::after { display: none; }
+  .un-link.is-active { border-color: #bfe5d6; background: #e8f5f0; }
+  .un-link__icon { display: block; }
   .un-mobile { position: absolute; top: 100%; right: 0; left: 0; z-index: 41; display: grid; gap: 2px; padding: 8px 12px 14px; border-bottom: 1px solid #e3eaf1; background: #fff; box-shadow: 0 16px 30px rgba(16, 36, 61, .12); }
   .un-mobile .un-menu__item { min-height: 48px; font-size: 1rem; }
   .un-mobile__auth { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 8px; }
   .un-scrim { position: fixed; inset: 0; z-index: 19; display: block; border: 0; background: rgba(17, 36, 59, .3); }
   .site-notices { padding: 0 12px; }
+}
+@media (max-width: 380px) {
+  .un-inner { gap: 8px; padding: 0 12px; }
+  .un-brand img { height: 30px; }
+  .un-link { padding: 0 10px; }
+  .un-link__icon { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .un-account__chev, .un-link, .un-link::after { transition: none; } }
 </style>

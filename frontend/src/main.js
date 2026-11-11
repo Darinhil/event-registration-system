@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import api from './services/api'
 import { useAuthStore } from './stores/auth'
+import { startIdleLogout } from './utils/idleLogout'
 import './assets/styles/main.css'
 import './assets/styles/ui-overrides.css'
 import './assets/styles/admin-topbar.css'
@@ -36,6 +37,8 @@ const app = createApp(App).use(createPinia()).use(router)
 // An expired or revoked token makes every request fail with 401. Drop the stale
 // session once and send the user to sign in, then come back to where they were.
 const auth = useAuthStore()
+// Runs before the first page's route guards, so a session left signed in too long never opens a protected page.
+startIdleLogout(auth, router)
 api.interceptors.response.use(undefined, (error) => {
   if (error.response?.status === 401 && auth.token) {
     auth.clearSession()
