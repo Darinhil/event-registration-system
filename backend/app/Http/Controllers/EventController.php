@@ -10,15 +10,15 @@ use App\Http\Resources\RegistrationResource;
 
 class EventController extends Controller
 {
-    public function index(Request $request) { return Event::query()->where('status', 'published')->where('ends_at', '>', now())->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'form_config', 'status', 'created_by', 'updated_at'])->with('creator:id,name')->withCount('registrations')->latest('starts_at')->get()->filter(fn (Event $event) => $event->registrations_count < $event->registrationLimit())->each(fn (Event $event) => $event->withBannerLink()->makeHidden('form_config'))->values(); }
+    public function index(Request $request) { return Event::attachBannerLinks(Event::query()->where('status', 'published')->where('ends_at', '>', now())->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'form_config', 'status', 'created_by', 'updated_at'])->with('creator:id,name')->withCount('registrations')->latest('starts_at')->get()->filter(fn (Event $event) => $event->registrations_count < $event->registrationLimit())->each(fn (Event $event) => $event->makeHidden('form_config'))->values()); }
     public function adminIndex(Request $request)
     {
-        return Event::visibleTo($request->user())
-            ->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'status', 'created_by', 'updated_at'])
+        // Banners are attached afterwards: see Event::attachBannerLinks().
+        return Event::attachBannerLinks(Event::visibleTo($request->user())
+            ->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'status', 'created_by', 'updated_at'])
             ->withCount('registrations')
             ->latest('starts_at')
-            ->get()
-            ->each(fn (Event $event) => $event->withBannerLink());
+            ->get());
     }
     public function banner(Request $request, Event $event): \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
     {

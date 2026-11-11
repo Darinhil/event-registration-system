@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 
 class Event extends Model
@@ -50,16 +52,30 @@ class Event extends Model
         return (int) ($this->form_config['settings']['max_participants'] ?? $this->capacity);
     }
 
-    /** A link for lists, so they don't carry every embedded image; signed because an <img> can't send a token. */
-    public function withBannerLink(): self
+    /**
+     * Event lists must never read embedded banners: one base64 image can be ~2 MB, and sorting rows that carry
+     * them makes MySQL fail with "Out of sort memory" (error 1038) while holding them all exhausts PHP memory.
+     * So lists are loaded without `branding`, then this runs one unsorted query that returns linked banners as
+     * they are and only a flag for embedded ones, which become a signed link to the banner route (signed because
+     * an <img> can't send a token).
+     */
+    public static function attachBannerLinks(EloquentCollection $events): EloquentCollection
     {
-        $branding = $this->branding;
-        if (str_starts_with((string) ($branding['image'] ?? ''), 'data:')) {
-            $branding['image'] = URL::signedRoute('events.banner', ['event' => $this->id, 'v' => $this->updated_at?->timestamp]);
-            $this->branding = $branding;
-        }
+        if ($events->isEmpty()) return $events;
+        $inline = "branding like '%\"data:%'";
+        $banners = static::query()->whereKey($events->modelKeys())
+            ->select(['id', DB::raw("case when {$inline} then 1 else 0 end as has_inline_banner"), DB::raw("case when {$inline} then null else branding end as branding")])
+            ->get()
+            ->keyBy('id');
 
-        return $this;
+        return $events->each(function (Event $event) use ($banners): void {
+            $banner = $banners->get($event->getKey());
+            $branding = $banner?->branding;
+            if ($banner && (int) $banner->has_inline_banner) {
+                $branding = [...($branding ?? []), 'image' => URL::signedRoute('events.banner', ['event' => $event->id, 'v' => $event->updated_at?->timestamp])];
+            }
+            $event->branding = $branding;
+        });
     }
 
     public function checkInQrToken(): string

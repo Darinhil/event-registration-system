@@ -67,7 +67,9 @@ class AdminController extends Controller
      */
     public function reports(\Illuminate\Http\Request $request): JsonResponse
     {
+        // Only the columns the report uses: banners (up to ~2 MB each) would overflow MySQL's sort buffer here.
         $events = Event::query()
+            ->select(['id', 'name', 'location', 'starts_at', 'ends_at', 'status', 'capacity', 'form_config', 'created_by'])
             ->withCount(['registrations', 'registrations as checked_in_count' => fn ($query) => $query->whereHas('checkIn')])
             ->with(['registrations:id,event_id,gender,age,age_group,form_data', 'formFields'])
             ->visibleTo($request->user())
@@ -77,6 +79,8 @@ class AdminController extends Controller
         return response()->json(['data' => $events->map(function (Event $event) {
             $demographics = ['gender' => [], 'age' => [], 'nationality' => []];
             foreach ($event->registrations as $registration) {
+                // append_form_values() reads the event's archived field labels; without this it reloads the whole event per registration.
+                $registration->setRelation('event', $event);
                 $registration->append_form_values($event->formFields);
                 $answers = collect($registration->form_values ?? [])->mapWithKeys(fn ($value, $label) => [mb_strtolower(trim((string) $label)) => $value]);
                 $increment = function (string $group, $value) use (&$demographics): void {
