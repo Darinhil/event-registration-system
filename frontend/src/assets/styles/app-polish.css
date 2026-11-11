@@ -141,6 +141,8 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .my-status.is-off { background: #f1f4f7; color: #5f7286; }
 .my-card__meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; color: #5f7286; font-size: .9rem; }
 .my-card__meta span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.my-card__meta .my-card__where { align-items: flex-start; max-width: 100%; overflow-wrap: anywhere; }
+.my-card__where > svg { flex: none; margin-top: 3px; }
 .my-card__ref { margin: 0; color: #6f8295; font-size: .82rem; }
 .my-card__ref code { padding: 1px 6px; border-radius: 5px; background: #f3f6f8; color: #33475c; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; }
 .my-card__actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
@@ -273,7 +275,6 @@ div.qr-scanner-area:has(> button.scanner-start) { min-height: 0; padding: 0; bor
 .shell > main:has(.hp-hero) { padding-top: 0; }
 .hp-hero { display: grid; align-content: center; min-height: 100vh; min-height: 100dvh; width: 100vw; box-sizing: border-box; margin: -76px calc(50% - 50vw) 0; padding: calc(76px + clamp(36px, 5vw, 64px)) 16px clamp(40px, 5vw, 64px); background: radial-gradient(800px 420px at 85% -10%, rgba(13, 148, 136, .32), transparent 60%), linear-gradient(140deg, #0c2a33 0%, #103b43 60%, #0f5a55 100%); color: #fff; }
 .hp-hero__inner { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); align-items: center; gap: clamp(28px, 5vw, 64px); max-width: 975px; margin: 0 auto; } /* same width as the content column below, so left edges line up */
-.hp-eyebrow { margin: 0 0 14px; color: #8fe0c6; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .hp-hero h1 { max-width: 640px; margin: 0; color: #fff; font-size: clamp(2.1rem, 4.2vw, 3.4rem); font-weight: 800; letter-spacing: -.04em; line-height: 1.08; overflow-wrap: anywhere; }
 .hp-hero h1 em { color: #8fe0c6; font-style: normal; }
 .hp-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }

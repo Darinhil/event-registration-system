@@ -15,8 +15,7 @@
    also has a clean Latin fallback so bilingual labels stay balanced. */
 
 .preview-form-kicker,
-.user-preview-form h4,
-.preview-form-help {
+.user-preview-form h4 {
   display: none;
 }
 
@@ -91,7 +90,6 @@
   font-weight: 600;
 }
 
-.preview-form-help { margin: 0 0 20px; padding-top: 20px; color: var(--attendee-muted); font-size: 13px; }
 .preview-form-field { display: grid; gap: 7px; margin-top: 16px; }
 .preview-form-field label { color: #294b5d; font-size: 14px; font-weight: 600; }
 

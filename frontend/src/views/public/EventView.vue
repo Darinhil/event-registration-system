@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
+import ImageViewer from '../../components/ImageViewer.vue'
 import api from '../../services/api'
-import { copyText } from '../../utils/clipboard'
 
 const route = useRoute()
 const event = ref(null)
@@ -25,6 +26,11 @@ const load = async () => {
     error.value = notFound.value ? 'This event is no longer available.' : 'We couldn’t load this event. Check your connection and try again.'
   } finally {
     loading.value = false
+  }
+  // Sections only exist once the event has loaded, so the router can't scroll to a #hash on its own.
+  if (event.value && route.hash) {
+    await nextTick()
+    document.getElementById(route.hash.slice(1))?.scrollIntoView({ block: 'start' })
   }
 }
 load()
@@ -86,24 +92,11 @@ const onDayKeydown = (keyEvent, index) => {
 }
 
 /* ---------- Handy actions ---------- */
-const mapsLink = computed(() => event.value?.location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.value.location)}` : '')
-const copied = ref(false)
-const copyLink = async () => {
-  if (await copyText(window.location.href)) { copied.value = true; setTimeout(() => { copied.value = false }, 1800) }
-}
-// A standard .ics file works with Google, Outlook and Apple calendars.
-const icsStamp = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-const icsText = (value) => String(value || '').replace(/[\\;,]/g, (char) => `\\${char}`).replace(/\r?\n/g, '\\n')
-const addToCalendar = () => {
-  if (!start.value) return
-  const finish = end.value || new Date(start.value.getTime() + 3600000)
-  const body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Event Registration//EN', 'BEGIN:VEVENT', `UID:event-${event.value.id}@${window.location.host}`, `DTSTAMP:${icsStamp(new Date())}`, `DTSTART:${icsStamp(start.value)}`, `DTEND:${icsStamp(finish)}`, `SUMMARY:${icsText(event.value.name)}`, `LOCATION:${icsText(event.value.location)}`, `DESCRIPTION:${icsText(`${event.value.description || ''}\n\n${window.location.href}`)}`, `URL:${window.location.href}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n')
-  const anchor = document.createElement('a')
-  anchor.href = URL.createObjectURL(new Blob([body], { type: 'text/calendar;charset=utf-8' }))
-  anchor.download = `${String(event.value.name || 'event').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'event'}.ics`
-  anchor.click()
-  setTimeout(() => URL.revokeObjectURL(anchor.href), 1000)
-}
+const mapsLink = computed(() => {
+  const place = String(event.value?.location || '').trim()
+  if (!place) return ''
+  return /^https?:\/\//i.test(place) ? place : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`
+})
 </script>
 
 <template>
@@ -129,7 +122,7 @@ const addToCalendar = () => {
       <template v-else>
         <!-- Hero -->
         <header class="pe-hero" :class="{ 'has-image': image }">
-          <img v-if="image" class="pe-hero__image" :src="image" alt="" />
+          <ImageViewer v-if="image" :src="image" :alt="event.name" img-class="pe-hero__image" />
           <div class="pe-hero__body">
             <div class="pe-hero__tags">
               <span v-if="event.category" class="pe-tag">{{ event.category }}</span>
@@ -139,7 +132,7 @@ const addToCalendar = () => {
             <ul class="pe-hero__facts">
               <li><AppIcon name="calendar" :size="17" /><span>{{ dateLabel }}</span></li>
               <li><AppIcon name="clock" :size="17" /><span>{{ timeLabel }}</span></li>
-              <li><AppIcon name="pin" :size="17" /><span>{{ event.location || 'Location to be confirmed' }}</span></li>
+              <li><AppIcon name="pin" :size="17" /><LocationLink :location="event.location" /></li>
             </ul>
           </div>
         </header>
@@ -153,7 +146,7 @@ const addToCalendar = () => {
             </section>
 
             <!-- Agenda -->
-            <section v-if="agenda.length" class="pe-section" aria-labelledby="pe-agenda">
+            <section v-if="agenda.length" id="agenda" class="pe-section" aria-labelledby="pe-agenda">
               <div class="pe-section__head">
                 <h2 id="pe-agenda">Agenda</h2>
                 <span class="pe-muted">{{ agenda.length }} {{ agenda.length === 1 ? 'session' : 'sessions' }}<template v-if="agendaDays.length > 1"> over {{ agendaDays.length }} days</template></span>
@@ -192,10 +185,8 @@ const addToCalendar = () => {
               </ul>
               <RouterLink v-if="isOpen" class="pe-btn pe-btn--primary pe-btn--block" :to="registerLink">Register now<AppIcon name="arrow-right" :size="17" /></RouterLink>
               <RouterLink v-else class="pe-btn pe-btn--block" to="/me">View my registrations</RouterLink>
-              <div class="pe-register__share">
-                <button v-if="start" type="button" class="pe-link" @click="addToCalendar"><AppIcon name="calendar-plus" :size="15" />Add to calendar</button>
-                <a v-if="mapsLink" class="pe-link" :href="mapsLink" target="_blank" rel="noopener noreferrer"><AppIcon name="arrow-up-right" :size="15" />Get directions<span class="sr-only"> (opens Google Maps)</span></a>
-                <button type="button" class="pe-link" @click="copyLink"><AppIcon :name="copied ? 'check' : 'link'" :size="15" />{{ copied ? 'Link copied' : 'Copy event link' }}</button>
+              <div v-if="mapsLink" class="pe-register__share">
+                <a class="pe-link" :href="mapsLink" target="_blank" rel="noopener noreferrer"><AppIcon name="arrow-up-right" :size="15" />Get directions<span class="sr-only"> (opens Google Maps)</span></a>
               </div>
             </div>
           </aside>

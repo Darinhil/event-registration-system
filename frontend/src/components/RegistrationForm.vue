@@ -8,6 +8,8 @@ import { computed, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FormRenderer from './FormRenderer.vue'
 import AppIcon from './AppIcon.vue'
+import LocationLink from './LocationLink.vue'
+import ImageViewer from './ImageViewer.vue'
 import { useRegistrationStore } from '../stores/registration'
 import api from '../services/api'
 import { buildSubmission } from '../utils/formValidation'
@@ -18,7 +20,6 @@ const DEFAULT_DESCRIPTION = 'Register for this event by completing the form belo
 const event = ref(null)
 const form = ref({ fields: [], steps: [], settings: {} })
 const registration = ref({ open: true, reason: null })
-const remaining = ref(null)
 const loading = ref(true)
 const loadError = ref('')
 const step = ref(0)
@@ -38,7 +39,6 @@ const load = async () => {
   try {
     const [eventResponse, formResponse] = await Promise.all([api.get(`/events/${eventId.value}`), api.get(`/events/${eventId.value}/form`)])
     event.value = eventResponse.data.data
-    remaining.value = eventResponse.data.remaining ?? null
     registration.value = eventResponse.data.registration || { open: formResponse.data.data?.registration_open !== false, reason: formResponse.data.data?.registration_closed_reason || null }
     const data = formResponse.data.data || {}
     const fields = Array.isArray(data) ? data : (data.fields || [])
@@ -72,14 +72,6 @@ const timeLabel = computed(() => {
   if (!event.value?.starts_at) return ''
   const time = (value) => new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   return event.value.ends_at ? `${time(event.value.starts_at)} – ${time(event.value.ends_at)}` : time(event.value.starts_at)
-})
-const deadlineLabel = computed(() => {
-  const deadline = form.value.settings?.registration_end
-  return deadline ? new Date(`${String(deadline).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-})
-const spotsLabel = computed(() => {
-  if (remaining.value === null || !event.value?.capacity) return ''
-  return remaining.value <= 10 ? `Only ${remaining.value} ${remaining.value === 1 ? 'spot' : 'spots'} left` : `${remaining.value} spots left`
 })
 
 /* ---------- Submit ---------- */
@@ -149,20 +141,15 @@ const onSubmit = async (values) => {
     <div v-else class="rg-layout">
       <!-- Which event this is -->
       <aside class="rg-event" aria-label="Event summary">
-        <img v-if="banner" class="rg-event__banner" :src="banner" alt="" />
+        <ImageViewer v-if="banner" :src="banner" :alt="event.name" img-class="rg-event__banner" />
         <div class="rg-event__body">
           <span v-if="event.category" class="rg-tag">{{ event.category }}</span>
           <h2>{{ event.name }}</h2>
           <ul class="rg-facts">
             <li><AppIcon name="calendar" :size="16" /><span>{{ dateLabel }}</span></li>
             <li v-if="timeLabel"><AppIcon name="clock" :size="16" /><span>{{ timeLabel }}</span></li>
-            <li><AppIcon name="pin" :size="16" /><span>{{ event.location || 'Location to be confirmed' }}</span></li>
+            <li><AppIcon name="pin" :size="16" /><LocationLink :location="event.location" /></li>
           </ul>
-          <p class="rg-status" :class="registration.open ? 'is-open' : 'is-closed'">
-            <AppIcon :name="registration.open ? 'check-circle' : 'lock'" :size="16" />
-            <span v-if="registration.open"><strong>Registration open</strong><template v-if="deadlineLabel"> · closes {{ deadlineLabel }}</template><template v-if="spotsLabel"> · {{ spotsLabel }}</template></span>
-            <span v-else><strong>Registration closed</strong></span>
-          </p>
           <p v-if="event.description" class="rg-event__desc">{{ event.description }}</p>
         </div>
       </aside>

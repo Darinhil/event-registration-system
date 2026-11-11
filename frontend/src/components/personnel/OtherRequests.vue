@@ -37,7 +37,7 @@ onMounted(async () => {
 
 <template>
   <main class="or" aria-labelledby="or-title">
-    <header class="or-head"><div><h1 id="or-title">Other Requests</h1><p>Travel, fuel, and purchase requests.</p></div></header>
+    <header class="or-head"><div><h1 id="or-title">Other Requests</h1></div></header>
 
     <section class="or-metrics" aria-label="Other request summary">
       <article v-for="form in forms" :key="form.id" class="or-metric" :class="`is-${form.tone}`">

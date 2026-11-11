@@ -172,12 +172,13 @@ const printSummary = () => window.print()
             <RouterLink :to="to('contract-history')">View all contracts <AppIcon name="arrow-right" :size="14" /></RouterLink>
           </header>
           <p v-if="contractSource.error" class="pd-error" role="alert">{{ contractSource.error }}</p>
+          <!-- Messages sit outside the table so they stay in view when the table scrolls sideways on phones. -->
+          <p v-else-if="contractSource.loading" class="pd-table__empty">Loading contract history…</p>
+          <p v-else-if="!contracts.length" class="pd-table__empty">No contracts have been recorded yet.</p>
           <div v-else class="pd-table-wrap">
             <table class="pd-table">
               <thead><tr><th scope="col">Role / designation</th><th scope="col">Department</th><th scope="col">Duration</th><th scope="col">Status</th></tr></thead>
               <tbody>
-                <tr v-if="contractSource.loading"><td colspan="4" class="pd-table__empty">Loading contract history…</td></tr>
-                <tr v-else-if="!contracts.length"><td colspan="4" class="pd-table__empty">No contracts have been recorded yet.</td></tr>
                 <tr v-for="contract in contracts.slice(0, 3)" :key="contract.id">
                   <td><strong>{{ contract.position }}</strong><small>{{ contract.type_label }}</small></td>
                   <td>{{ contract.department || '—' }}</td>
@@ -312,7 +313,7 @@ const printSummary = () => window.print()
 .pd-table tr:last-child td { border-bottom: 0; }
 .pd-table td strong { display: block; color: var(--pd-ink); font-weight: 600; }
 .pd-table td small { display: block; color: var(--pd-muted); }
-.pd-table td.pd-table__empty { padding: 18px 10px; color: var(--pd-muted); text-align: center; white-space: normal; }
+.pd-table__empty { margin: 0; padding: 18px 10px; color: var(--pd-muted); text-align: center; }
 
 .pd-course { padding: 14px; border: 1px solid var(--pd-line); border-radius: 12px; background: var(--pd-soft); }
 .pd-course__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

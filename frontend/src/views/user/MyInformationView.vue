@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import UserLayout from '../../layouts/UserLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
 import { useAuthStore } from '../../stores/auth'
 import { deleteRegistration } from '../../services/registrationService'
 
@@ -139,7 +140,7 @@ const cancelRegistration = async (registration) => {
                 </div>
                 <p class="my-card__meta">
                   <span><AppIcon name="clock" :size="14" />{{ whenLabel(registration) }}</span>
-                  <span v-if="registration.event_current_location || registration.event_location"><AppIcon name="pin" :size="14" />{{ registration.event_current_location || registration.event_location }}</span>
+                  <span v-if="registration.event_current_location || registration.event_location" class="my-card__where"><AppIcon name="pin" :size="14" /><LocationLink :location="registration.event_current_location || registration.event_location" /></span>
                 </p>
                 <p class="my-card__ref">Registration ID <code>{{ registration.registration_code || registration.id }}</code><template v-if="tab === 'upcoming' && registration.can_edit && registration.registration_deadline"> · You can edit until {{ deadlineLabel(registration.registration_deadline) }}</template></p>
               </div>

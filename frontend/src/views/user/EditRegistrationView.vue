@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
 import FormRenderer from '../../components/FormRenderer.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
+import ImageViewer from '../../components/ImageViewer.vue'
 import api from '../../services/api'
 import { buildSubmission, normalizeStoredValue } from '../../utils/formValidation'
 import { registrationBody } from '../../stores/registration'
@@ -160,14 +162,14 @@ load()
       <div v-else class="rg-layout">
         <!-- Which event and which registration this is -->
         <aside class="rg-event" aria-label="Event summary">
-          <img v-if="banner" class="rg-event__banner" :src="banner" alt="" />
+          <ImageViewer v-if="banner" :src="banner" :alt="event.name" img-class="rg-event__banner" />
           <div class="rg-event__body">
             <span v-if="event.category" class="rg-tag">{{ event.category }}</span>
             <h2>{{ event.name }}</h2>
             <ul class="rg-facts">
               <li><AppIcon name="calendar" :size="16" /><span>{{ dateLabel }}</span></li>
               <li v-if="timeLabel"><AppIcon name="clock" :size="16" /><span>{{ timeLabel }}</span></li>
-              <li><AppIcon name="pin" :size="16" /><span>{{ event.location || 'Location to be confirmed' }}</span></li>
+              <li><AppIcon name="pin" :size="16" /><LocationLink :location="event.location" /></li>
               <li><AppIcon name="ticket" :size="16" /><span>Registration <strong>{{ registration.registration_code }}</strong></span></li>
             </ul>
             <p class="rg-status" :class="registration.can_edit ? 'is-open' : 'is-closed'">

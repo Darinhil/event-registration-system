@@ -593,7 +593,7 @@ button:focus:not(:focus-visible) {
 .reference-year-bar small { padding-top:8px; color:var(--rd-muted); font-size:.8rem; font-weight:600; }
 
 /* ---------- Quick actions ---------- */
-.reference-actions nav { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; padding:16px 20px 20px; }
+.reference-actions nav { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; padding:16px 20px 20px; } /* two columns only when each action fits without truncating */
 .reference-actions a { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:12px; min-height:64px; padding:12px 14px; border:1px solid var(--rd-border); border-radius:var(--rd-radius-sm); color:inherit; text-decoration:none; transition:border-color .16s var(--rd-ease), background-color .16s var(--rd-ease); }
 .reference-actions a:hover { border-color:color-mix(in srgb, var(--stat-color) 40%, var(--rd-border)); background:var(--rd-hover); }
 .reference-actions a:focus-visible { outline:2px solid var(--stat-color); outline-offset:2px; }

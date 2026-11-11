@@ -50,7 +50,6 @@ const nextStep = () => emit('step-change', Math.min(currentStep.value + 1, props
 const prevStep = () => { stepErrors.value = {}; summaryVisible.value = false; emit('step-change', Math.max(currentStep.value - 1, 0)) }
 const lastStep = computed(() => !hasSteps.value || currentStep.value === props.steps.length - 1)
 const inputFields = computed(() => stepFields.value.filter((field) => field.type !== 'heading'))
-const hasRequired = computed(() => inputFields.value.some((field) => field.required))
 
 /* ---------------- Values ---------------- */
 const seedValue = (field) => {
@@ -200,8 +199,6 @@ const checkedState = (field) => {
         <span class="fr-step-name">{{ step.name }}<span class="sr-only">{{ index < currentStep ? ' (completed)' : '' }}</span></span>
       </li>
     </ol>
-
-    <p v-if="hasRequired" class="fr-legend">Fields marked <span aria-hidden="true">*</span><span class="sr-only">with an asterisk</span> are required.</p>
 
     <div v-if="summaryVisible && errorList.length > 1" class="fr-error-summary" role="alert" tabindex="-1">
       <strong>Please fix {{ errorList.length }} {{ errorList.length === 1 ? 'answer' : 'answers' }} before continuing</strong>

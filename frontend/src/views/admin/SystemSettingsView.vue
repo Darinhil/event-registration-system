@@ -115,7 +115,7 @@ onBeforeUnmount(() => { clearTimeout(toastTimer); window.removeEventListener('be
       <header class="st-head">
         <p class="st-eyebrow">Administration</p>
         <h1 id="st-title">Settings</h1>
-        <p class="st-lead">System-wide options for the public site and event registration. Changes go live as soon as you save.</p>
+        <p class="st-lead">Changes go live as soon as you save.</p>
       </header>
 
       <div class="st-live" role="status" aria-live="polite">

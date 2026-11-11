@@ -1,7 +1,12 @@
+import { drawQrLogo } from './qrLogo'
+
 const WIDTH = 720
 const PADDING = 48
 const QR_MAX = 520
 const NAME_LINE = 46
+const LABEL_LINE = 34
+const CODE_LINE = 44
+const GAP = 28
 const NAME_MAX_LINES = 3
 
 // Khmer names may have no spaces, so an over-long word breaks between whole characters, never inside one.
@@ -32,11 +37,12 @@ const wrapText = (ctx, text, maxWidth) => {
   return kept
 }
 
-/** The downloadable pass: event name on top, QR code in the middle, registration ID below. */
+/** The downloadable pass: "Event Name:" on top, QR code in the middle, "Code For Check-in:" at the bottom. */
 export const buildPassImage = (qrCanvas, eventName, code) => {
   const pass = document.createElement('canvas')
   const ctx = pass.getContext('2d')
   const family = getComputedStyle(document.body).fontFamily || 'sans-serif'
+  const labelFont = `600 24px ${family}`
   const nameFont = `700 34px ${family}`
   const codeFont = '700 34px ui-monospace, Consolas, monospace'
 
@@ -45,25 +51,38 @@ export const buildPassImage = (qrCanvas, eventName, code) => {
   // A whole-number scale keeps every QR module sharp, which is what scanners depend on.
   const scale = Math.max(Math.floor(QR_MAX / qrCanvas.width), 1)
   const qrSize = qrCanvas.width * scale
-  const nameHeight = nameLines.length * NAME_LINE
+  const nameBlock = nameLines.length ? LABEL_LINE + nameLines.length * NAME_LINE + GAP : 0
   pass.width = Math.max(WIDTH, qrSize + PADDING * 2)
-  pass.height = PADDING + nameHeight + (nameLines.length ? 28 : 0) + qrSize + 28 + 40 + PADDING
+  pass.height = PADDING + nameBlock + qrSize + GAP + LABEL_LINE + CODE_LINE + PADDING
 
   ctx.fillStyle = '#fff'
   ctx.fillRect(0, 0, pass.width, pass.height)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
+  const center = pass.width / 2
 
-  ctx.font = nameFont
-  ctx.fillStyle = '#0f1c2e'
-  nameLines.forEach((line, index) => ctx.fillText(line, pass.width / 2, PADDING + NAME_LINE * index + NAME_LINE / 2))
+  if (nameLines.length) {
+    ctx.font = labelFont
+    ctx.fillStyle = '#5f7286'
+    ctx.fillText('Event Name:', center, PADDING + LABEL_LINE / 2)
+    ctx.font = nameFont
+    ctx.fillStyle = '#0f1c2e'
+    nameLines.forEach((line, index) => ctx.fillText(line, center, PADDING + LABEL_LINE + NAME_LINE * index + NAME_LINE / 2))
+  }
 
-  const qrTop = PADDING + nameHeight + (nameLines.length ? 28 : 0)
+  const qrTop = PADDING + nameBlock
+  const qrLeft = (pass.width - qrSize) / 2
   ctx.imageSmoothingEnabled = false
-  ctx.drawImage(qrCanvas, (pass.width - qrSize) / 2, qrTop, qrSize, qrSize)
+  ctx.drawImage(qrCanvas, qrLeft, qrTop, qrSize, qrSize)
+  // Enlarging without smoothing keeps the modules sharp but makes the logo blocky, so redraw it at full size.
+  if (qrCanvas.dataset.logo) drawQrLogo(pass, qrLeft, qrTop, qrSize)
 
+  const codeTop = qrTop + qrSize + GAP
+  ctx.font = labelFont
+  ctx.fillStyle = '#5f7286'
+  ctx.fillText('Code For Check-in:', center, codeTop + LABEL_LINE / 2)
   ctx.font = codeFont
   ctx.fillStyle = '#17365f'
-  ctx.fillText(String(code), pass.width / 2, qrTop + qrSize + 28 + 20)
+  ctx.fillText(String(code), center, codeTop + LABEL_LINE + CODE_LINE / 2)
   return pass
 }

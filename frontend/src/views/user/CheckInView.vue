@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import UserLayout from '../../layouts/UserLayout.vue'
 import QRScanner from '../../components/QRScanner.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useCheckInStore } from '../../stores/checkIn'
 import { parseQrPayload } from '../../utils/qr'
@@ -165,7 +166,7 @@ const steps = [
             <h2 id="ci-confirm-title" ref="resultHeading" tabindex="-1">{{ registration.event_name }}</h2>
             <ul class="ci-facts">
               <li><AppIcon name="calendar" :size="16" />{{ fmtDay(registration.event_starts_at || registration.event_date) }}<template v-if="registration.event_starts_at"> · {{ fmtTime(registration.event_starts_at) }}</template></li>
-              <li><AppIcon name="pin" :size="16" />{{ registration.event_current_location || registration.event_location || 'Venue to be confirmed' }}</li>
+              <li><AppIcon name="pin" :size="16" /><LocationLink :location="registration.event_current_location || registration.event_location" fallback="Venue to be confirmed" /></li>
             </ul>
             <div class="ci-person">
               <span class="ci-avatar">{{ initials }}</span>
@@ -259,7 +260,8 @@ const steps = [
 .ci-confirm { display: grid; gap: 14px; padding: 24px; }
 .ci-confirm h2 { margin: 0; font-size: 1.4rem; font-weight: 700; outline: 0; }
 .ci-facts { display: grid; gap: 4px; margin: -6px 0 0; padding: 0; list-style: none; color: var(--ci-muted); font-size: .92rem; }
-.ci-facts li { display: flex; align-items: center; gap: 8px; }
+.ci-facts li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.ci-facts li > svg { flex: none; margin-top: 2px; }
 .ci-person { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--ci-line); border-radius: 12px; background: var(--ci-soft); }
 .ci-person > span:nth-child(2) { display: grid; min-width: 0; flex: 1; }
 .ci-person strong { color: var(--ci-ink); }

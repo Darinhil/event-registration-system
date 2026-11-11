@@ -168,9 +168,7 @@ const closeDialog = (dialog) => dialog?.close()
   <main class="cpm">
     <header class="cpm-head">
       <div>
-        <h1>Required Compliance</h1>
-        <p>Policies and declarations assigned to staff, with response history.</p>
-      </div>
+        <h1>Required Compliance</h1>      </div>
       <button type="button" class="cpm-btn cpm-btn--primary" @click="openCreate"><AppIcon name="plus" :size="16" />Add policy</button>
     </header>
 
@@ -219,9 +217,7 @@ const closeDialog = (dialog) => dialog?.close()
         <header class="cpm-dialog__head">
           <div>
             <p class="cpm-eyebrow">Policy setup</p>
-            <h2 id="cpm-form-title">{{ editing ? 'Edit policy' : 'Add policy' }}</h2>
-            <p class="cpm-dialog__subtitle">Set the information staff will see and the response required.</p>
-          </div>
+            <h2 id="cpm-form-title">{{ editing ? 'Edit policy' : 'Add policy' }}</h2>          </div>
           <button type="button" class="cpm-close" aria-label="Close" @click="closeDialog(formDialog)"><AppIcon name="x" :size="19" /></button>
         </header>
         <div class="cpm-dialog__body">
@@ -372,7 +368,6 @@ const closeDialog = (dialog) => dialog?.close()
 .cpm-dialog__body { display: grid; min-height: 0; flex: 1 1 auto; gap: 14px; overflow-y: auto; padding: 20px 22px; overscroll-behavior: contain; }
 .cpm-dialog--form .cpm-dialog__head { padding: 20px 24px 17px; }
 .cpm-dialog--form .cpm-dialog__head h2 { font-size: 22px; font-weight: 650; }
-.cpm-dialog__subtitle { margin: 5px 0 0; color: #72849a; font-size: 12px; }
 .cpm-dialog--form .cpm-dialog__body { min-height: 0; flex: 1 1 auto; gap: 12px; overflow-y: auto; padding: 20px 24px 24px; background: #fbfcfd; overscroll-behavior: contain; }
 .cpm-form-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; border: 1px solid #e4eaf0; border-radius: 12px; background: #fff; }
 .cpm-form-group__title, .cpm-field--wide, .cpm-form-group .cpm-fields-row, .cpm-form-group .cpm-toggle { grid-column: 1 / -1; }

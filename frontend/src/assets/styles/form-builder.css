@@ -171,7 +171,7 @@
 .fb-handle { display: grid; width: 20px; height: 26px; flex: none; place-items: center; color: #b7c4d1; cursor: grab; }
 .fb-handle svg { width: 16px; height: 16px; fill: currentColor; }
 .fb-card:hover .fb-handle { color: var(--fb-muted); }
-.fb-card-body { display: grid; min-width: 0; flex: 1; gap: 6px; }
+.fb-card-body { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; flex: 1; gap: 6px; } /* lets long one-line placeholders truncate instead of widening the card */
 .fb-card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .fb-shell .fb-card-label { color: var(--fb-ink); font-size: 14.5px; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
 .fb-card-heading { font-size: 16px; font-weight: 700; }
