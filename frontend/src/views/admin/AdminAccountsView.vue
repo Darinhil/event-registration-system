@@ -22,7 +22,24 @@ const ROLES = [
   { value: 'officer_1', label: 'Officer Level 1', description: LEVEL_NOTE },
   { value: 'officer_0', label: 'Officer Level 0', description: LEVEL_NOTE },
 ]
+const STAFF_ROLE_TITLES = [
+  { value: 'system_administrator', label: 'System Administrator', scope: 'System configuration and integrations', responsibilities: 'Configures IAM, manages system integrations, edits global settings, and assigns user permissions.' },
+  { value: 'operations_lead', label: 'Operations Lead', scope: 'Operational read-write', responsibilities: 'Manages resource allocation, approves workflow changes, sets operational policies, and schedules maintenance.' },
+  { value: 'systems_engineer', label: 'Systems Engineer', scope: 'Execution and deployment', responsibilities: 'Deploys updates, configures infrastructure, scales services, and manages incident response pipelines.' },
+  { value: 'maintenance_tech', label: 'Maintenance Tech', scope: 'Day-to-day execution', responsibilities: 'Executes routine tasks, runs diagnostic procedures, handles level-1/2 support tickets, and applies standard patches.' },
+  { value: 'reviewer', label: 'Reviewer', scope: 'Read-only (global or scoped)', responsibilities: 'Reviews telemetry, monitors dashboards, inspects compliance logs, and evaluates cost analytics without modification access.' },
+]
+const STAFF_TEAMS = ['Management', 'Operation', 'CREFA', 'ESCM', 'AWR', 'CLIMART', 'GROWTH-2', 'PV-SKILL', 'FNC', 'CHILL', 'SIDA CSO']
+const STAFF_POSITIONS = ['Executive Director', 'Senior Manager', 'Manager', 'Coordinator', 'Officer', 'Assistant', 'Volunteer', 'Intern', 'Others']
+const STAFF_AUTHORITIES = [
+  { value: 'approver', label: 'Approver' },
+  { value: 'verifier', label: 'Verifier' },
+  { value: 'reviewer', label: 'Reviewer' },
+  { value: 'checker', label: 'Checker' },
+  { value: 'maker', label: 'Maker' },
+]
 const roleOf = (value) => ROLES.find((role) => role.value === value)
+const staffRoleTitleOf = (value) => STAFF_ROLE_TITLES.find((role) => role.value === value)
 const roleLabel = (value) => roleOf(value)?.label || value
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const SEARCH_THRESHOLD = 6
@@ -59,29 +76,38 @@ const load = async ({ silent = false } = {}) => {
 }
 
 /* ---------- Create form ---------- */
-const blank = () => ({ name: '', email: '', password: '', role: 'event_admin' })
+const blank = () => ({
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone: '',
+  staff_team: '',
+  staff_position: '',
+  staff_role_title: '',
+  staff_authorities: [],
+})
 const form = reactive(blank())
-const errors = reactive({ name: '', email: '', password: '', role: '' })
-const touched = reactive({ name: false, email: false, password: false })
+const errors = reactive({ first_name: '', last_name: '', email: '', staff_team: '', staff_position: '', staff_role_title: '' })
+const touched = reactive(Object.fromEntries(Object.keys(errors).map((key) => [key, false])))
 const formError = ref('')
 const creating = ref(false)
-const showPassword = ref(false)
 const fieldRefs = reactive({})
-const selectedRole = computed(() => roleOf(form.role))
-const passwordOk = computed(() => form.password.length >= 8)
+const selectedStaffRole = computed(() => staffRoleTitleOf(form.staff_role_title))
 
 const rules = {
-  name: (v) => (!v.trim() ? 'Enter the staff member’s full name.' : v.trim().length > 100 ? 'Use 100 characters or fewer.' : ''),
+  first_name: (v) => (!v.trim() ? 'Enter the staff member’s first name.' : v.trim().length > 80 ? 'Use 80 characters or fewer.' : ''),
+  last_name: (v) => (!v.trim() ? 'Enter the staff member’s last name.' : v.trim().length > 80 ? 'Use 80 characters or fewer.' : ''),
   email: (v) => (!v.trim() ? 'Enter an email address.' : !EMAIL_RE.test(v.trim()) ? 'Enter a valid email, like name@company.com.' : ''),
-  password: (v) => (!v ? 'Create a password.' : v.length < 8 ? 'Use at least 8 characters.' : ''),
-  role: (v) => (roleOf(v) ? '' : 'Choose a role.'),
+  staff_team: (v) => (!v.trim() ? 'Choose or enter a team.' : v.trim().length > 100 ? 'Use 100 characters or fewer.' : ''),
+  staff_position: (v) => (STAFF_POSITIONS.includes(v) ? '' : 'Choose a position.'),
+  staff_role_title: (v) => (staffRoleTitleOf(v) ? '' : 'Choose a staff role.'),
 }
 const validate = (key) => (errors[key] = rules[key](form[key]))
 const onBlur = (key) => { touched[key] = true; validate(key) }
 const onInput = (key) => { if (touched[key] || errors[key]) validate(key); formError.value = '' }
 const focusFirstError = async () => {
   await nextTick()
-  const key = ['name', 'email', 'password', 'role'].find((k) => errors[k])
+  const key = Object.keys(errors).find((k) => errors[k])
   fieldRefs[key]?.focus()
 }
 
@@ -92,7 +118,7 @@ const submit = async () => {
   Object.keys(rules).forEach(validate)
   if (Object.values(errors).some(Boolean)) return focusFirstError()
   // Granting full access is a sensitive step: review it in a dialog first.
-  if (form.role === 'admin') return openDialog({ type: 'grant' })
+  if (form.staff_role_title === 'system_administrator') return openDialog({ type: 'grant' })
   await create()
 }
 
@@ -100,16 +126,25 @@ const create = async ({ focus = true } = {}) => {
   if (creating.value) return false
   creating.value = true
   formError.value = ''
-  const payload = { name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role }
+  const payload = {
+    ...form,
+    first_name: form.first_name.trim(),
+    last_name: form.last_name.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim() || null,
+    staff_team: form.staff_team.trim(),
+  }
   try {
     const { data } = await api.post('/admin/admin-accounts', payload)
     Object.assign(form, blank())
     Object.keys(touched).forEach((k) => (touched[k] = false))
     Object.keys(errors).forEach((k) => (errors[k] = ''))
-    showPassword.value = false
     if (data.data?.id) accounts.value = [data.data, ...accounts.value.filter((a) => a.id !== data.data.id)]
     highlight(data.data?.id)
-    notify('success', `${data.data?.name || payload.name} was added as ${roleLabel(payload.role)}. They can sign in with ${payload.email}.`)
+    const inviteNote = data.invite_delivery === 'log'
+      ? ' The invitation link was written to the application log; configure email delivery to send it to staff.'
+      : ` A password setup invite was sent to ${payload.email}.`
+    notify('success', `${data.data?.name || `${payload.first_name} ${payload.last_name}`} was added as ${staffRoleTitleOf(payload.staff_role_title)?.label}. Staff ID: ${data.data?.staff_id}.${inviteNote}`)
     load({ silent: true })
     return true
   } catch (e) {
@@ -117,7 +152,9 @@ const create = async ({ focus = true } = {}) => {
     let mapped = false
     for (const key of Object.keys(errors)) {
       if (fieldErrors[key]?.[0]) {
-        errors[key] = key === 'email' && /taken/i.test(fieldErrors[key][0]) ? 'An account with this email already exists.' : fieldErrors[key][0]
+        errors[key] = /taken|already been taken/i.test(fieldErrors[key][0])
+          ? key === 'email' ? 'An account with this email already exists.' : fieldErrors[key][0]
+          : fieldErrors[key][0]
         mapped = true
       }
     }
@@ -150,13 +187,20 @@ let highlightTimer
 const highlight = (id) => { highlightId.value = id; clearTimeout(highlightTimer); highlightTimer = setTimeout(() => (highlightId.value = null), 4000) }
 onBeforeUnmount(() => clearTimeout(highlightTimer))
 
-/* ---------- Dialogs (grant review, change role, edit, HR profile, delete) ---------- */
+/* ---------- Dialogs (grant review, edit, HR profile, delete) ---------- */
 const dialogEl = ref(null)
 const dialog = ref(null)
 const dialogBusy = ref(false)
 const dialogError = ref('')
-const nextRole = ref('')
-const editForm = reactive({ name: '', password: '' })
+const editForm = reactive({
+  first_name: '',
+  last_name: '',
+  phone: '',
+  staff_team: '',
+  staff_position: '',
+  staff_role_title: '',
+  staff_authorities: [],
+})
 const staffProfile = ref(null)
 const staffProfileLoading = ref(false)
 let returnFocus = null
@@ -165,9 +209,13 @@ const openDialog = async (state, trigger) => {
   returnFocus = trigger || document.activeElement
   dialog.value = state
   dialogError.value = ''
-  nextRole.value = state.account?.role || ''
-  editForm.name = state.account?.name || ''
-  editForm.password = ''
+  editForm.first_name = state.account?.first_name || state.account?.name?.split(/\s+/).slice(0, -1).join(' ') || ''
+  editForm.last_name = state.account?.last_name || state.account?.name?.split(/\s+/).slice(-1).join(' ') || ''
+  editForm.phone = state.account?.phone || ''
+  editForm.staff_team = state.account?.staff_team || ''
+  editForm.staff_position = state.account?.staff_position || ''
+  editForm.staff_role_title = state.account?.staff_role_title || ''
+  editForm.staff_authorities = [...(state.account?.staff_authorities || [])]
   staffProfile.value = null
   await nextTick()
   dialogEl.value?.showModal()
@@ -211,14 +259,6 @@ const onDialogClosed = () => {
 }
 const onDialogCancel = (event) => { if (dialogBusy.value) event.preventDefault() }
 
-const roleChangeWarning = computed(() => {
-  const from = dialog.value?.account?.role
-  if (!from || nextRole.value === from) return ''
-  if (nextRole.value === 'admin') return 'This gives full access to every event, all admin accounts and system settings.'
-  if (from === 'admin') return 'They will lose access to other people’s events, admin accounts and settings.'
-  return ''
-})
-
 const confirmDialog = async () => {
   if (dialogBusy.value || !dialog.value) return
   const { type, account } = dialog.value
@@ -235,15 +275,18 @@ const confirmDialog = async () => {
       return
     }
     if (type === 'edit') {
-      const body = { name: editForm.name.trim(), ...(editForm.password ? { password: editForm.password } : {}) }
+      const body = {
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        phone: editForm.phone.trim() || null,
+        staff_team: editForm.staff_team.trim(),
+        staff_position: editForm.staff_position,
+        staff_role_title: editForm.staff_role_title,
+        staff_authorities: editForm.staff_authorities,
+      }
       const { data } = await api.put(`/admin/admin-accounts/${account.id}`, body)
       accounts.value = accounts.value.map((a) => (a.id === account.id ? { ...a, ...data.data } : a))
-      notify('success', editForm.password ? `${data.data.name}’s account was updated and they were signed out.` : `${data.data.name}’s account was updated.`)
-      highlight(account.id)
-    } else if (type === 'role') {
-      const { data } = await api.put(`/admin/admin-accounts/${account.id}`, { role: nextRole.value })
-      accounts.value = accounts.value.map((a) => (a.id === account.id ? { ...a, ...data.data } : a))
-      notify('success', `${account.name} is now ${roleLabel(data.data?.role || nextRole.value)}.`)
+      notify('success', `${data.data.name}’s staff details were updated.`)
       highlight(account.id)
     } else {
       await api.delete(`/admin/admin-accounts/${account.id}`)
@@ -275,12 +318,12 @@ onMounted(load)
       <header class="aa-head">
         <div>
           <p class="aa-eyebrow">Administration</p>
-          <h1 id="aa-title">Admin Accounts</h1>
-          <p class="aa-lead">Create staff accounts and decide how much each person can access.</p>
+          <h1 id="aa-title">Staff Management</h1>
+          <p class="aa-lead">Create complete staff records and assign role-based and workflow permissions.</p>
         </div>
         <dl v-if="!loading && !loadError" class="aa-stats">
           <div><dt>Accounts</dt><dd>{{ accounts.length }}</dd></div>
-          <div><dt>Master Admins</dt><dd>{{ masterCount }}</dd></div>
+          <div><dt>System Administrators</dt><dd>{{ masterCount }}</dd></div>
         </dl>
       </header>
 
@@ -300,18 +343,24 @@ onMounted(load)
           <header class="aa-card-head">
             <span class="aa-card-icon" aria-hidden="true"><AppIcon name="user-plus" :size="18" /></span>
             <div>
-              <h2 id="aa-new-title">New account</h2>
-              <p>Fields marked <span class="aa-req" aria-hidden="true">*</span><span class="sr-only">with an asterisk</span> are required.</p>
+              <h2 id="aa-new-title">Create staff</h2>
+              <p>Fields marked <span class="aa-req" aria-hidden="true">*</span><span class="sr-only">with an asterisk</span> are required. Staff set their password from an email invite.</p>
             </div>
           </header>
 
           <form class="aa-form" novalidate @submit.prevent="submit">
             <p v-if="formError" class="aa-form-error" role="alert"><AppIcon name="alert-circle" :size="16" />{{ formError }}</p>
 
-            <div class="aa-field" :class="{ 'has-error': errors.name }">
-              <label for="aa-name">Full name <span class="aa-req" aria-hidden="true">*</span></label>
-              <input id="aa-name" :ref="(el) => (fieldRefs.name = el)" v-model="form.name" type="text" maxlength="100" autocomplete="off" placeholder="e.g. Sokha Chan" required :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'aa-name-err' : undefined" @blur="onBlur('name')" @input="onInput('name')" />
-              <p v-if="errors.name" id="aa-name-err" class="aa-err">{{ errors.name }}</p>
+            <div class="aa-field" :class="{ 'has-error': errors.first_name }">
+              <label for="aa-first-name">First name <span class="aa-req" aria-hidden="true">*</span></label>
+              <input id="aa-first-name" :ref="(el) => (fieldRefs.first_name = el)" v-model="form.first_name" type="text" maxlength="80" autocomplete="given-name" required :aria-invalid="!!errors.first_name" @blur="onBlur('first_name')" @input="onInput('first_name')" />
+              <p v-if="errors.first_name" class="aa-err">{{ errors.first_name }}</p>
+            </div>
+
+            <div class="aa-field" :class="{ 'has-error': errors.last_name }">
+              <label for="aa-last-name">Last name <span class="aa-req" aria-hidden="true">*</span></label>
+              <input id="aa-last-name" :ref="(el) => (fieldRefs.last_name = el)" v-model="form.last_name" type="text" maxlength="80" autocomplete="family-name" required :aria-invalid="!!errors.last_name" @blur="onBlur('last_name')" @input="onInput('last_name')" />
+              <p v-if="errors.last_name" class="aa-err">{{ errors.last_name }}</p>
             </div>
 
             <div class="aa-field" :class="{ 'has-error': errors.email }">
@@ -321,37 +370,57 @@ onMounted(load)
               <p id="aa-email-hint" class="aa-hint">They’ll use this email to sign in.</p>
             </div>
 
-            <div class="aa-field" :class="{ 'has-error': errors.password }">
-              <label for="aa-password">Temporary password <span class="aa-req" aria-hidden="true">*</span></label>
-              <div class="aa-password">
-                <input id="aa-password" :ref="(el) => (fieldRefs.password = el)" v-model="form.password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required :aria-invalid="!!errors.password" :aria-describedby="errors.password ? 'aa-password-err aa-password-rule' : 'aa-password-rule'" @blur="onBlur('password')" @input="onInput('password')" />
-                <button type="button" class="aa-icon-btn aa-password-toggle" :aria-pressed="showPassword" :aria-label="showPassword ? 'Hide password' : 'Show password'" :title="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword"><AppIcon :name="showPassword ? 'eye-off' : 'eye'" :size="18" /></button>
-              </div>
-              <p v-if="errors.password" id="aa-password-err" class="aa-err">{{ errors.password }}</p>
-              <p id="aa-password-rule" class="aa-rule" :class="{ 'is-met': passwordOk }">
-                <AppIcon :name="passwordOk ? 'check-circle' : 'circle-dot'" :size="14" />At least 8 characters<span class="sr-only">{{ passwordOk ? ' — met' : '' }}</span>
-              </p>
+            <div class="aa-field">
+              <label for="aa-phone">Phone number</label>
+              <input id="aa-phone" v-model="form.phone" type="tel" maxlength="30" autocomplete="tel" />
             </div>
 
-            <div class="aa-field">
-              <label for="aa-role">Role <span class="aa-req" aria-hidden="true">*</span></label>
+            <div class="aa-field" :class="{ 'has-error': errors.staff_team }">
+              <label for="aa-team">Team <span class="aa-req" aria-hidden="true">*</span></label>
+              <input id="aa-team" :ref="(el) => (fieldRefs.staff_team = el)" v-model="form.staff_team" list="aa-team-options" maxlength="100" required :aria-invalid="!!errors.staff_team" @blur="onBlur('staff_team')" @input="onInput('staff_team')" />
+              <datalist id="aa-team-options"><option v-for="team in STAFF_TEAMS" :key="team" :value="team" /></datalist>
+              <p v-if="errors.staff_team" class="aa-err">{{ errors.staff_team }}</p>
+            </div>
+
+            <div class="aa-field" :class="{ 'has-error': errors.staff_position }">
+              <label for="aa-position">Position <span class="aa-req" aria-hidden="true">*</span></label>
               <div class="aa-select">
-                <select id="aa-role" :ref="(el) => (fieldRefs.role = el)" v-model="form.role" aria-describedby="aa-role-desc" @change="onInput('role')">
-                  <optgroup label="Full access">
-                    <option value="admin">Master Admin</option>
-                  </optgroup>
-                  <optgroup label="Own events only">
-                    <option v-for="role in ROLES.filter((r) => !r.full)" :key="role.value" :value="role.value">{{ role.label }}</option>
-                  </optgroup>
+                <select id="aa-position" :ref="(el) => (fieldRefs.staff_position = el)" v-model="form.staff_position" required :aria-invalid="!!errors.staff_position" @blur="onBlur('staff_position')" @change="onInput('staff_position')">
+                  <option value="" disabled>Select a position</option>
+                  <option v-for="position in STAFF_POSITIONS" :key="position" :value="position">{{ position }}</option>
                 </select>
                 <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
               </div>
-              <div id="aa-role-desc" class="aa-role-card" :class="{ 'is-full': selectedRole?.full }">
-                <AppIcon :name="selectedRole?.full ? 'shield-check' : 'calendar'" :size="18" />
+              <p v-if="errors.staff_position" class="aa-err">{{ errors.staff_position }}</p>
+            </div>
+
+            <div class="aa-field" :class="{ 'has-error': errors.staff_role_title }">
+              <label for="aa-role-title">Role <span class="aa-req" aria-hidden="true">*</span></label>
+              <div class="aa-select">
+                <select id="aa-role-title" :ref="(el) => (fieldRefs.staff_role_title = el)" v-model="form.staff_role_title" required aria-describedby="aa-role-desc" :aria-invalid="!!errors.staff_role_title" @blur="onBlur('staff_role_title')" @change="onInput('staff_role_title')">
+                  <option value="" disabled>Select a role</option>
+                  <option v-for="role in STAFF_ROLE_TITLES" :key="role.value" :value="role.value">{{ role.label }}</option>
+                </select>
+                <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
+              </div>
+              <div id="aa-role-desc" class="aa-role-card" :class="{ 'is-full': form.staff_role_title === 'system_administrator' }">
+                <AppIcon :name="form.staff_role_title === 'system_administrator' ? 'shield-check' : 'calendar'" :size="18" />
                 <div>
-                  <strong>{{ selectedRole?.full ? 'Full access' : 'Own events only' }}</strong>
-                  <p>{{ selectedRole?.description }}</p>
+                  <strong>{{ selectedStaffRole?.scope || 'Choose a role' }}</strong>
+                  <p>{{ selectedStaffRole?.responsibilities || 'The selected role determines system access.' }}</p>
                 </div>
+              </div>
+              <p v-if="errors.staff_role_title" class="aa-err">{{ errors.staff_role_title }}</p>
+            </div>
+
+            <div class="aa-field">
+              <span class="aa-field-label">Authority</span>
+              <p class="aa-hint">Choose workflow permissions to add to the selected role.</p>
+              <div class="aa-authorities">
+                <label v-for="authority in STAFF_AUTHORITIES" :key="authority.value" class="aa-authority">
+                  <input v-model="form.staff_authorities" type="checkbox" :value="authority.value" />
+                  <span>{{ authority.label }}</span>
+                </label>
               </div>
             </div>
 
@@ -426,10 +495,13 @@ onMounted(load)
                   <span v-if="account.id === meId" class="aa-you">You</span>
                 </p>
                 <p class="aa-member-email">{{ account.email }}</p>
+                <p v-if="account.staff_id" class="aa-member-email">{{ account.staff_id }}</p>
+                <p v-if="account.staff_team || account.staff_position" class="aa-member-email">{{ [account.staff_team, account.staff_position].filter(Boolean).join(' · ') }}</p>
+                <p v-if="account.staff_authorities?.length" class="aa-member-email">Authority: {{ account.staff_authorities.map((value) => STAFF_AUTHORITIES.find((item) => item.value === value)?.label || value).join(', ') }}</p>
               </div>
               <div class="aa-member-role">
                 <span class="aa-role" :class="account.role === 'admin' ? 'aa-role--master' : 'aa-role--own'">
-                  <AppIcon v-if="account.role === 'admin'" name="shield-check" :size="13" />{{ roleLabel(account.role) }}
+                  <AppIcon v-if="account.role === 'admin'" name="shield-check" :size="13" />{{ staffRoleTitleOf(account.staff_role_title)?.label || roleLabel(account.role) }}
                 </span>
                 <small v-if="addedOn(account.created_at)">Added {{ addedOn(account.created_at) }}</small>
               </div>
@@ -438,7 +510,6 @@ onMounted(load)
                 <template v-else>
                   <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`View ${account.name}’s personnel profile`" @click="openDialog({ type: 'profile', account }, $event.currentTarget)"><AppIcon name="eye" :size="15" /><span>Profile</span></button>
                   <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`Edit ${account.name}’s account`" @click="openDialog({ type: 'edit', account }, $event.currentTarget)"><AppIcon name="user" :size="15" /><span>Edit</span></button>
-                  <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`Change role for ${account.name}`" @click="openDialog({ type: 'role', account }, $event.currentTarget)"><AppIcon name="pen" :size="15" /><span>Role</span></button>
                   <button type="button" class="aa-btn aa-btn--quiet aa-btn--danger" :aria-label="`Delete ${account.name}’s account`" @click="openDialog({ type: 'delete', account }, $event.currentTarget)"><AppIcon name="trash" :size="15" /><span>Delete</span></button>
                 </template>
               </div>
@@ -455,39 +526,57 @@ onMounted(load)
         <form v-if="dialog" method="dialog" class="aa-dialog-body" @submit.prevent="confirmDialog">
           <template v-if="dialog.type === 'grant'">
             <span class="aa-dialog-icon is-warn" aria-hidden="true"><AppIcon name="shield-check" :size="22" /></span>
-            <h2 id="aa-dialog-title">Create a Master Admin?</h2>
-            <p id="aa-dialog-desc"><strong>{{ form.name.trim() }}</strong> ({{ form.email.trim() }}) will get full access to every event, all admin accounts and system settings.</p>
-          </template>
-
-          <template v-else-if="dialog.type === 'role'">
-            <span class="aa-dialog-icon" aria-hidden="true"><AppIcon name="pen" :size="20" /></span>
-            <h2 id="aa-dialog-title">Change role</h2>
-            <p id="aa-dialog-desc"><strong>{{ dialog.account.name }}</strong> · {{ dialog.account.email }}<br />Current role: {{ roleLabel(dialog.account.role) }}</p>
-            <div class="aa-field">
-              <label for="aa-next-role">New role</label>
-              <div class="aa-select">
-                <select id="aa-next-role" v-model="nextRole" aria-describedby="aa-next-role-desc">
-                  <optgroup label="Full access"><option value="admin">Master Admin</option></optgroup>
-                  <optgroup label="Own events only"><option v-for="role in ROLES.filter((r) => !r.full)" :key="role.value" :value="role.value">{{ role.label }}</option></optgroup>
-                </select>
-                <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
-              </div>
-              <p id="aa-next-role-desc" class="aa-hint">{{ roleOf(nextRole)?.description }}</p>
-            </div>
-            <p v-if="roleChangeWarning" class="aa-callout"><AppIcon name="alert-circle" :size="16" />{{ roleChangeWarning }}</p>
+            <h2 id="aa-dialog-title">Create a System Administrator?</h2>
+            <p id="aa-dialog-desc"><strong>{{ `${form.first_name.trim()} ${form.last_name.trim()}` }}</strong> ({{ form.email.trim() }}) will get full access to every event, all staff accounts and system settings.</p>
           </template>
 
           <template v-else-if="dialog.type === 'edit'">
             <h2 id="aa-dialog-title">Edit account</h2>
             <p id="aa-dialog-desc">{{ dialog.account.email }}</p>
             <div class="aa-field">
-              <label for="aa-edit-name">Full name</label>
-              <input id="aa-edit-name" v-model="editForm.name" type="text" maxlength="100" required />
+              <label for="aa-edit-first-name">First name</label>
+              <input id="aa-edit-first-name" v-model="editForm.first_name" type="text" maxlength="80" required />
             </div>
             <div class="aa-field">
-              <label for="aa-edit-password">New password</label>
-              <input id="aa-edit-password" v-model="editForm.password" type="password" minlength="8" autocomplete="new-password" aria-describedby="aa-edit-password-hint" />
-              <p id="aa-edit-password-hint" class="aa-hint">Leave empty to keep the current one. Changing it signs them out everywhere.</p>
+              <label for="aa-edit-last-name">Last name</label>
+              <input id="aa-edit-last-name" v-model="editForm.last_name" type="text" maxlength="80" required />
+            </div>
+            <div class="aa-field">
+              <label for="aa-edit-phone">Phone number</label>
+              <input id="aa-edit-phone" v-model="editForm.phone" type="tel" maxlength="30" />
+            </div>
+            <div class="aa-field">
+              <label for="aa-edit-team">Team</label>
+              <input id="aa-edit-team" v-model="editForm.staff_team" list="aa-team-options" maxlength="100" required />
+            </div>
+            <div class="aa-field">
+              <label for="aa-edit-position">Position</label>
+              <div class="aa-select">
+                <select id="aa-edit-position" v-model="editForm.staff_position" required>
+                  <option value="" disabled>Select a position</option>
+                  <option v-for="position in STAFF_POSITIONS" :key="position" :value="position">{{ position }}</option>
+                </select>
+                <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
+              </div>
+            </div>
+            <div class="aa-field">
+              <label for="aa-edit-staff-role-title">Role</label>
+              <div class="aa-select">
+                <select id="aa-edit-staff-role-title" v-model="editForm.staff_role_title" required>
+                  <option value="" disabled>Select a role</option>
+                  <option v-for="role in STAFF_ROLE_TITLES" :key="role.value" :value="role.value">{{ role.label }}</option>
+                </select>
+                <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
+              </div>
+            </div>
+            <div class="aa-field">
+              <span class="aa-field-label">Authority</span>
+              <div class="aa-authorities">
+                <label v-for="authority in STAFF_AUTHORITIES" :key="authority.value" class="aa-authority">
+                  <input v-model="editForm.staff_authorities" type="checkbox" :value="authority.value" />
+                  <span>{{ authority.label }}</span>
+                </label>
+              </div>
             </div>
           </template>
 
@@ -523,9 +612,9 @@ onMounted(load)
 
           <div class="aa-dialog-actions">
             <button type="button" class="aa-btn aa-btn--ghost" :disabled="dialogBusy" @click="closeDialog">{{ dialog.type === 'profile' ? 'Close' : 'Cancel' }}</button>
-            <button v-if="dialog.type !== 'profile'" type="submit" class="aa-btn" :class="dialog.type === 'delete' ? 'aa-btn--danger-solid' : 'aa-btn--primary'" :disabled="dialogBusy || (dialog.type === 'role' && nextRole === dialog.account.role) || (dialog.type === 'edit' && (!editForm.name.trim() || (editForm.password && editForm.password.length < 8)))" :aria-busy="dialogBusy">
+            <button v-if="dialog.type !== 'profile'" type="submit" class="aa-btn" :class="dialog.type === 'delete' ? 'aa-btn--danger-solid' : 'aa-btn--primary'" :disabled="dialogBusy || (dialog.type === 'edit' && (!editForm.first_name.trim() || !editForm.last_name.trim() || !editForm.staff_team.trim() || !editForm.staff_position || !editForm.staff_role_title))" :aria-busy="dialogBusy">
               <span v-if="dialogBusy" class="aa-spinner" aria-hidden="true"></span>
-              {{ dialog.type === 'edit' ? (dialogBusy ? 'Saving…' : 'Save changes') : dialog.type === 'grant' ? (dialogBusy ? 'Creating…' : 'Create Master Admin') : dialog.type === 'role' ? (dialogBusy ? 'Saving…' : 'Change role') : (dialogBusy ? 'Deleting…' : 'Delete account') }}
+              {{ dialog.type === 'edit' ? (dialogBusy ? 'Saving…' : 'Save changes') : dialog.type === 'grant' ? (dialogBusy ? 'Creating…' : 'Create System Administrator') : (dialogBusy ? 'Deleting…' : 'Delete account') }}
             </button>
           </div>
         </form>
@@ -585,6 +674,7 @@ onMounted(load)
 .aa-form { display: grid; gap: 18px; padding: 20px 22px 22px; }
 .aa-field { display: grid; align-content: start; gap: 6px; }
 .aa-field > label { display: block; margin: 0; color: var(--aa-ink); font-size: .84rem; font-weight: 600; }
+.aa-field-label { color: var(--aa-ink); font-size: .84rem; font-weight: 600; }
 .aa-req { color: var(--aa-red); }
 .aa-field input,
 .aa-select select {
@@ -614,10 +704,6 @@ onMounted(load)
 .aa-rule { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--aa-muted); font-size: .8rem; }
 .aa-rule.is-met { color: var(--aa-green); }
 
-.aa-password { position: relative; }
-.aa-password input { padding-right: 48px; }
-.aa-password-toggle { position: absolute; top: 4px; right: 4px; }
-
 .aa-select { position: relative; display: block; }
 .aa-select select { padding-right: 38px; appearance: none; cursor: pointer; }
 .aa-select-chevron { position: absolute; top: 50%; right: 12px; color: var(--aa-muted); pointer-events: none; transform: translateY(-50%); }
@@ -628,6 +714,9 @@ onMounted(load)
 .aa-role-card p { margin: 2px 0 0; font-size: .8rem; line-height: 1.45; }
 .aa-role-card.is-full { border-color: #f1d8a8; background: #fffaf0; }
 .aa-role-card.is-full > svg { color: var(--aa-amber); }
+.aa-authorities { display: flex; flex-wrap: wrap; gap: 8px; }
+.aa-authority { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid var(--aa-line); border-radius: 8px; color: var(--aa-ink); font-size: .8rem; cursor: pointer; }
+.aa-authority input { width: 16px; height: 16px; min-height: 16px; margin: 0; accent-color: var(--aa-green); }
 
 .aa-form-error { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid #f5c2bd; border-radius: 9px; background: #fef4f3; color: var(--aa-red); font-size: .84rem; font-weight: 550; }
 .aa-form-error svg { flex: none; margin-top: 2px; }

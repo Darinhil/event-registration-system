@@ -240,7 +240,7 @@ const onBackdrop = (event, dialog) => { if (event.target === dialog) dialog.clos
     <aside v-if="!loading && !loadError && !staff.length" class="tm-notice">
       <span class="tm-notice__icon"><AppIcon name="info" :size="17" /></span>
       <div><strong>No staff accounts are available to assign yet</strong><p>Create an account with a staff role (Manager or Officer) first. Then return here and use Assign staff on the course.</p></div>
-      <RouterLink to="/admin/admin-accounts">Open Admin Accounts <span aria-hidden="true">→</span></RouterLink>
+      <RouterLink to="/admin/admin-accounts">Open Staff Management <span aria-hidden="true">→</span></RouterLink>
     </aside>
 
     <section class="tm-panel tm-learning" aria-labelledby="tm-learning-title">

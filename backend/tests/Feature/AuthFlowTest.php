@@ -46,6 +46,15 @@ class AuthFlowTest extends TestCase
         $this->postJson('/api/auth/login', ['identifier' => 'sokha@example.com', 'password' => 'wrong-pass'])->assertStatus(422);
     }
 
+    public function test_staff_can_sign_in_with_username(): void
+    {
+        User::factory()->create(['email' => 'staff@example.com', 'username' => 'staff.user', 'password' => 'secret123']);
+
+        $this->postJson('/api/auth/login', ['identifier' => 'staff.user', 'password' => 'secret123'])
+            ->assertOk()
+            ->assertJsonPath('data.username', 'staff.user');
+    }
+
     public function test_login_is_rate_limited(): void
     {
         foreach (range(1, 10) as $attempt) {

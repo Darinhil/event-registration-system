@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:10,1')->group(function (): void {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/set-password', [AuthController::class, 'setPassword']);
 });
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/events/{event}/banner', [EventController::class, 'banner'])->name('events.banner');
@@ -90,13 +91,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     });
 
     Route::middleware('can:manage-events')->prefix('admin')->group(function (): void {
-        Route::match(['get', 'post'], '/check-ins/lookup', [CheckInController::class, 'lookup']);
-        Route::post('/check-ins/search', [CheckInController::class, 'search']);
+        Route::match(['get', 'post'], '/check-ins/lookup', [CheckInController::class, 'lookup'])->middleware('can:perform-check-in');
+        Route::post('/check-ins/search', [CheckInController::class, 'search'])->middleware('can:perform-check-in');
         Route::get('/events', [EventController::class, 'adminIndex']);
         Route::get('/events/{event}/banner', [EventController::class, 'banner'])->middleware('can:view,event');
-        Route::post('/events', [EventController::class, 'store']);
+        Route::post('/events', [EventController::class, 'store'])->middleware('can:create-operational-events');
         Route::put('/events/{event}', [EventController::class, 'update'])->middleware('can:update,event');
-        Route::get('/events/{event}/registrants', [EventController::class, 'registrants'])->middleware('can:view,event');
+        Route::get('/events/{event}/registrants', [EventController::class, 'registrants'])->middleware(['can:view,event', 'can:view-participants']);
         Route::post('/events/{event}/check-in-qr', [EventController::class, 'regenerateCheckInQr'])->middleware('can:update,event');
         Route::get('/events/{event}/form-builder', [FormBuilderController::class, 'show'])->middleware('can:view,event');
         Route::put('/events/{event}/form-builder', [FormBuilderController::class, 'update'])->middleware('can:update,event');
@@ -104,17 +105,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::patch('/events/{event}/close', [EventController::class, 'close'])->middleware('can:update,event');
         Route::patch('/events/{event}/cancel', [EventController::class, 'cancel'])->middleware('can:update,event');
         Route::delete('/events/{event}', [EventController::class, 'destroy'])->middleware('can:delete,event');
-        Route::get('/finance-vouchers', [FinanceVoucherController::class, 'index']);
-        Route::post('/finance-vouchers', [FinanceVoucherController::class, 'store']);
-        Route::get('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'show']);
-        Route::put('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'update']);
+        Route::middleware('can:view-finance')->group(function (): void {
+            Route::get('/finance-vouchers', [FinanceVoucherController::class, 'index']);
+            Route::get('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'show']);
+        });
+        Route::post('/finance-vouchers', [FinanceVoucherController::class, 'store'])->middleware('can:create-finance');
+        Route::middleware('can:manage-finance')->group(function (): void {
+            Route::put('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'update']);
+        });
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/notifications', [AdminController::class, 'notifications']);
         Route::get('/reports', [AdminController::class, 'reports']);
-        Route::get('/events/{event}/report-attendees', [AdminController::class, 'eventReportAttendees'])->middleware('can:view,event');
-        Route::get('/users', [AdminController::class, 'users']);
-        Route::get('/check-ins', [AdminController::class, 'checkIns']);
-        Route::get('/events/{event}/check-ins', [AdminController::class, 'eventCheckIns'])->middleware('can:view,event');
+        Route::get('/events/{event}/report-attendees', [AdminController::class, 'eventReportAttendees'])->middleware(['can:view,event', 'can:view-participants']);
+        Route::get('/users', [AdminController::class, 'users'])->middleware('can:view-participants');
+        Route::get('/check-ins', [AdminController::class, 'checkIns'])->middleware('can:view-participants');
+        Route::get('/events/{event}/check-ins', [AdminController::class, 'eventCheckIns'])->middleware(['can:view,event', 'can:perform-check-in']);
         Route::middleware('can:manage-admin-accounts')->group(function (): void {
             Route::get('/training-courses', [AdminTrainingController::class, 'index']);
             Route::post('/training-courses', [AdminTrainingController::class, 'store']);

@@ -7,6 +7,10 @@ use App\Models\Event;
 use App\Models\FormField;
 use App\Models\Registration;
 use App\Models\User;
+use App\Notifications\StaffAccountInvite;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
@@ -278,22 +282,85 @@ class AdminController extends Controller
     public function createAdminAccount(\Illuminate\Http\Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
+            'first_name' => ['required', 'string', 'max:80'],
+            'last_name' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', Rule::in(User::STAFF_ROLES)],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'staff_team' => ['required', 'string', 'max:100'],
+            'staff_position' => ['required', Rule::in(User::STAFF_POSITIONS)],
+            'staff_role_title' => ['required', Rule::in(User::STAFF_ROLE_TITLES)],
+            'staff_authorities' => ['present', 'array'],
+            'staff_authorities.*' => [Rule::in(User::STAFF_AUTHORITIES)],
         ]);
-        $user = User::create($data);
-        return response()->json(['data' => $user], 201);
+
+        $user = DB::transaction(function () use ($data): User {
+            $user = User::create([
+                ...$data,
+                'name' => trim($data['first_name'].' '.$data['last_name']),
+                'password' => Str::random(64),
+                'role' => [
+                    'system_administrator' => 'admin',
+                    'operations_lead' => 'manager',
+                    'systems_engineer' => 'officer_3',
+                    'maintenance_tech' => 'officer_2',
+                    'reviewer' => 'officer_0',
+                ][$data['staff_role_title']],
+            ]);
+            $user->forceFill(['staff_id' => 'STF-'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT)])->save();
+            $user->notify(new StaffAccountInvite(
+                Password::createToken($user),
+                (string) config('app.frontend_url'),
+            ));
+
+            return $user;
+        });
+
+        $delivery = config('mail.default') === 'log' ? 'log' : 'email';
+
+        return response()->json([
+            'data' => $user,
+            'message' => $delivery === 'email'
+                ? 'Staff account created and password setup invitation sent.'
+                : 'Staff account created. The password setup invitation was written to the application log because the mailer is set to log.',
+            'invite_delivery' => $delivery,
+        ], 201);
     }
 
     public function updateAdminAccount(\Illuminate\Http\Request $request, User $user): JsonResponse
     {
         abort_unless($user->isStaff(), 404);
-        $data = $request->validate(['name' => ['sometimes', 'required', 'string', 'max:100'], 'role' => ['sometimes', 'required', Rule::in(User::STAFF_ROLES)], 'password' => ['sometimes', 'nullable', 'string', 'min:8']]);
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:100'],
+            'first_name' => ['sometimes', 'required', 'string', 'max:80'],
+            'last_name' => ['sometimes', 'required', 'string', 'max:80'],
+            'username' => ['sometimes', 'required', 'string', 'max:80', Rule::unique('users', 'username')->ignore($user->id)],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'role' => ['sometimes', 'required', Rule::in(User::STAFF_ROLES)],
+            'staff_role_title' => ['sometimes', 'required', Rule::in(User::STAFF_ROLE_TITLES)],
+            'staff_team' => ['sometimes', 'required', 'string', 'max:100'],
+            'staff_position' => ['sometimes', 'required', Rule::in(User::STAFF_POSITIONS)],
+            'staff_authorities' => ['sometimes', 'array'],
+            'staff_authorities.*' => [Rule::in(User::STAFF_AUTHORITIES)],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8'],
+        ]);
         if (array_key_exists('password', $data) && ! $data['password']) unset($data['password']);
-        // Only Master Admins reach this route, so blocking self-demotion also guarantees one always remains.
-        abort_if(isset($data['role']) && $data['role'] !== $user->role && $request->user()->is($user), 422, 'You cannot change your own role.');
+        if (isset($data['first_name']) || isset($data['last_name'])) {
+            $data['name'] = trim(($data['first_name'] ?? $user->first_name).' '.($data['last_name'] ?? $user->last_name));
+        }
+        if (array_key_exists('staff_role_title', $data)) {
+            $data['role'] = [
+                'system_administrator' => 'admin',
+                'operations_lead' => 'manager',
+                'systems_engineer' => 'officer_3',
+                'maintenance_tech' => 'officer_2',
+                'reviewer' => 'officer_0',
+            ][$data['staff_role_title']];
+        }
+        abort_if(
+            (isset($data['role']) || isset($data['staff_role_title'])) && $request->user()->is($user),
+            422,
+            'You cannot change your own role.'
+        );
         $user->update($data);
         // A reset password must lock out whoever had the old one.
         if (isset($data['password']) && ! $request->user()->is($user)) $user->tokens()->delete();

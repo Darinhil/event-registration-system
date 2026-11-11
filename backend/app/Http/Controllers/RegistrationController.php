@@ -9,6 +9,7 @@ use App\Services\QRCodeService;
 use App\Services\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Middleware\Skip;
 use Illuminate\Validation\ValidationException;
 
 class RegistrationController extends Controller

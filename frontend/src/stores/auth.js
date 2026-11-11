@@ -26,11 +26,35 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.token),
-    isAdmin: (state) => state.user?.role === 'admin',
-    isEventAdmin: (state) => state.user?.role === 'event_admin',
-    canManageEvents: (state) => ['admin', 'event_admin'].includes(state.user?.role),
+    isAdmin: (state) => state.user?.role === 'admin' || state.user?.staff_role_title === 'system_administrator',
+    isEventAdmin: (state) => !state.user?.staff_role_title && state.user?.role === 'event_admin',
+    canManageEvents: (state) => state.user?.staff_role_title
+      ? ['system_administrator', 'operations_lead', 'systems_engineer'].includes(state.user.staff_role_title)
+      : ['admin', 'event_admin'].includes(state.user?.role),
+    canCreateEvents: (state) => state.user?.staff_role_title
+      ? state.user.staff_role_title !== 'reviewer' && (['system_administrator', 'operations_lead', 'systems_engineer'].includes(state.user.staff_role_title) || state.user.staff_authorities?.includes('maker'))
+      : ['admin', 'event_admin'].includes(state.user?.role),
+    canPerformCheckIn: (state) => state.user?.staff_role_title
+      ? state.user.staff_role_title !== 'reviewer' && (['system_administrator', 'operations_lead', 'systems_engineer', 'maintenance_tech'].includes(state.user.staff_role_title) || state.user.staff_authorities?.some((authority) => ['checker', 'maker'].includes(authority)))
+      : Boolean(state.user?.role),
+    canViewParticipants: (state) => state.user?.staff_role_title
+      ? ['system_administrator', 'operations_lead', 'systems_engineer', 'maintenance_tech'].includes(state.user.staff_role_title)
+      : Boolean(state.user?.role),
+    canViewAllEvents: (state) => state.user?.staff_role_title
+      ? ['system_administrator', 'operations_lead', 'systems_engineer', 'maintenance_tech', 'reviewer'].includes(state.user.staff_role_title)
+      : state.user?.role === 'admin',
+    canViewDashboard: (state) => state.user?.staff_role_title
+      ? ['system_administrator', 'operations_lead', 'systems_engineer', 'reviewer'].includes(state.user.staff_role_title)
+      : ['admin', 'event_admin'].includes(state.user?.role),
+    canAccessEventWorkspace: (state) => Boolean(state.user?.role),
     canAccessAdmin: (state) => ['admin', 'event_admin', 'manager', 'officer_3', 'officer_2', 'officer_1', 'officer_0'].includes(state.user?.role),
-    roleLabel: (state) => ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[state.user?.role] || 'Attendee'),
+    roleLabel: (state) => ({
+      system_administrator: 'System Administrator',
+      operations_lead: 'Operations Lead',
+      systems_engineer: 'Systems Engineer',
+      maintenance_tech: 'Maintenance Tech',
+      reviewer: 'Reviewer',
+    }[state.user?.staff_role_title] || ({ admin: 'Master Admin', event_admin: 'Event Admin', manager: 'Manager', officer_3: 'Officer Level 3', officer_2: 'Officer Level 2', officer_1: 'Officer Level 1', officer_0: 'Officer Level 0' }[state.user?.role] || 'Attendee')),
   },
   actions: {
     setProfilePhotoPreview(blob) {

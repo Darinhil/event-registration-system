@@ -14,10 +14,11 @@ const forgotOpen = ref(false)
 const redirectPath = computed(() => typeof route.query.redirect === 'string' ? route.query.redirect : '')
 const keepRedirect = computed(() => (redirectPath.value ? { redirect: redirectPath.value } : undefined))
 
-// Same formats the server accepts (AuthController): an email, or a phone number.
+// Staff can also sign in with their assigned username.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^[+]?[0-9][0-9\s().-]{7,24}$/
-const isEmailOrPhone = (value) => EMAIL_RE.test(value) || PHONE_RE.test(value)
+const USERNAME_RE = /^[A-Za-z0-9._-]{1,80}$/
+const isEmailPhoneOrUsername = (value) => EMAIL_RE.test(value) || PHONE_RE.test(value) || USERNAME_RE.test(value)
 const focus = (id) => nextTick(() => document.getElementById(id)?.focus())
 
 /* ---------- Login ---------- */
@@ -33,7 +34,7 @@ const validateLogin = () => {
   Object.keys(loginErrors).forEach((key) => delete loginErrors[key])
   const identifier = loginForm.identifier.trim()
   if (!identifier) loginErrors.identifier = 'Enter your email or phone number.'
-  else if (!isEmailOrPhone(identifier)) loginErrors.identifier = 'Enter a valid email or phone number.'
+  else if (!isEmailPhoneOrUsername(identifier)) loginErrors.identifier = 'Enter a valid email, phone number or username.'
   if (!loginForm.password) loginErrors.password = 'Enter your password.'
   if (loginErrors.identifier) { focus('login-identifier'); return false }
   if (loginErrors.password) { focus('login-password'); return false }
@@ -72,7 +73,7 @@ const validateSignup = () => {
   const identifier = signupForm.identifier.trim()
   if (!signupForm.name.trim()) signupErrors.name = 'Enter your full name.'
   if (!identifier) signupErrors.identifier = 'Enter your email or phone number.'
-  else if (!isEmailOrPhone(identifier)) signupErrors.identifier = 'Enter a valid email or phone number.'
+  else if (!EMAIL_RE.test(identifier) && !PHONE_RE.test(identifier)) signupErrors.identifier = 'Enter a valid email or phone number.'
   if (!passwordLongEnough.value) signupErrors.password = 'Use at least 8 characters.'
   const first = ['name', 'identifier', 'password'].find((key) => signupErrors[key])
   if (first) { focus(`signup-${first}`); return false }

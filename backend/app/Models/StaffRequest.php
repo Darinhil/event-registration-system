@@ -23,6 +23,9 @@ class StaffRequest extends Model
     /** Goes to the chosen supervisor; a Master Admin (HR) can decide any request. */
     public function canBeDecidedBy(User $user): bool
     {
-        return $this->status === 'pending' && $this->user_id !== $user->id && ($this->approver_id === $user->id || $user->isMasterAdmin());
+        return $this->status === 'pending'
+            && $this->user_id !== $user->id
+            && $user->canApproveWorkflows()
+            && ($this->approver_id === $user->id || $user->isMasterAdmin());
     }
 }

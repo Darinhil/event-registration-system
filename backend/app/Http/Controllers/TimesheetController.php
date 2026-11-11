@@ -135,7 +135,7 @@ class TimesheetController extends Controller
     public function decide(Request $request, Timesheet $timesheet): JsonResponse
     {
         $viewer = $request->user();
-        abort_unless($timesheet->approver_id === $viewer->id || $viewer->isMasterAdmin(), 403);
+        abort_unless($viewer->canApproveWorkflows() && ($timesheet->approver_id === $viewer->id || $viewer->isMasterAdmin()), 403);
         abort_if($timesheet->user_id === $viewer->id, 403, 'You can’t approve your own timesheet.');
         $data = $request->validate([
             'decision' => ['required', 'in:approved,returned'],
@@ -159,7 +159,7 @@ class TimesheetController extends Controller
     public function process(Request $request, Timesheet $timesheet): JsonResponse
     {
         $viewer = $request->user();
-        abort_unless($viewer->isMasterAdmin(), 403);
+        abort_unless($viewer->canVerifyWorkflows(), 403);
         if ($timesheet->status !== 'approved' || $timesheet->processed_at) throw ValidationException::withMessages(['status' => 'Only an approved timesheet that hasn’t been processed can be marked as processed.']);
         $timesheet->processed_at = now();
         $timesheet->addHistory('processed', $viewer);
@@ -173,7 +173,7 @@ class TimesheetController extends Controller
     private function metaRules(User $user): array
     {
         return [
-            'approver_id' => ['nullable', 'integer', Rule::notIn([$user->id]), Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', Timesheet::APPROVER_ROLES))],
+            'approver_id' => ['nullable', 'integer', Rule::notIn([$user->id]), Rule::exists('users', 'id')->where(fn ($query) => $query->where(fn ($q) => $q->whereIn('role', Timesheet::APPROVER_ROLES)->orWhereJsonContains('staff_authorities', 'approver')))],
             'comment' => ['nullable', 'string', 'max:2000'],
             'entries' => ['present', 'array'],
         ];
@@ -312,7 +312,7 @@ class TimesheetController extends Controller
                 'department' => $contract?->department,
             ],
             'approvers' => $owner->id === $viewer->id ? User::whereIn('role', Timesheet::APPROVER_ROLES)->whereKeyNot($owner->id)->orderBy('name')->get(['id', 'name', 'role']) : [],
-            'can_decide' => $timesheet->status === 'submitted' && $timesheet->user_id !== $viewer->id && ($timesheet->approver_id === $viewer->id || $viewer->isMasterAdmin()),
+            'can_decide' => $timesheet->status === 'submitted' && $timesheet->user_id !== $viewer->id && $viewer->canApproveWorkflows() && ($timesheet->approver_id === $viewer->id || $viewer->isMasterAdmin()),
             'can_process' => $timesheet->status === 'approved' && ! $timesheet->processed_at && $viewer->isMasterAdmin(),
             'rules' => ['standard_hours' => Timesheet::STANDARD_DAY_HOURS, 'half_day_max' => Timesheet::HALF_DAY_MAX_HOURS, 'step' => Timesheet::HOURS_STEP, 'leave_types' => Timesheet::LEAVE_TYPES],
         ];
@@ -335,5 +335,5 @@ class TimesheetController extends Controller
         abort_unless($timesheet->user_id === $viewer->id || $timesheet->approver_id === $viewer->id || $viewer->isMasterAdmin(), 403);
     }
 
-    private function isApprover(User $user): bool { return in_array($user->role, Timesheet::APPROVER_ROLES, true); }
+    private function isApprover(User $user): bool { return $user->canApproveWorkflows(); }
 }

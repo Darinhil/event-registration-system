@@ -24,7 +24,7 @@ const details = computed(() => [
 ])
 const detailsHelp = computed(() => {
   if (!isStaff.value) return 'These come from your account. To change the details on an event registration, open it from My information.'
-  if (auth.isAdmin) return 'Another Master Admin can edit these in Admin Accounts.'
+  if (auth.isAdmin) return 'Another Master Admin can edit these in Staff Management.'
   return 'Ask a Master Admin if something needs to change.'
 })
 

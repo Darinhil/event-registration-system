@@ -16,6 +16,7 @@ const DashboardView = () => import('../views/admin/DashboardView.vue')
 const UsersView = () => import('../views/admin/UsersView.vue')
 const CheckInsView = () => import('../views/admin/CheckInsView.vue')
 const AuthView = () => import('../views/public/AuthView.vue')
+const StaffSetupPasswordView = () => import('../views/public/StaffSetupPasswordView.vue')
 const EventSetupView = () => import('../views/admin/EventSetupView.vue')
 const FormBuilderView = () => import('../views/admin/FormBuilderView.vue')
 const EventsView = () => import('../views/admin/EventsView.vue')
@@ -27,9 +28,9 @@ const ReportsView = () => import('../views/admin/ReportsView.vue')
 const AdminAccountsView = () => import('../views/admin/AdminAccountsView.vue')
 const SystemSettingsView = () => import('../views/admin/SystemSettingsView.vue')
 
-// `events` marks the event workspace: Master Admins and Event Admins only (see the sidebar).
+// Event routes are guarded separately for viewing, participant data, and changes.
 const staff = { auth: true, staff: true }
-const eventStaff = { ...staff, events: true }
+const eventWorkspace = { ...staff, eventWorkspace: true }
 
 const router = createRouter({
   history: createWebHistory(),
@@ -39,6 +40,7 @@ const router = createRouter({
     { path: '/', component: HomeView },
     { path: '/login', component: AuthView },
     { path: '/account/register', component: AuthView },
+    { path: '/staff/setup-password', component: StaffSetupPasswordView },
     { path: '/events', redirect: '/me' },
     { path: '/register', redirect: '/me' },
     { path: '/events/:eventId', component: EventView },
@@ -49,15 +51,15 @@ const router = createRouter({
     { path: '/me', component: MyInformationView, meta: { auth: true } },
     { path: '/profile', component: AdminProfileView, meta: { auth: true } },
     { path: '/admin', component: DashboardView, meta: staff },
-    { path: '/admin/events', component: EventsView, meta: eventStaff },
-    { path: '/admin/events/new', component: EventSetupView, meta: eventStaff },
-    { path: '/admin/events/:id/edit', component: EventSetupView, meta: eventStaff },
-    { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: eventStaff },
-    { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: eventStaff },
-    { path: '/admin/events/:id', component: EventDetailsView, meta: eventStaff },
-    { path: '/admin/users', component: UsersView, meta: eventStaff },
-    { path: '/admin/check-ins', component: CheckInsView, meta: eventStaff },
-    { path: '/admin/reports', component: ReportsView, meta: eventStaff },
+    { path: '/admin/events', component: EventsView, meta: eventWorkspace },
+    { path: '/admin/events/new', component: EventSetupView, meta: { ...eventWorkspace, eventCreate: true } },
+    { path: '/admin/events/:id/edit', component: EventSetupView, meta: { ...eventWorkspace, eventManage: true } },
+    { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: { ...eventWorkspace, participants: true } },
+    { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: { ...eventWorkspace, eventManage: true } },
+    { path: '/admin/events/:id', component: EventDetailsView, meta: eventWorkspace },
+    { path: '/admin/users', component: UsersView, meta: { ...eventWorkspace, participants: true } },
+    { path: '/admin/check-ins', component: CheckInsView, meta: { ...eventWorkspace, checkIn: true } },
+    { path: '/admin/reports', component: ReportsView, meta: eventWorkspace },
     { path: '/admin/personnel-profile', component: PersonnelProfileView, meta: staff },
     { path: '/admin/admin-accounts', component: AdminAccountsView, meta: { ...staff, adminOnly: true } },
     { path: '/admin/settings', component: SystemSettingsView, meta: { ...staff, adminOnly: true } },
@@ -75,7 +77,11 @@ router.beforeEach((to) => {
   if (to.meta.staff && !auth.isAuthenticated) return { path: '/login', query: { redirect: to.fullPath } }
   if (to.meta.staff && !auth.canAccessAdmin) return '/'
   if (to.meta.adminOnly && !auth.isAdmin) return '/admin'
-  if (to.meta.events && !auth.canManageEvents) return '/admin'
+  if (to.meta.eventWorkspace && !auth.canAccessEventWorkspace) return '/admin'
+  if (to.meta.eventCreate && !auth.canCreateEvents) return '/admin'
+  if (to.meta.eventManage && !auth.canManageEvents) return '/admin'
+  if (to.meta.participants && !auth.canViewParticipants) return '/admin'
+  if (to.meta.checkIn && !auth.canPerformCheckIn) return '/admin'
   if (to.meta.auth && !auth.isAuthenticated) return { path: to.meta.signupFirst ? '/account/register' : '/login', query: { redirect: to.fullPath } }
   if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated) {
     return homeAfterSignIn(auth, typeof to.query.redirect === 'string' ? to.query.redirect : '')

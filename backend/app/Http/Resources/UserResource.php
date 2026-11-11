@@ -16,6 +16,13 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'username' => $this->username,
+            'staff_id' => $this->staff_id,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'staff_team' => $this->staff_team,
+            'staff_position' => $this->staff_position,
+            'staff_role_title' => $this->staff_role_title,
+            'staff_authorities' => $this->staff_authorities ?? [],
             // The disk URL is absolute when APP_URL is set.
             'profile_photo' => $this->profile_photo ? url(Storage::disk('public')->url($this->profile_photo)) : null,
             'personal_information' => $this->personal_information,

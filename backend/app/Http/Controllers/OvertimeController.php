@@ -43,7 +43,8 @@ class OvertimeController extends Controller
     /** People who can be chosen as the approving supervisor (never yourself). */
     public function supervisors(Request $request): JsonResponse
     {
-        return response()->json(['data' => User::whereIn('role', OvertimeRequest::APPROVER_ROLES)->whereKeyNot($request->user()->id)->orderBy('name')->get(['id', 'name', 'role'])]);
+        return response()->json(['data' => User::where(fn ($query) => $query->whereIn('role', OvertimeRequest::APPROVER_ROLES)->orWhereJsonContains('staff_authorities', 'approver'))
+            ->whereKeyNot($request->user()->id)->orderBy('name')->get(['id', 'name', 'role'])]);
     }
 
     public function store(Request $request): JsonResponse
@@ -54,7 +55,7 @@ class OvertimeController extends Controller
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'overnight' => ['sometimes', 'boolean'],
-            'supervisor_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', OvertimeRequest::APPROVER_ROLES))],
+            'supervisor_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where(fn ($q) => $q->whereIn('role', OvertimeRequest::APPROVER_ROLES)->orWhereJsonContains('staff_authorities', 'approver')))],
             'reason' => ['required', 'string', 'min:10', 'max:1000'],
         ], [
             'work_date.after_or_equal' => 'Overtime older than '.self::MAX_DAYS_BACK.' days must be claimed through HR.',
@@ -113,7 +114,7 @@ class OvertimeController extends Controller
     public function decide(Request $request, OvertimeRequest $overtime): JsonResponse
     {
         $user = $request->user();
-        abort_unless($overtime->supervisor_id === $user->id || $user->isMasterAdmin(), 403);
+        abort_unless($user->canApproveWorkflows() && ($overtime->supervisor_id === $user->id || $user->isMasterAdmin()), 403);
         abort_if($overtime->user_id === $user->id, 403, 'You can’t decide your own overtime request.');
         $data = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
@@ -126,7 +127,7 @@ class OvertimeController extends Controller
         return response()->json(['data' => $this->present($overtime->load(['user:id,name', 'reviewer:id,name']), $user)]);
     }
 
-    private function isApprover(User $user): bool { return in_array($user->role, OvertimeRequest::APPROVER_ROLES, true); }
+    private function isApprover(User $user): bool { return $user->canApproveWorkflows(); }
 
     private function present(OvertimeRequest $item, User $viewer): array
     {
@@ -146,7 +147,7 @@ class OvertimeController extends Controller
             'review_note' => $item->review_note,
             'submitted_at' => $item->created_at?->toIso8601String(),
             'can_cancel' => $item->user_id === $viewer->id && $item->status === 'pending',
-            'can_decide' => $item->status === 'pending' && $item->user_id !== $viewer->id && ($item->supervisor_id === $viewer->id || $viewer->isMasterAdmin()),
+            'can_decide' => $item->status === 'pending' && $item->user_id !== $viewer->id && $viewer->canApproveWorkflows() && ($item->supervisor_id === $viewer->id || $viewer->isMasterAdmin()),
         ];
     }
 }

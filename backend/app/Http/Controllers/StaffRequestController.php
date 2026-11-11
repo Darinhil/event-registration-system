@@ -54,7 +54,7 @@ class StaffRequestController extends Controller
         $user = $request->user();
         $type = $request->validate(['type' => ['required', Rule::in(array_keys(StaffRequest::TYPES))]])['type'];
         $data = $request->validate([
-            'approver_id' => [$type === 'profile_change' ? 'nullable' : 'required', 'integer', Rule::notIn([$user->id]), Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', OvertimeRequest::APPROVER_ROLES))],
+            'approver_id' => [$type === 'profile_change' ? 'nullable' : 'required', 'integer', Rule::notIn([$user->id]), Rule::exists('users', 'id')->where(fn ($query) => $query->where(fn ($q) => $q->whereIn('role', OvertimeRequest::APPROVER_ROLES)->orWhereJsonContains('staff_authorities', 'approver')))],
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
             ...$this->rulesFor($type),
         ], [
@@ -90,7 +90,7 @@ class StaffRequestController extends Controller
     public function decide(Request $request, StaffRequest $staffRequest): JsonResponse
     {
         $user = $request->user();
-        abort_unless($staffRequest->approver_id === $user->id || $user->isMasterAdmin(), 403);
+        abort_unless($user->canApproveWorkflows() && ($staffRequest->approver_id === $user->id || $user->isMasterAdmin()), 403);
         abort_if($staffRequest->user_id === $user->id, 403, 'You can’t decide your own request.');
         $data = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
@@ -196,7 +196,7 @@ class StaffRequestController extends Controller
         };
     }
 
-    private function isApprover(User $user): bool { return in_array($user->role, OvertimeRequest::APPROVER_ROLES, true); }
+    private function isApprover(User $user): bool { return $user->canApproveWorkflows(); }
 
     private function present(StaffRequest $item, User $viewer): array
     {

@@ -11,7 +11,7 @@ import adminLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
 
 const router = useRouter(); const route = useRoute(); const auth = useAuthStore()
 const isAdmin = computed(() => auth.isAdmin); const roleLabel = computed(() => auth.roleLabel)
-const hasEventWorkspace = computed(() => auth.canManageEvents)
+const hasEventWorkspace = computed(() => auth.canAccessEventWorkspace)
 const mobileMenuOpen = ref(false)
 const PORTAL_KEY = 'admin-nav-portal-open'
 const readPortalPref = () => { try { return localStorage.getItem(PORTAL_KEY) !== '0' } catch { return true } }
@@ -50,6 +50,12 @@ const eventItems = [
   { to: '/admin/check-ins', label: 'Check-in', icon: 'scan' },
   { to: '/admin/reports', label: 'Event Report', icon: 'chart-column' },
 ]
+const visibleEventItems = computed(() => eventItems.filter((item) => {
+  if (item.to === '/admin/events/new') return auth.canCreateEvents
+  if (item.to === '/admin/users') return auth.canViewParticipants
+  if (item.to === '/admin/check-ins') return auth.canPerformCheckIn
+  return true
+}))
 const underPath = (path, base) => path === base || path.startsWith(`${base}/`)
 const isEventsActive = computed(() => underPath(route.path, '/admin/events') && !underPath(route.path, '/admin/events/new'))
 const isEventSection = computed(() => isEventsActive.value || eventItems.some((item) => underPath(route.path, item.to)))
@@ -88,11 +94,11 @@ const logout = async () => { await auth.logout(); router.push('/login') }
           <li><RouterLink to="/admin" class="sb-link" exact-active-class="is-active"><AppIcon class="sb-icon" name="layout-grid" :size="18" /><span class="sb-text">{{ hasEventWorkspace ? 'Event dashboard' : 'Dashboard' }}</span></RouterLink></li>
           <li v-if="hasEventWorkspace" class="sb-group" :class="{ 'is-open': eventMenuOpen, 'has-active': isEventSection }">
             <div class="sb-row">
-              <RouterLink to="/admin/events" class="sb-link" :class="{ 'is-active': isEventsActive, 'is-parent-active': isEventSection && !isEventsActive }" :aria-current="isEventsActive ? 'page' : undefined"><AppIcon class="sb-icon" name="calendar" :size="18" /><span class="sb-text">{{ isAdmin ? 'All Events' : 'My Events' }}</span></RouterLink>
+              <RouterLink to="/admin/events" class="sb-link" :class="{ 'is-active': isEventsActive, 'is-parent-active': isEventSection && !isEventsActive }" :aria-current="isEventsActive ? 'page' : undefined"><AppIcon class="sb-icon" name="calendar" :size="18" /><span class="sb-text">{{ auth.canViewAllEvents ? 'All Events' : 'My Events' }}</span></RouterLink>
               <button type="button" class="sb-toggle" :aria-expanded="eventMenuOpen" aria-controls="sb-events" :aria-label="`${eventMenuOpen ? 'Collapse' : 'Expand'} event pages`" @click="eventMenuOpen = !eventMenuOpen"><AppIcon name="chevron-down" :size="16" /></button>
             </div>
             <ul v-show="eventMenuOpen" id="sb-events" class="sb-sublist">
-              <li v-for="item in eventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
+              <li v-for="item in visibleEventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
             </ul>
           </li>
         </ul>
@@ -131,7 +137,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
         <h2 v-if="isAdmin" id="sb-label-admin" class="sb-label">Administration</h2>
         <h2 v-else id="sb-label-account" class="sb-label">Account</h2>
         <ul class="sb-list">
-          <li v-if="isAdmin"><RouterLink to="/admin/admin-accounts" class="sb-link" active-class="is-active"><AppIcon class="sb-icon" name="user-plus" :size="18" /><span class="sb-text">Admin Accounts</span></RouterLink></li>
+          <li v-if="isAdmin"><RouterLink to="/admin/admin-accounts" class="sb-link" active-class="is-active"><AppIcon class="sb-icon" name="user-plus" :size="18" /><span class="sb-text">Staff Management</span></RouterLink></li>
           <li v-if="isAdmin"><RouterLink to="/admin/settings" class="sb-link" active-class="is-active"><svg class="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.6a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.6a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg><span class="sb-text">Settings</span></RouterLink></li>
           <li v-else><RouterLink to="/admin/profile" class="sb-link" active-class="is-active"><AppIcon class="sb-icon" name="user" :size="18" /><span class="sb-text">Profile</span></RouterLink></li>
         </ul>

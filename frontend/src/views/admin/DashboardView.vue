@@ -78,7 +78,7 @@ const statCards = computed(() => [
   { key: 'users', label: 'Total Participants', value: stats.value.users, tone: 'blue', note: 'Unique people', to: '/admin/users', icon: 'users-group' },
   { key: 'registrations', label: 'Registrations', value: stats.value.registrations, tone: 'amber', note: `Across ${number(events.value.length)} ${events.value.length === 1 ? 'event' : 'events'}`, to: '/admin/reports', icon: 'user-plus' },
   { key: 'check_ins', label: 'Checked In', value: stats.value.check_ins, tone: 'purple', note: `${checkInRate.value}% of registrations`, to: '/admin/check-ins', icon: 'user-check' },
-])
+].filter((card) => (card.key !== 'users' || auth.canViewParticipants) && (card.key !== 'check_ins' || auth.canPerformCheckIn)))
 
 // Reports are already ordered by start date (newest first) by the API.
 const performanceRows = computed(() => reports.value.slice(0, 6).map((report) => {
@@ -99,12 +99,14 @@ const yearRows = computed(() => {
 })
 const yearMax = computed(() => Math.max(...yearRows.value.map((row) => row.value), 1))
 
-const quickActions = [
+const quickActions = computed(() => [
   { label: 'Create Event', hint: 'Set up a new event', to: '/admin/events/new', tone: 'teal', icon: 'calendar-plus' },
   { label: 'Attendance', hint: 'Browse participants', to: '/admin/users', tone: 'blue', icon: 'users-group' },
   { label: 'Check-in', hint: 'Scan or confirm arrivals', to: '/admin/check-ins', tone: 'amber', icon: 'scan' },
   { label: 'Reports', hint: 'Attendance and exports', to: '/admin/reports', tone: 'purple', icon: 'chart-column' },
-]
+].filter((action) => (action.to !== '/admin/events/new' || auth.canCreateEvents)
+  && (action.to !== '/admin/users' || auth.canViewParticipants)
+  && (action.to !== '/admin/check-ins' || auth.canPerformCheckIn)))
 
 const loadDashboard = async () => {
   loading.value = true
@@ -140,12 +142,12 @@ const loadStaffHome = () => {
   getMyRequests().then(({ data }) => { recentRequests.value = data.data.slice(0, 3) }).catch(() => {})
   getTimesheet(today.getFullYear(), today.getMonth() + 1).then(({ data }) => { leaveBalances.value = data.data.balances.filter((item) => item.limited) }).catch(() => {})
 }
-onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.value = false; loadStaffHome() } })
+onMounted(() => { if (auth.canViewDashboard) loadDashboard(); else { loading.value = false; loadStaffHome() } })
 </script>
 
 <template>
   <AdminLayout>
-    <section v-if="!auth.canManageEvents" class="staff-home">
+    <section v-if="!auth.canViewDashboard" class="staff-home">
       <header class="staff-home__title"><h1>Welcome, {{ firstName || 'there' }}</h1></header>
       <section class="staff-home__metrics" aria-label="Your staff overview">
         <article><small>Profile</small><strong>{{ profileLabel }}</strong><RouterLink to="/admin/personnel-profile?section=my-profile">View profile <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
@@ -173,7 +175,7 @@ onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.valu
           <button type="button" class="rd-button rd-button--ghost" :disabled="loading" aria-label="Refresh dashboard" @click="loadDashboard">
             <AppIcon name="refresh" :size="17" :class="{ 'is-spinning': loading && loaded }" />
           </button>
-          <RouterLink to="/admin/events/new" class="rd-button rd-button--primary"><AppIcon name="plus" :size="17" />New event</RouterLink>
+          <RouterLink v-if="auth.canCreateEvents" to="/admin/events/new" class="rd-button rd-button--primary"><AppIcon name="plus" :size="17" />New event</RouterLink>
         </div>
       </header>
 

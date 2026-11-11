@@ -48,8 +48,12 @@ class CheckInService
     public function checkIn(string $credential, User $user, ?string $entranceToken = null): CheckIn
     {
         $registration = $this->findRegistration($credential, $user, allowOwner: true);
+        abort_if($user->isStaff() && ! $user->canPerformCheckIn() && $registration->user_id !== $user->id, 403);
         if ($registration->event?->status === 'cancelled') { throw ValidationException::withMessages(['credential' => 'This event was cancelled, so check-in is closed.']); }
-        $atDesk = $user->isStaff() && $registration->event && $user->can('view', $registration->event);
+        $atDesk = $user->can('perform-check-in')
+            && $user->isStaff()
+            && $registration->event
+            && $user->can('view', $registration->event);
         $venueToken = (string) $registration->event?->check_in_qr_token;
         if (! $atDesk && ($venueToken === '' || ! is_string($entranceToken) || ! hash_equals($venueToken, $entranceToken))) {
             throw ValidationException::withMessages(['entrance_token' => 'Scan the check-in QR code at the event entrance to check in.']);
