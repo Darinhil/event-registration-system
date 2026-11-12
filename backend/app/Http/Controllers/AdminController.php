@@ -82,7 +82,14 @@ class AdminController extends Controller
                 // append_form_values() reads the event's archived field labels; without this it reloads the whole event per registration.
                 $registration->setRelation('event', $event);
                 $registration->append_form_values($event->formFields);
-                $answers = collect($registration->form_values ?? [])->mapWithKeys(fn ($value, $label) => [mb_strtolower(trim((string) $label)) => $value]);
+                // Bilingual labels ("ជនជាតិ/Ethnicity") also answer to each language on its own ("ethnicity", "ជនជាតិ").
+                $answers = collect();
+                foreach ((array) ($registration->form_values ?? []) as $label => $value) {
+                    $label = mb_strtolower(trim((string) $label));
+                    foreach ([$label, ...array_map('trim', explode('/', $label))] as $key) {
+                        if ($key !== '' && ! $answers->has($key)) $answers->put($key, $value);
+                    }
+                }
                 $increment = function (string $group, $value) use (&$demographics): void {
                     $label = trim((string) $value);
                     if ($label !== '') $demographics[$group][$label] = ($demographics[$group][$label] ?? 0) + 1;

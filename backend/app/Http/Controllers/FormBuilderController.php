@@ -166,7 +166,9 @@ class FormBuilderController extends Controller
         if ($bilingual && in_array($type, ['radio', 'select'], true) && preg_match('/(?:gender|age|ភេទ|អាយុ)/iu', $field->label)) {
             $type = 'select';
         }
-        if ($bilingual && preg_match('/(?:ethnicity|ជនជាតិ)/iu', $field->label)) {
+        // Ethnicity choice questions without options get the standard ones; a free-text Ethnicity question stays text,
+        // so attendees see exactly what the organiser built.
+        if ($bilingual && in_array($type, ['radio', 'select'], true) && preg_match('/(?:ethnicity|ជនជាតិ)/iu', $field->label)) {
             $type = 'select';
             if ($options === []) {
                 $options = [
