@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\CheckIn;
 use App\Models\Event;
+use App\Models\FormField;
 use App\Models\Registration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -53,6 +56,8 @@ class AdminRegistrantManagementTest extends TestCase
         $registration = $this->registration($event);
 
         $this->putJson("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            'event_id' => $event->id,
+            'form_data' => [],
             'full_name' => 'Sarah J. Jenkins',
             'gender' => 'female',
             'age' => 29,
@@ -77,6 +82,8 @@ class AdminRegistrantManagementTest extends TestCase
         $registration = $this->registration($event);
 
         $this->putJson("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            'event_id' => $event->id,
+            'form_data' => [],
             'full_name' => 'Updated Attendee',
         ])->assertOk();
 
@@ -92,6 +99,8 @@ class AdminRegistrantManagementTest extends TestCase
         $registration = $this->registration($event);
 
         $this->putJson("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            'event_id' => $event->id,
+            'form_data' => [],
             'full_name' => 'Unauthorized Change',
         ])->assertForbidden();
 
@@ -106,6 +115,8 @@ class AdminRegistrantManagementTest extends TestCase
         $registration = $this->registration($event);
 
         $this->putJson("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            'event_id' => $event->id,
+            'form_data' => [],
             'full_name' => 'S',
             'age' => 121,
             'email' => 'not-an-email',
@@ -153,6 +164,8 @@ class AdminRegistrantManagementTest extends TestCase
         $registration = $this->registration($otherEvent);
 
         $this->putJson("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            'event_id' => $event->id,
+            'form_data' => [],
             'full_name' => 'Changed Name',
         ])->assertNotFound();
 
@@ -160,5 +173,82 @@ class AdminRegistrantManagementTest extends TestCase
             'id' => $registration->id,
             'full_name' => 'Sarah Jenkins',
         ]);
+    }
+
+    public function test_event_admin_can_update_custom_registration_answers(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+        $event = $this->event($admin);
+        $registration = $this->registration($event);
+        $organization = FormField::create([
+            'event_id' => $event->id,
+            'label' => 'Organization',
+            'type' => 'text',
+            'required' => true,
+            'options' => [],
+            'settings' => [],
+            'sort_order' => 1,
+        ]);
+        $customField = FormField::create([
+            'event_id' => $event->id,
+            'label' => 'Why are you attending?',
+            'type' => 'textarea',
+            'required' => false,
+            'options' => [],
+            'settings' => [],
+            'sort_order' => 2,
+        ]);
+
+        $this->putJson("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            'event_id' => $event->id,
+            'form_data' => [
+                $organization->id => 'Community Lab',
+                $customField->id => 'To meet local organizers.',
+            ],
+            'full_name' => 'Sarah Jenkins',
+            'email' => 'sarah@example.com',
+            'phone' => '+855 12 345 678',
+            'gender' => 'female',
+            'age' => 28,
+            'organization' => 'Community Lab',
+        ])->assertOk()->assertJsonPath('message', 'Registrant updated successfully.');
+
+        $updated = $registration->fresh();
+        $this->assertSame('Community Lab', $updated->organization);
+        $this->assertSame('Community Lab', $updated->form_data[(string) $organization->id]);
+        $this->assertSame('To meet local organizers.', $updated->form_data[(string) $customField->id]);
+    }
+
+    public function test_admin_edit_can_replace_a_registration_file_answer(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+        $event = $this->event($admin);
+        $fileField = FormField::create([
+            'event_id' => $event->id,
+            'label' => 'Supporting document',
+            'type' => 'file',
+            'required' => false,
+            'options' => [],
+            'settings' => ['allowed_types' => ['pdf'], 'max_size_mb' => 2],
+            'sort_order' => 1,
+        ]);
+        Storage::disk('public')->put('form-uploads/old.pdf', 'old file');
+        $registration = $this->registration($event);
+        $registration->update(['form_data' => [$fileField->id => 'form-uploads/old.pdf']]);
+
+        $this->post("/api/admin/events/{$event->id}/registrants/{$registration->id}", [
+            '_method' => 'PUT',
+            'event_id' => $event->id,
+            'form_data' => [$fileField->id => UploadedFile::fake()->create('new.pdf', 10, 'application/pdf')],
+            'full_name' => 'Sarah Jenkins',
+        ])->assertOk();
+
+        $updatedPath = $registration->fresh()->form_data[(string) $fileField->id];
+        $this->assertNotSame('form-uploads/old.pdf', $updatedPath);
+        Storage::disk('public')->assertExists($updatedPath);
+        Storage::disk('public')->assertMissing('form-uploads/old.pdf');
     }
 }

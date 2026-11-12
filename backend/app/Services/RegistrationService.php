@@ -72,7 +72,14 @@ class RegistrationService
     {
         $event = $registration->event;
         $fields = $event->formFields()->get();
-        $formData = $this->sanitizeFormData($data['form_data'] ?? [], $fields);
+        $archivedFields = (array) ($event->form_config['archived_fields'] ?? []);
+        $submittedFormData = $data['form_data'] ?? [];
+        foreach (array_keys($archivedFields) as $fieldId) {
+            if (! array_key_exists($fieldId, $submittedFormData) && array_key_exists($fieldId, (array) $registration->form_data)) {
+                $submittedFormData[$fieldId] = $registration->form_data[$fieldId];
+            }
+        }
+        $formData = $this->sanitizeFormData($submittedFormData, $fields, array_map('strval', array_keys($archivedFields)));
 
         // Use the same conversion as create(). In particular, age-group choices
         // such as "K: Under 18" must never be written to the integer `age` column.
@@ -91,7 +98,9 @@ class RegistrationService
         $data['event_name'] = $event->name;
         $data['event_date'] = $event->starts_at;
         $data['event_location'] = $event->location;
-        $data['disability_type'] = json_encode($data['disability_type'] ?? [], JSON_THROW_ON_ERROR);
+        if (array_key_exists('disability_type', $data)) {
+            $data['disability_type'] = json_encode($data['disability_type'] ?? [], JSON_THROW_ON_ERROR);
+        }
         $registration->fill($data)->save();
 
         return $registration->fresh();
@@ -138,10 +147,13 @@ class RegistrationService
      * Keep only answers for this event's own fields, and reject values that are
      * not scalars/arrays (never trust client JSON blobs).
      */
-    private function sanitizeFormData($formData, $fields): array
+    private function sanitizeFormData($formData, $fields, array $additionalFieldIds = []): array
     {
         if (! is_array($formData)) return [];
-        $allowed = collect($fields)->reject(fn ($field) => $field->type === 'heading')->map(fn ($field) => (string) $field->id)->all();
+        $allowed = array_merge(
+            collect($fields)->reject(fn ($field) => $field->type === 'heading')->map(fn ($field) => (string) $field->id)->all(),
+            $additionalFieldIds,
+        );
         $formData = array_intersect_key($formData, array_flip($allowed));
         // Drop answers to questions a condition hid (e.g. stale values after changing an earlier answer).
         $byId = FormConditions::index($fields);
@@ -177,15 +189,27 @@ class RegistrationService
             'phone' => 'phone', 'phone_number' => 'phone', 'tel' => 'phone', 'telephone' => 'phone',
             'organization' => 'organization', 'organisation' => 'organization', 'institution' => 'organization',
             'position' => 'position', 'address' => 'address',
+            'emergency_contact_name' => 'emergency_contact_name',
+            'emergency_contact_phone' => 'emergency_contact_phone',
         ];
 
         foreach ($fields as $field) {
             $value = $formData[$field->id] ?? null;
-            if ($value === null || $value === '' || $value === []) continue;
             // Bilingual labels such as "ឈ្មោះ/Name" retain their English
             // identifier after Khmer characters and punctuation are removed.
             $normalized = trim(strtolower(preg_replace('/[^a-z0-9]+/i', '_', $field->label)), '_');
             $column = $coreMap[$normalized] ?? (in_array($normalized, $fillable, true) ? $normalized : null);
+            if ($value === null || $value === '' || $value === []) {
+                if (! array_key_exists($field->id, $formData)) continue;
+                if ($column === 'photo_consent') $data['photo_consent'] = false;
+                elseif ($column === 'disability_type' || str_contains($normalized, 'disability')) $data['disability_type'] = [];
+                elseif ($column === 'gender') $data['gender'] = null;
+                elseif ($column === 'age' || $normalized === 'age_group') {
+                    $data['age'] = null;
+                    if ($normalized === 'age_group') $data['age_group'] = null;
+                } elseif ($column !== null) $data[$column] = null;
+                continue;
+            }
 
             if ($column === 'gender') {
                 $first = is_array($value) ? ($value[0] ?? '') : $value;

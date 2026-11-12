@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\FormField;
 use App\Models\Registration;
 use App\Models\User;
+use App\Services\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
@@ -191,17 +192,13 @@ class AdminController extends Controller
         ]]);
     }
 
-    public function updateRegistrant(\Illuminate\Http\Request $request, Event $event, Registration $registration): JsonResponse
+    public function updateRegistrant(\App\Http\Requests\RegistrationRequest $request, Event $event, Registration $registration, RegistrationService $registrations): JsonResponse
     {
         abort_unless((int) $registration->event_id === (int) $event->id, 404);
 
-        $registration->update($request->validate([
-            'full_name' => ['sometimes', 'required', 'string', 'min:2', 'max:100'],
-            'gender' => ['sometimes', 'nullable', Rule::in(['male', 'female', 'other'])],
-            'age' => ['sometimes', 'nullable', 'integer', 'between:1,120'],
-            'phone' => ['sometimes', 'nullable', 'string', 'regex:/^[+]?[0-9][0-9\\s().-]{7,24}$/'],
-            'email' => ['sometimes', 'nullable', 'email:rfc', 'max:150'],
-        ]));
+        $data = $request->validated();
+        abort_unless((int) $data['event_id'] === (int) $event->id, 403, 'This registration does not belong to that event.');
+        $registrations->update($registration, $data);
 
         return response()->json(['message' => 'Registrant updated successfully.']);
     }

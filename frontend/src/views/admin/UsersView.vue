@@ -20,6 +20,7 @@ const selectedEventId = ref(null)
 
 const attendees = ref([])
 const formFields = ref([])
+const archivedFieldLabels = ref({})
 const attendeesLoading = ref(false)
 const attendeesError = ref('')
 
@@ -264,6 +265,7 @@ const loadAttendees = async ({ silent = false } = {}) => {
   if (!eventId) {
     attendees.value = []
     formFields.value = []
+    archivedFieldLabels.value = {}
     attendeesLoading.value = false
     return
   }
@@ -280,6 +282,7 @@ const loadAttendees = async ({ silent = false } = {}) => {
     if (ticket !== attendeeRequest) return
     const fields = formResponse?.data?.data?.fields ?? formResponse?.data?.data
     formFields.value = Array.isArray(fields) ? fields : []
+    archivedFieldLabels.value = formResponse?.data?.data?.config?.archived_fields || {}
     attendees.value = list
   } catch {
     if (ticket === attendeeRequest) attendeesError.value = 'We couldn’t load the attendees for this event.'
@@ -359,6 +362,46 @@ const detailAnswers = computed(() => Object.entries(detailRow.value?.registratio
     if (['age', 'agegroup'].includes(normalized)) return { label, value: ageCode(value) || '—' }
     return { label, value: formatAnswer(value) }
   }))
+const editableFormFields = computed(() => {
+  const registration = editingRow.value?.registration
+  if (!registration) return []
+  const activeFields = formFields.value.filter((field) => field.type !== 'heading')
+  const activeIds = new Set(activeFields.map((field) => String(field.id)))
+  const labelsByKey = new Map(Object.entries(registration.form_values || {}).map(([label]) => {
+    const key = Object.keys(registration.form_data || {}).find((id) => normalizeKey(id) === normalizeKey(label))
+    return [key, label]
+  }).filter(([key]) => key !== undefined))
+  const archivedFields = Object.entries(registration.form_data || {})
+    .filter(([id]) => !activeIds.has(String(id)))
+    .map(([id, value]) => ({
+      id,
+      label: archivedFieldLabels.value[id] || labelsByKey.get(id) || id,
+      type: 'text',
+      required: false,
+      options: [],
+      settings: {},
+      archived: true,
+      initialValue: value,
+    }))
+  return [...activeFields, ...archivedFields]
+})
+const isMultipleField = (field) => Boolean(field.settings?.multiple) && ['checkbox', 'select'].includes(field.type)
+const isSingleCheckbox = (field) => field.type === 'checkbox' && !isMultipleField(field)
+const hasActiveAnswerField = (...labels) => editableFormFields.value.some((field) => !field.archived && labels.includes(normalizeKey(field.label)))
+const editFieldValue = (field) => editForm.value.form_data?.[field.id]
+const editFieldOptions = (field) => field.type === 'yesno' ? ['Yes', 'No'] : (field.options || [])
+const editFieldType = (field) => ({
+  email: 'email',
+  phone: 'tel',
+  number: 'number',
+  date: 'date',
+  time: 'time',
+  url: 'url',
+})(field.type) || 'text'
+const storedFileLabel = (field) => {
+  const value = editFieldValue(field)
+  return typeof value === 'string' ? value.split(/[\\/]/).pop() : ''
+}
 const openDetails = async (row, { confirm = false } = {}) => {
   returnFocus = document.activeElement
   detailKey.value = row.key
@@ -393,12 +436,31 @@ const openEditRegistrant = async (row) => {
   editingRow.value = row
   editError.value = ''
   const rawGender = String(row.registration.gender || '').toLowerCase()
+  const formData = { ...(row.registration.form_data || {}) }
+  formFields.value.forEach((field) => {
+    if (!(String(field.id) in formData)) return
+    if (isSingleCheckbox(field)) {
+      formData[field.id] = formData[field.id] === true || ['true', 'yes', '1'].includes(String(formData[field.id]).toLowerCase())
+    } else if (isMultipleField(field)) {
+      formData[field.id] = toList(formData[field.id])
+    }
+  })
   editForm.value = {
     full_name: row.registration.full_name || row.name,
     email: row.registration.email || row.email,
     phone: row.registration.phone || row.registration.telephone || row.phone,
     gender: ['male', 'female', 'other'].includes(rawGender) ? rawGender : rawGender === 'm' ? 'male' : rawGender === 'f' ? 'female' : rawGender === 'n' ? 'other' : '',
     age: row.registration.age ?? '',
+    organization: row.registration.organization || '',
+    position: row.registration.position || '',
+    address: row.registration.address || '',
+    emergency_contact_name: row.registration.emergency_contact_name || '',
+    emergency_contact_phone: row.registration.emergency_contact_phone || '',
+    disability_type: toList(row.registration.disability_type).map((value) => String(value).trim()).filter(Boolean),
+    photo_consent: Boolean(row.registration.photo_consent),
+    signature: row.registration.signature || '',
+    form_data: formData,
+    form_files: {},
   }
   await nextTick()
   document.querySelector('.at-modal input[name="full_name"]')?.focus()
@@ -415,13 +477,41 @@ const saveRegistrant = async () => {
   savingRegistrant.value = true
   editError.value = ''
   try {
-    await api.put(`/admin/events/${selectedEventId.value}/registrants/${editingRow.value.registration.id}`, {
+    const payload = new FormData()
+    payload.append('_method', 'PUT')
+    payload.append('event_id', String(selectedEventId.value))
+    payload.append('form_data[__empty]', '')
+    const coreValues = {
       full_name: editForm.value.full_name,
-      email: editForm.value.email || null,
-      phone: editForm.value.phone || null,
-      gender: editForm.value.gender || null,
-      age: editForm.value.age === '' ? null : Number(editForm.value.age),
+      email: editForm.value.email,
+      phone: editForm.value.phone,
+      gender: editForm.value.gender,
+      age: editForm.value.age === '' ? '' : String(Number(editForm.value.age)),
+      organization: editForm.value.organization,
+      position: editForm.value.position,
+      address: editForm.value.address,
+      emergency_contact_name: editForm.value.emergency_contact_name,
+      emergency_contact_phone: editForm.value.emergency_contact_phone,
+      photo_consent: editForm.value.photo_consent ? '1' : '0',
+      signature: editForm.value.signature,
+    }
+    Object.entries(coreValues).forEach(([key, value]) => payload.append(key, value ?? ''))
+    if (!hasActiveAnswerField('disability', 'disabilitytype') && !editForm.value.disability_type.length) {
+      payload.append('disability_type[__empty]', '')
+    } else {
+      editForm.value.disability_type.forEach((value) => payload.append('disability_type[]', value))
+    }
+    editableFormFields.value.forEach((field) => {
+      if (field.type === 'file') {
+        const file = editForm.value.form_files[field.id]
+        if (file) payload.append(`form_data[${field.id}]`, file)
+        return
+      }
+      const value = editFieldValue(field)
+      if (Array.isArray(value)) value.forEach((item) => payload.append(`form_data[${field.id}][]`, String(item)))
+      else if (value !== undefined) payload.append(`form_data[${field.id}]`, value === null ? '' : String(value))
     })
+    await api.post(`/admin/events/${selectedEventId.value}/registrants/${editingRow.value.registration.id}`, payload)
     editingRow.value = null
     await loadAttendees({ silent: true })
     announce('Registrant details saved.')
@@ -814,19 +904,76 @@ onBeforeUnmount(() => {
       <div v-if="editingRow" class="at-modal-backdrop" @click.self="closeRegistrantDialog">
         <section class="at-modal" role="dialog" aria-modal="true" aria-labelledby="at-edit-title">
           <header class="at-modal__head">
-            <div><h2 id="at-edit-title">Edit registrant</h2><p>Update attendee contact and profile details.</p></div>
+            <div><h2 id="at-edit-title">Edit registrant</h2><p>Update contact, profile, and registration answers.</p></div>
             <button type="button" class="at-modal__close" aria-label="Close dialog" :disabled="savingRegistrant" @click="closeRegistrantDialog"><AppIcon name="x" :size="18" /></button>
           </header>
           <form class="at-modal__form" @submit.prevent="saveRegistrant">
-            <label>Full name<input v-model.trim="editForm.full_name" name="full_name" required minlength="2" maxlength="100" autocomplete="name" /></label>
+            <label v-if="!hasActiveAnswerField('fullname', 'name')">Full name<input v-model.trim="editForm.full_name" name="full_name" required minlength="2" maxlength="100" autocomplete="name" /></label>
             <div class="at-modal__row">
-              <label>Email<input v-model.trim="editForm.email" type="email" maxlength="150" autocomplete="email" /></label>
-              <label>Phone<input v-model.trim="editForm.phone" type="tel" maxlength="30" autocomplete="tel" /></label>
+              <label v-if="!hasActiveAnswerField('email', 'emailaddress')">Email<input v-model.trim="editForm.email" type="email" maxlength="150" autocomplete="email" /></label>
+              <label v-if="!hasActiveAnswerField('phone', 'phonenumber', 'telephone', 'tel')">Phone<input v-model.trim="editForm.phone" type="tel" maxlength="30" autocomplete="tel" /></label>
             </div>
             <div class="at-modal__row">
-              <label>Gender<select v-model="editForm.gender"><option value="">Not provided</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label>
-              <label>Age<input v-model="editForm.age" type="number" min="1" max="120" /></label>
+              <label v-if="!hasActiveAnswerField('gender')">Gender<select v-model="editForm.gender"><option value="">Not provided</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label>
+              <label v-if="!hasActiveAnswerField('age', 'agegroup')">Age<input v-model="editForm.age" type="number" min="1" max="120" /></label>
             </div>
+            <div class="at-modal__row">
+              <label v-if="!hasActiveAnswerField('organization', 'organisation', 'institution')">Organization<input v-model.trim="editForm.organization" maxlength="150" /></label>
+              <label v-if="!hasActiveAnswerField('position')">Position<input v-model.trim="editForm.position" maxlength="150" /></label>
+            </div>
+            <label v-if="!hasActiveAnswerField('address')">Address<textarea v-model.trim="editForm.address" maxlength="500" rows="2"></textarea></label>
+            <div class="at-modal__row">
+              <label v-if="!hasActiveAnswerField('emergencycontactname')">Emergency contact name<input v-model.trim="editForm.emergency_contact_name" maxlength="100" /></label>
+              <label v-if="!hasActiveAnswerField('emergencycontactphone')">Emergency contact phone<input v-model.trim="editForm.emergency_contact_phone" maxlength="30" /></label>
+            </div>
+            <fieldset v-if="!hasActiveAnswerField('disability', 'disabilitytype')" class="at-edit-checks">
+              <legend>Disability support</legend>
+              <label v-for="(label, code) in disabilityCodes" :key="code">
+                <input v-model="editForm.disability_type" type="checkbox" :value="code" />
+                <span>{{ label }}</span>
+              </label>
+            </fieldset>
+            <label v-if="!hasActiveAnswerField('photoconsent')" class="at-edit-check"><input v-model="editForm.photo_consent" type="checkbox" /><span>Photo consent</span></label>
+            <label v-if="!hasActiveAnswerField('signature')">Signature<input v-model="editForm.signature" maxlength="100000" /></label>
+            <section v-if="editableFormFields.length" class="at-edit-answers">
+              <h3>Registration answers</h3>
+              <template v-for="field in editableFormFields" :key="field.id">
+                <fieldset v-if="isMultipleField(field)" class="at-edit-checks">
+                  <legend>{{ field.label }}<span v-if="field.required"> *</span></legend>
+                  <label v-for="option in editFieldOptions(field)" :key="option">
+                    <input v-model="editForm.form_data[field.id]" type="checkbox" :value="option" />
+                    <span>{{ option }}</span>
+                  </label>
+                  <small v-if="field.description">{{ field.description }}</small>
+                </fieldset>
+                <label v-else-if="isSingleCheckbox(field)" class="at-edit-check">
+                  <input v-model="editForm.form_data[field.id]" type="checkbox" />
+                  <span>{{ field.settings?.checkbox_text || field.label }}</span>
+                </label>
+                <label v-else-if="field.type === 'file'">
+                  {{ field.label }}<span v-if="field.required"> *</span>
+                  <small v-if="storedFileLabel(field)">Current file: {{ storedFileLabel(field) }} (leave blank to keep it)</small>
+                  <input type="file" :accept="(field.settings?.allowed_types || []).map((type) => `.${type}`).join(',')" @change="editForm.form_files[field.id] = $event.target.files?.[0] || null" />
+                  <small v-if="field.description">{{ field.description }}</small>
+                </label>
+                <label v-else-if="field.type === 'textarea'">
+                  {{ field.label }}<span v-if="field.required"> *</span><textarea v-model="editForm.form_data[field.id]" :placeholder="field.placeholder" rows="3"></textarea>
+                  <small v-if="field.description">{{ field.description }}</small>
+                </label>
+                <label v-else-if="['select', 'radio', 'yesno', 'country'].includes(field.type)">
+                  {{ field.label }}<span v-if="field.required"> *</span>
+                  <select v-model="editForm.form_data[field.id]" :multiple="isMultipleField(field)">
+                    <option v-if="!field.required && !isMultipleField(field)" value="">Not provided</option>
+                    <option v-for="option in editFieldOptions(field)" :key="option" :value="option">{{ option }}</option>
+                  </select>
+                  <small v-if="field.description">{{ field.description }}</small>
+                </label>
+                <label v-else>
+                  {{ field.label }}<span v-if="field.required"> *</span><input v-model="editForm.form_data[field.id]" :type="editFieldType(field)" :placeholder="field.placeholder" />
+                  <small v-if="field.description">{{ field.description }}</small>
+                </label>
+              </template>
+            </section>
             <p v-if="editError" class="at-inline-error" role="alert">{{ editError }}</p>
             <footer class="at-modal__actions">
               <button type="button" class="at-btn at-btn--ghost" :disabled="savingRegistrant" @click="closeRegistrantDialog">Cancel</button>

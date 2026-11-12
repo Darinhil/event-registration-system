@@ -308,15 +308,24 @@
 .at-pagination--reference .at-pager button { min-width: 27px; height: 27px; padding: 0 5px; border-radius: 5px; font-size: .73rem; }
 .at-pagination--reference .at-pager__gap { font-size: .72rem; }
 .at-modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 18px; background: rgba(15, 28, 46, .45); }
-.at-modal { width: min(100%, 520px); max-height: min(90vh, 760px); overflow-y: auto; padding: 20px; border: 1px solid #e3eaf0; border-radius: 14px; background: #fff; box-shadow: 0 24px 70px rgba(15, 28, 46, .22); }
+.at-modal { width: min(100%, 720px); max-height: min(90vh, 760px); overflow-y: auto; padding: 20px; border: 1px solid #e3eaf0; border-radius: 14px; background: #fff; box-shadow: 0 24px 70px rgba(15, 28, 46, .22); }
 .at-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .at-modal__head h2 { margin: 0; color: #142438; font-size: 1.08rem; font-weight: 800; }
 .at-modal__head p { margin: 4px 0 0; color: #6a7d90; font-size: .82rem; }
 .at-modal__close { display: grid; flex: none; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #e3e9ee; border-radius: 8px; background: #fff; color: #53687c; cursor: pointer; }
 .at-modal__form { display: grid; gap: 13px; }
 .at-modal__form label { display: grid; gap: 6px; color: #41576b; font-size: .8rem; font-weight: 700; }
-.at-modal__form input, .at-modal__form select { width: 100%; min-height: 39px; margin: 0; padding: 8px 10px; border: 1px solid #d7e0e7; border-radius: 8px; background: #fff; color: #203348; font-size: .86rem; }
-.at-modal__form input:focus, .at-modal__form select:focus { border-color: #0b9a76; outline: 2px solid rgba(11, 154, 118, .14); }
+.at-modal__form input:not([type="checkbox"]), .at-modal__form select, .at-modal__form textarea { width: 100%; min-height: 39px; margin: 0; padding: 8px 10px; border: 1px solid #d7e0e7; border-radius: 8px; background: #fff; color: #203348; font-size: .86rem; }
+.at-modal__form input:focus, .at-modal__form select:focus, .at-modal__form textarea:focus { border-color: #0b9a76; outline: 2px solid rgba(11, 154, 118, .14); }
+.at-modal__form textarea { resize: vertical; }
+.at-modal__form small { color: #728396; font-size: .74rem; font-weight: 400; line-height: 1.45; }
+.at-edit-answers { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid #e6edf2; }
+.at-edit-answers h3 { margin: 0; color: #23384d; font-size: .92rem; }
+.at-edit-checks { display: flex; flex-wrap: wrap; gap: 8px 14px; min-width: 0; margin: 0; padding: 10px 12px; border: 1px solid #d7e0e7; border-radius: 8px; }
+.at-edit-checks legend { padding: 0 4px; color: #41576b; font-size: .8rem; font-weight: 700; }
+.at-edit-checks label, .at-edit-check { display: flex !important; align-items: center; grid-template-columns: auto 1fr; gap: 7px !important; color: #41576b; font-size: .8rem; font-weight: 500 !important; }
+.at-edit-checks input[type="checkbox"], .at-edit-check input[type="checkbox"] { width: 16px; min-height: 16px; margin: 0; accent-color: #0b9a76; }
+.at-edit-checks small { flex-basis: 100%; }
 .at-modal__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .at-modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .at-modal__warning { margin: 0; padding: 12px; border-radius: 8px; background: #fff6f5; color: #9c2e27; font-size: .84rem; line-height: 1.5; }
