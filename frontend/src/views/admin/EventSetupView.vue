@@ -1,15 +1,16 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import DateInput from '../../components/DateInput.vue'
 import api from '../../services/api'
+import { replaceSetupUrl } from '../../router'
 import { addNonBinaryGenderOption, choiceLabel, isLegacyStarterForm, starterFields } from '../../utils/formFieldTypes'
 import { copyText } from '../../utils/clipboard'
 
-const route = useRoute(); const router = useRouter()
+const route = useRoute()
 
 /* ------------------------------------------------------------------
    Wizard state
@@ -135,7 +136,7 @@ const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 const showStep = (step) => {
   activeStep.value = step
   furthestStep.value = Math.max(furthestStep.value, step)
-  router.replace({ query: { ...route.query, step } })
+  replaceSetupUrl({ query: { ...route.query, step } })
   scrollToTop()
 }
 // Moving forward checks every required step in between; moving back is always allowed.
@@ -443,7 +444,7 @@ const saveDraft = async () => {
       removeAutosave(previousKey)
       // Further saves update this draft instead of creating new events.
       allowNavigation = true
-      await router.replace({ path: `/admin/events/${data.id}/edit`, query: { step: activeStep.value } })
+      await replaceSetupUrl({ path: `/admin/events/${data.id}/edit`, query: { step: activeStep.value } })
       allowNavigation = false
     }
     markClean(); removeAutosave()
@@ -498,6 +499,9 @@ const confirmPublish = async () => {
     confirmOpen.value = false
     saveState.value = 'saved'
     publishedEvent.value = persistEvent(data.id ?? eventId.value, 'open')
+    // Leave /new (or the edit URL) so "Create event" and "Edit event" are real navigations from this screen.
+    const savedId = data.id ?? eventId.value
+    if (savedId) await replaceSetupUrl({ path: `/admin/events/${savedId}/edit`, query: { published: '1' } })
     scrollToTop()
   } catch (requestError) {
     confirmOpen.value = false

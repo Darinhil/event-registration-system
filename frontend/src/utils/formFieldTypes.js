@@ -212,5 +212,4 @@ export const isLegacyStarterForm = (fields) => {
   return previousTemplates.some((labels) =>
     fields.length === labels.length && fields.every((field, index) => field.label === labels[index])
   )
-}​
-​
+}
