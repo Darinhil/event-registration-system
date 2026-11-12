@@ -282,7 +282,7 @@
 .es-footer__progress { display: flex; gap: 5px; margin: 0 auto; }
 .es-footer__progress i { width: 22px; height: 4px; border-radius: 999px; background: #e3e9ee; }
 .es-footer__progress i.is-done { background: var(--rd-primary); }
-.es-footer > .es-btn:first-child:not(.es-footer__primary) { margin-right: 0; }
+.es-footer__actions { display: flex; align-items: center; gap: 10px; }
 .es-footer__primary { min-width: 150px; }
 
 /* ---------- Dialog + toast ---------- */
@@ -344,8 +344,9 @@
   .es-banner-preview img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
   .es-footer { flex-wrap: wrap; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
   .es-footer__progress { display: none; }
-  .es-footer .es-btn { flex: 1 1 0; height: 46px; }
-  .es-footer__primary { flex-basis: 100%; order: 3; min-width: 0; }
+  .es-footer__actions { flex: 1; }
+  .es-footer__actions .es-btn { flex: 1 1 0; height: 46px; }
+  .es-footer__primary { min-width: 0; }
   .es-dialog footer { grid-template-columns: minmax(0, 1fr); }
   .es-dialog footer .es-btn--primary { order: -1; }
 }
