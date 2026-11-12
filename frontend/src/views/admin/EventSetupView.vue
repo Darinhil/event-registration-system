@@ -675,6 +675,10 @@ onBeforeUnmount(() => {
         <button type="button" class="es-btn es-btn--sm es-btn--primary" @click="restoreRecovery">Restore</button>
         <button type="button" class="es-btn es-btn--sm" @click="discardRecovery">Discard</button>
       </div>
+      <div v-if="shownSteps.has(activeStep) && currentStepErrors.length" class="es-banner is-error" role="alert">
+        <AppIcon name="alert-circle" :size="20" />
+        <span>Please complete the highlighted required fields before continuing.</span>
+      </div>
 
       <nav class="es-stepper" aria-label="Event setup steps">
         <ol>
