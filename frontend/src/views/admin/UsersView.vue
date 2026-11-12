@@ -6,7 +6,8 @@ import AppIcon from '../../components/AppIcon.vue'
 import api from '../../services/api'
 import { getUsers } from '../../services/adminService'
 import { useCheckInStore } from '../../stores/checkIn'
-import { eventPhase as phaseOf, percentOf, phaseLabels } from '../../utils/eventStats'
+import { eventPhase as phaseOf, phaseLabels } from '../../utils/eventStats'
+import { ageCode, genderCode } from '../../utils/registrationCodes'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,8 +17,6 @@ const loading = ref(true)
 const eventsError = ref('')
 const events = ref([])
 const selectedEventId = ref(null)
-const eventFilter = ref('')
-const eventScope = ref('all')
 
 const attendees = ref([])
 const formFields = ref([])
@@ -32,12 +31,19 @@ const disabilityFilter = ref('all')
 const sortBy = ref('name-asc')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const pageSizes = [10, 25, 50]
 
 const detailKey = ref(null)
 const confirming = ref(false)
 const pendingCheckIn = ref(null)
 const checkInError = ref('')
+const editingRow = ref(null)
+const deleteRow = ref(null)
+const editForm = ref({})
+const editError = ref('')
+const deleteError = ref('')
+const savingRegistrant = ref(false)
+const deletingRegistrant = ref(false)
+const showFilters = ref(false)
 const notice = ref('')
 const exporting = ref(false)
 const exportError = ref('')
@@ -109,10 +115,8 @@ const pickAnswer = (registration, candidates) => {
   return ''
 }
 
-const ageGroupFromNumber = (age) => age < 18 ? 'Under 18' : age < 30 ? '18–29' : age <= 60 ? '30–60' : 'Above 60'
 const buildRow = (user, registration) => {
-  const age = registration.age === null || registration.age === undefined || registration.age === '' ? NaN : Number(registration.age)
-  const ageGroup = readable(registration.age_group || pickAnswer(registration, ['age group', 'age']))
+  const ageGroup = ageCode(registration.age_group) || ageCode(pickAnswer(registration, ['age group', 'age'])) || ageCode(registration.age)
   const disabilityAnswer = pickAnswer(registration, ['disability', 'disability type'])
   const disabilities = isBlank(disabilityAnswer)
     ? toList(registration.disability_type).map((code) => disabilityCodes[String(code).trim()] || readable(code)).filter(Boolean)
@@ -127,9 +131,9 @@ const buildRow = (user, registration) => {
     email: registration.email || user.email || '',
     phone: registration.phone || registration.telephone || user.phone || '',
     code: registration.registration_code || '',
-    gender: readable(pickAnswer(registration, ['gender'])) || capitalize(String(registration.gender || '')),
-    age: Number.isFinite(age) ? String(age) : ageGroup,
-    ageGroup: ageGroup || (Number.isFinite(age) ? ageGroupFromNumber(age) : ''),
+    gender: genderCode(pickAnswer(registration, ['gender'])) || genderCode(registration.gender),
+    age: ageGroup,
+    ageGroup,
     ethnicity: readable(registration.ethnicity || pickAnswer(registration, ['ethnicity', 'race'])),
     disabilities,
     registeredAt: registration.created_at ? new Date(registration.created_at) : null,
@@ -146,27 +150,12 @@ const normalizeEvent = (event) => ({
   ends: event.ends_at ? new Date(event.ends_at) : null,
 })
 const eventPhase = (event) => phaseOf(event, now.value)
-const scopes = [
-  { value: 'all', label: 'All' },
-  { value: 'ongoing', label: 'Now' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'past', label: 'Past' },
-]
-const scopeCount = (scope) => scope === 'all' ? events.value.length : events.value.filter((event) => eventPhase(event) === scope).length
-const visibleEvents = computed(() => {
-  const query = eventFilter.value.trim().toLowerCase()
-  return events.value.filter((event) => (!query || `${event.name} ${event.location || ''}`.toLowerCase().includes(query)) && (eventScope.value === 'all' || eventPhase(event) === eventScope.value))
-})
 const selectedEvent = computed(() => events.value.find((event) => event.id === selectedEventId.value) || null)
 
 const rows = computed(() => attendees.value.flatMap((user) => (user.registrations || [])
   .filter((registration) => !selectedEventId.value || Number(registration.event_id) === Number(selectedEventId.value))
   .map((registration) => buildRow(user, registration))))
 const totalCount = computed(() => rows.value.length)
-const checkedInCount = computed(() => rows.value.filter((row) => row.checkedInAt).length)
-const remainingCount = computed(() => Math.max(totalCount.value - checkedInCount.value, 0))
-const checkInRate = computed(() => percentOf(checkedInCount.value, totalCount.value) ?? 0)
-const registeredFor = (event) => event.id === selectedEventId.value && !attendeesLoading.value && !attendeesError.value ? totalCount.value : event.registered
 
 const distinct = (values) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 const ageOptions = computed(() => distinct(rows.value.map((row) => row.ageGroup)))
@@ -245,8 +234,14 @@ const checkedTimeLabel = (date) => {
   if (!date) return ''
   return date.toDateString() === new Date(now.value).toDateString() ? clock(date) : date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
-const eventImage = (event) => event?.branding?.image || event?.image || ''
 const initials = (name) => (name || 'U').trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
+const eventStatusLabel = (event) => event?.status === 'published'
+  ? 'Active'
+  : event?.status ? capitalize(event.status) : phaseLabels[eventPhase(event)]
+const eventTimeLabel = (event) => event?.starts
+  ? `${clock(event.starts)}${event.ends ? ` – ${clock(event.ends)}` : ''}`
+  : 'Time to be announced'
+const terminalActive = computed(() => selectedEvent.value?.status !== 'cancelled')
 
 // The users endpoint caps pages at 100, so walk every page instead of silently truncating.
 const fetchAllAttendees = async (eventId) => {
@@ -306,16 +301,26 @@ const loadWorkspace = async () => {
   loading.value = true
   eventsError.value = ''
   try {
-    const { data } = await api.get('/admin/events')
-    events.value = (data.data || data).map(normalizeEvent)
-  } catch {
+    const { data } = await api.get('/admin/events', { timeout: 8000 })
+    const list = data.data ?? data
+    if (!Array.isArray(list)) throw new Error('The events response was not a list.')
+    events.value = list.map(normalizeEvent)
+  } catch (requestError) {
     let cached = []
     try {
       const saved = JSON.parse(localStorage.getItem('event_list') || '[]')
       if (Array.isArray(saved)) cached = saved.map(normalizeEvent)
     } catch { cached = [] }
     events.value = cached
-    eventsError.value = cached.length ? 'We couldn’t refresh events, so this is the last saved list.' : 'We couldn’t load your events.'
+    const status = requestError.response?.status
+    const reason = status === 401
+      ? 'Your session expired. Sign in again to load events.'
+      : status === 403
+        ? 'You don’t have permission to view these events.'
+        : requestError.code === 'ECONNABORTED'
+          ? 'Loading events took too long.'
+          : 'We couldn’t load your events. Check your connection and try again.'
+    eventsError.value = cached.length ? `${reason} Showing the last saved event list.` : reason
   }
   selectedEventId.value = defaultEventId()
   loading.value = false
@@ -338,13 +343,22 @@ const selectEvent = async (event) => {
   router.replace({ query: { ...route.query, event: event.id } }).catch(() => {})
   await loadAttendees()
 }
+const selectEventFromPicker = (eventId) => {
+  const event = events.value.find((item) => String(item.id) === String(eventId))
+  if (event) selectEvent(event)
+}
 const openCheckInDesk = () => router.push({ path: '/admin/check-ins', query: selectedEventId.value ? { event: selectedEventId.value } : {} })
 
 // ----- Attendee details + check-in -----
 const detailRow = computed(() => rows.value.find((row) => row.key === detailKey.value) || null)
 const detailAnswers = computed(() => Object.entries(detailRow.value?.registration.form_values || {})
   .filter(([, value]) => !isBlank(value))
-  .map(([label, value]) => ({ label, value: formatAnswer(value) })))
+  .map(([label, value]) => {
+    const normalized = normalizeKey(label)
+    if (normalized === 'gender') return { label, value: genderCode(value) || '—' }
+    if (['age', 'agegroup'].includes(normalized)) return { label, value: ageCode(value) || '—' }
+    return { label, value: formatAnswer(value) }
+  }))
 const openDetails = async (row, { confirm = false } = {}) => {
   returnFocus = document.activeElement
   detailKey.value = row.key
@@ -372,6 +386,70 @@ const announce = (message) => {
   notice.value = message
   clearTimeout(noticeTimer)
   noticeTimer = setTimeout(() => { notice.value = '' }, 5000)
+}
+const requestMessage = (error, fallback) => Object.values(error.response?.data?.errors || {}).flat()[0] || error.response?.data?.message || fallback
+const openEditRegistrant = async (row) => {
+  closeDetails()
+  editingRow.value = row
+  editError.value = ''
+  const rawGender = String(row.registration.gender || '').toLowerCase()
+  editForm.value = {
+    full_name: row.registration.full_name || row.name,
+    email: row.registration.email || row.email,
+    phone: row.registration.phone || row.registration.telephone || row.phone,
+    gender: ['male', 'female', 'other'].includes(rawGender) ? rawGender : rawGender === 'm' ? 'male' : rawGender === 'f' ? 'female' : rawGender === 'n' ? 'other' : '',
+    age: row.registration.age ?? '',
+  }
+  await nextTick()
+  document.querySelector('.at-modal input[name="full_name"]')?.focus()
+}
+const closeRegistrantDialog = () => {
+  if (savingRegistrant.value || deletingRegistrant.value) return
+  editingRow.value = null
+  deleteRow.value = null
+  editError.value = ''
+  deleteError.value = ''
+}
+const saveRegistrant = async () => {
+  if (!editingRow.value || savingRegistrant.value) return
+  savingRegistrant.value = true
+  editError.value = ''
+  try {
+    await api.put(`/admin/events/${selectedEventId.value}/registrants/${editingRow.value.registration.id}`, {
+      full_name: editForm.value.full_name,
+      email: editForm.value.email || null,
+      phone: editForm.value.phone || null,
+      gender: editForm.value.gender || null,
+      age: editForm.value.age === '' ? null : Number(editForm.value.age),
+    })
+    editingRow.value = null
+    await loadAttendees({ silent: true })
+    announce('Registrant details saved.')
+  } catch (error) {
+    editError.value = requestMessage(error, 'Registrant details could not be saved. Check the fields and try again.')
+  } finally {
+    savingRegistrant.value = false
+  }
+}
+const openDeleteRegistrant = (row) => {
+  closeDetails()
+  deleteRow.value = row
+  deleteError.value = ''
+}
+const confirmDeleteRegistrant = async () => {
+  if (!deleteRow.value || deletingRegistrant.value) return
+  deletingRegistrant.value = true
+  deleteError.value = ''
+  try {
+    await api.delete(`/admin/events/${selectedEventId.value}/registrants/${deleteRow.value.registration.id}`)
+    deleteRow.value = null
+    await loadAttendees({ silent: true })
+    announce('Registrant deleted.')
+  } catch (error) {
+    deleteError.value = requestMessage(error, 'Registrant could not be deleted. Please try again.')
+  } finally {
+    deletingRegistrant.value = false
+  }
 }
 // The row only flips to "Checked in" after the API confirms; the server rejects duplicates too.
 const confirmCheckIn = async (row) => {
@@ -401,6 +479,7 @@ const confirmCheckIn = async (row) => {
 }
 const onKeydown = (event) => {
   if (event.key === 'Escape' && detailKey.value !== null && pendingCheckIn.value === null) closeDetails()
+  if (event.key === 'Escape' && (editingRow.value || deleteRow.value) && !savingRegistrant.value && !deletingRegistrant.value) closeRegistrantDialog()
   if (event.key === 'Tab' && detailKey.value !== null) {
     const focusable = [...document.querySelectorAll('.at-drawer__panel a[href], .at-drawer__panel button:not(:disabled)')]
     if (!focusable.length) return
@@ -469,9 +548,9 @@ const exportFilteredPdf = () => {
     return
   }
   popup.onload = () => { popup.focus(); popup.print() }
-  const headers = ['#', 'Full name', 'Registration code', 'Email', 'Phone', 'Status', 'Checked-in time', ...dynamicColumns.value.map((field) => field.label)]
+  const headers = ['#', 'Full name', 'Registration code', 'Email', 'Phone', 'Gender', 'Age', 'Status', 'Checked-in time', ...dynamicColumns.value.map((field) => field.label)]
   const rowsHtml = filteredRows.value.map((row, index) => {
-    const values = [index + 1, row.name, row.code || '—', row.email || '—', row.phone || '—', row.checkedInAt ? 'Checked in' : 'Not checked in', row.checkedInAt ? dateTimeLabel(row.checkedInAt) : '—', ...dynamicColumns.value.map((field) => formatAnswer(formFieldAnswer(row.registration, field)))]
+    const values = [index + 1, row.name, row.code || '—', row.email || '—', row.phone || '—', row.gender || '—', row.age || '—', row.checkedInAt ? 'Checked in' : 'Not checked in', row.checkedInAt ? dateTimeLabel(row.checkedInAt) : '—', ...dynamicColumns.value.map((field) => formatAnswer(formFieldAnswer(row.registration, field)))]
     return `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`
   }).join('')
   const title = selectedEvent.value?.name || 'Attendee list'
@@ -497,9 +576,7 @@ onBeforeUnmount(() => {
 <template>
   <AdminLayout>
     <section class="at-page">
-      <header class="at-header">
-        <h1>Event Detail</h1>
-      </header>
+      <header class="at-header"><h1>Event Detail</h1></header>
 
       <p v-if="eventsError" class="at-alert" role="alert">
         <AppIcon name="alert-circle" :size="18" />
@@ -507,220 +584,164 @@ onBeforeUnmount(() => {
         <button type="button" class="at-btn at-btn--ghost" :disabled="loading" @click="loadWorkspace">{{ loading ? 'Retrying…' : 'Retry' }}</button>
       </p>
 
-      <div class="at-layout">
-        <aside class="at-card at-events" aria-labelledby="at-events-title">
-          <div class="at-events__head">
-            <h2 id="at-events-title">Events <span class="at-count">{{ events.length }}</span></h2>
-            <RouterLink to="/admin/events/new" class="at-btn at-btn--ghost at-btn--sm"><AppIcon name="plus" :size="16" />New</RouterLink>
+      <template v-if="!loading && events.length">
+        <section class="at-card at-event-picker" aria-label="Select event">
+          <div class="at-event-picker__main">
+            <label for="at-event-select">Select event:</label>
+            <select id="at-event-select" :value="selectedEventId ?? ''" @change="selectEventFromPicker($event.target.value)">
+              <option v-for="event in events" :key="event.id" :value="event.id">{{ event.name }} ({{ eventStatusLabel(event) }})</option>
+            </select>
+            <span class="at-event-picker__total">({{ events.length }} total)</span>
           </div>
-          <label class="at-search">
-            <AppIcon name="search" :size="17" />
-            <span class="sr-only">Search events</span>
-            <input v-model="eventFilter" type="search" placeholder="Search events or venues" />
-          </label>
-          <div class="at-scope" role="group" aria-label="Show events by date">
-            <button v-for="scope in scopes" :key="scope.value" type="button" :aria-pressed="eventScope === scope.value" :class="{ 'is-active': eventScope === scope.value }" @click="eventScope = scope.value">
-              {{ scope.label }} <span>{{ scopeCount(scope.value) }}</span>
-            </button>
-          </div>
+          <RouterLink to="/admin/events/new" class="at-btn at-btn--ghost at-btn--sm"><AppIcon name="plus" :size="16" />New Event</RouterLink>
+        </section>
 
-          <ul v-if="loading" class="at-event-list" aria-busy="true">
-            <li v-for="n in 3" :key="n" class="at-skeleton at-skeleton--event" />
-          </ul>
-          <ul v-else-if="visibleEvents.length" class="at-event-list">
-            <li v-for="event in visibleEvents" :key="event.id">
-              <button type="button" class="at-event" :class="{ 'is-selected': event.id === selectedEventId }" :aria-current="event.id === selectedEventId ? 'true' : undefined" @click="selectEvent(event)">
-                <span class="at-thumb"><img v-if="eventImage(event)" :src="eventImage(event)" alt="" /><b v-else>{{ initials(event.name) }}</b></span>
-                <span class="at-event__body">
-                  <strong class="at-event__name">{{ event.name }}</strong>
-                  <span class="at-meta"><AppIcon name="calendar" :size="14" />{{ dateRangeLabel(event) }}</span>
-                  <span class="at-meta"><AppIcon name="pin" :size="14" />{{ event.location || 'Location to be announced' }}</span>
-                  <span class="at-event__foot">
-                    <span class="at-badge" :class="`at-badge--${eventPhase(event)}`">{{ phaseLabels[eventPhase(event)] }}</span>
-                    <span class="at-event__count"><b>{{ registeredFor(event) }}</b> registered</span>
-                  </span>
-                </span>
+        <template v-if="selectedEvent">
+          <section class="at-card at-event-summary" aria-labelledby="at-event-title">
+            <div class="at-event-summary__details">
+              <h2 id="at-event-title">{{ selectedEvent.name }}</h2>
+              <div class="at-event-summary__meta">
+                <span><AppIcon name="pin" :size="15" /><strong>{{ selectedEvent.location || 'Location to be announced' }}</strong></span>
+                <span class="at-event-summary__dot" aria-hidden="true">·</span>
+                <span><AppIcon name="clock" :size="15" />{{ dateRangeLabel(selectedEvent) }} · {{ eventTimeLabel(selectedEvent) }}</span>
+              </div>
+            </div>
+            <RouterLink v-if="terminalActive" class="at-terminal-badge" :to="{ path: '/admin/check-ins', query: { event: selectedEvent.id } }">
+              <i aria-hidden="true"></i>Check-in Terminal Active
+            </RouterLink>
+            <span v-else class="at-terminal-badge is-inactive"><i aria-hidden="true"></i>Check-in Terminal Inactive</span>
+          </section>
+
+          <section class="at-card at-roster" aria-labelledby="at-roster-title">
+            <header class="at-roster__head at-roster__head--reference">
+              <div class="at-roster__title">
+                <h2 id="at-roster-title">List Registrant</h2>
+                <span class="at-count">{{ attendeesLoading ? '…' : totalCount }} {{ totalCount === 1 ? 'Registrant' : 'Registrants' }}</span>
+              </div>
+              <div class="at-overview__actions at-reference-actions">
+                <button type="button" class="at-btn at-btn--secondary at-btn--sm" :disabled="exporting || attendeesLoading || !filteredRows.length" :aria-busy="exporting" @click="exportFilteredExcel">
+                  <AppIcon name="download" :size="15" />{{ exporting ? 'Exporting…' : 'Excel' }}
+                </button>
+                <button type="button" class="at-btn at-btn--secondary at-btn--sm" aria-label="Export filtered registrants to PDF" :disabled="attendeesLoading || !filteredRows.length" @click="exportFilteredPdf"><AppIcon name="file-text" :size="15" />PDF</button>
+                <button type="button" class="at-btn at-btn--primary at-btn--sm" :disabled="!selectedEvent" @click="openCheckInDesk"><AppIcon name="scan" :size="15" />Check-in</button>
+              </div>
+            </header>
+
+            <p v-if="exportError" class="at-inline-error at-reference-error" role="alert">{{ exportError }}</p>
+            <p v-if="filteredRows.length && hasNarrowing" class="at-export-note at-reference-export-note">Exports include the {{ filteredRows.length }} registrants currently matching your filters.</p>
+
+            <div class="at-toolbar at-toolbar--reference">
+              <label class="at-search at-search--wide">
+                <AppIcon name="search" :size="16" />
+                <span class="sr-only">Search registrants</span>
+                <input v-model="search" type="search" placeholder="Search name, email, phone or code" :disabled="attendeesLoading" />
+              </label>
+              <label class="at-select at-sort-select">
+                <AppIcon name="sort" :size="15" />
+                <span class="sr-only">Sort registrants</span>
+                <select v-model="sortBy">
+                  <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </label>
+              <button v-if="ageOptions.length || genderOptions.length || ethnicityOptions.length || disabilityOptions.length" type="button" class="at-btn at-btn--ghost at-btn--sm at-filter-toggle" :aria-expanded="showFilters" @click="showFilters = !showFilters">
+                <AppIcon name="filter-x" :size="15" />Filters<span v-if="activeFilterCount">{{ activeFilterCount }}</span>
               </button>
-            </li>
-          </ul>
-          <div v-else class="at-events__empty">
-            <template v-if="events.length">
-              <p>No events match {{ eventFilter ? `“${eventFilter}”` : 'this view' }}.</p>
-              <button type="button" class="at-btn at-btn--ghost at-btn--sm" @click="eventFilter = ''; eventScope = 'all'">Show all events</button>
+            </div>
+            <div v-if="showFilters && (ageOptions.length || genderOptions.length || ethnicityOptions.length || disabilityOptions.length)" class="at-filters at-filters--reference">
+              <label v-if="ageOptions.length" class="at-select" :class="{ 'is-active': ageFilter !== 'all' }">
+                <span class="sr-only">Filter by age</span><select v-model="ageFilter"><option value="all">Any age</option><option v-for="option in ageOptions" :key="option" :value="option">{{ option }}</option></select>
+              </label>
+              <label v-if="genderOptions.length" class="at-select" :class="{ 'is-active': genderFilter !== 'all' }">
+                <span class="sr-only">Filter by gender</span><select v-model="genderFilter"><option value="all">Any gender</option><option v-for="option in genderOptions" :key="option" :value="option">{{ option }}</option></select>
+              </label>
+              <label v-if="ethnicityOptions.length" class="at-select" :class="{ 'is-active': ethnicityFilter !== 'all' }">
+                <span class="sr-only">Filter by ethnicity</span><select v-model="ethnicityFilter"><option value="all">Any ethnicity</option><option v-for="option in ethnicityOptions" :key="option" :value="option">{{ option }}</option></select>
+              </label>
+              <label v-if="disabilityOptions.length" class="at-select" :class="{ 'is-active': disabilityFilter !== 'all' }">
+                <span class="sr-only">Filter by disability</span><select v-model="disabilityFilter"><option value="all">Any disability</option><option v-for="option in disabilityOptions" :key="option" :value="option">{{ option }}</option></select>
+              </label>
+              <button v-if="hasNarrowing" type="button" class="at-btn at-btn--text" @click="clearFilters"><AppIcon name="filter-x" :size="15" />Clear filters</button>
+            </div>
+
+            <div v-if="attendeesLoading" class="at-table-loading" aria-busy="true">
+              <span class="sr-only" role="status">Loading registrants…</span>
+              <div v-for="n in 4" :key="n" class="at-skeleton at-skeleton--row" />
+            </div>
+            <div v-else-if="attendeesError" class="at-state" role="alert">
+              <AppIcon name="alert-circle" :size="26" /><strong>{{ attendeesError }}</strong><p>Check your connection and try again.</p>
+              <button type="button" class="at-btn at-btn--secondary" @click="loadAttendees()"><AppIcon name="refresh" :size="16" />Try again</button>
+            </div>
+            <div v-else-if="!rows.length" class="at-state">
+              <AppIcon name="users" :size="26" /><strong>No one has registered yet</strong><p>Attendees will appear here as soon as people sign up for this event.</p>
+            </div>
+            <div v-else-if="!filteredRows.length" class="at-state">
+              <AppIcon name="search" :size="26" /><strong>No registrants match</strong><p>Try a different search or clear the filters.</p>
+              <button type="button" class="at-btn at-btn--secondary" @click="clearFilters"><AppIcon name="filter-x" :size="16" />Clear filters</button>
+            </div>
+            <template v-else>
+              <p class="sr-only" role="status">Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredRows.length }} registrants</p>
+              <div class="at-table-wrap at-table-wrap--reference">
+                <table class="at-table at-table--reference">
+                  <caption class="sr-only">Registrants for {{ selectedEvent.name }}</caption>
+                  <thead><tr>
+                    <th scope="col" :aria-sort="ariaSort('name')"><button type="button" class="at-sort" @click="sortColumn('name')">Name<AppIcon :name="ariaSort('name') === 'descending' ? 'arrow-down' : ariaSort('name') === 'ascending' ? 'arrow-up' : 'sort'" :size="13" /></button></th>
+                    <th scope="col">Gender <small>(M/F/N/P)</small></th>
+                    <th scope="col">Age <small>(K/Y/A/E)</small></th>
+                    <th scope="col" :aria-sort="ariaSort('registered')"><button type="button" class="at-sort" @click="sortColumn('registered')">Time<AppIcon :name="ariaSort('registered') === 'descending' ? 'arrow-down' : ariaSort('registered') === 'ascending' ? 'arrow-up' : 'sort'" :size="13" /></button></th>
+                    <th scope="col" class="at-reference-actions-heading">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr v-for="row in pageRows" :key="row.key">
+                      <td class="at-cell-person">
+                        <div class="at-person">
+                          <span class="at-avatar" aria-hidden="true">{{ initials(row.name) }}</span>
+                          <span class="at-person__text"><strong>{{ row.name }}</strong><small>{{ row.email || row.phone || 'No contact details' }}</small></span>
+                        </div>
+                      </td>
+                      <td data-label="Gender"><span class="at-code-badge">{{ row.gender || '—' }}</span></td>
+                      <td data-label="Age"><span class="at-code-badge">{{ row.age || '—' }}</span></td>
+                      <td data-label="Time" class="at-reference-time"><time v-if="row.registeredAt" :datetime="row.registeredAt.toISOString()">{{ row.registeredAt.toLocaleString(undefined, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time><template v-else>—</template></td>
+                      <td class="at-cell-actions at-reference-row-actions">
+                        <button type="button" class="at-icon-action" :aria-label="`View ${row.name}`" title="View" @click="openDetails(row)"><AppIcon name="eye" :size="15" /></button>
+                        <button type="button" class="at-icon-action is-edit" :aria-label="`Edit ${row.name}`" title="Edit" @click="openEditRegistrant(row)"><AppIcon name="pen" :size="15" /></button>
+                        <button type="button" class="at-icon-action is-delete" :aria-label="`Delete ${row.name}`" title="Delete" @click="openDeleteRegistrant(row)"><AppIcon name="trash" :size="15" /></button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <footer class="at-pagination at-pagination--reference">
+                <p>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredRows.length }} registrants</p>
+                <nav class="at-pager" aria-label="Registrant pages">
+                  <button type="button" :disabled="currentPage === 1" aria-label="Previous page" @click="goToPage(currentPage - 1)"><AppIcon name="chevron-left" :size="15" /></button>
+                  <template v-for="item in pageItems" :key="item">
+                    <span v-if="typeof item === 'string'" class="at-pager__gap" aria-hidden="true">…</span>
+                    <button v-else type="button" :class="{ 'is-current': item === currentPage }" :aria-current="item === currentPage ? 'page' : undefined" :aria-label="`Page ${item}`" @click="goToPage(item)">{{ item }}</button>
+                  </template>
+                  <button type="button" :disabled="currentPage === pageCount" aria-label="Next page" @click="goToPage(currentPage + 1)"><AppIcon name="chevron-right" :size="15" /></button>
+                </nav>
+              </footer>
             </template>
-            <p v-else>No events yet.</p>
-          </div>
-        </aside>
-
-        <div class="at-main">
-          <div v-if="loading" class="at-card at-skeleton at-skeleton--head" aria-busy="true"><span class="sr-only">Loading attendance…</span></div>
-
-          <template v-else-if="selectedEvent">
-            <section class="at-card at-overview" aria-labelledby="at-event-title">
-              <div class="at-overview__top">
-                <span class="at-thumb at-thumb--lg"><img v-if="eventImage(selectedEvent)" :src="eventImage(selectedEvent)" alt="" /><b v-else>{{ initials(selectedEvent.name) }}</b></span>
-                <div class="at-overview__copy">
-                  <span class="at-badge" :class="`at-badge--${eventPhase(selectedEvent)}`">{{ phaseLabels[eventPhase(selectedEvent)] }}</span>
-                  <h2 id="at-event-title">{{ selectedEvent.name }}</h2>
-                  <p class="at-meta"><AppIcon name="calendar" :size="15" />{{ dateRangeLabel(selectedEvent) }}</p>
-                  <p v-if="selectedEvent.starts" class="at-meta"><AppIcon name="clock" :size="15" />{{ timeRangeLabel(selectedEvent) }}</p>
-                  <p class="at-meta"><AppIcon name="pin" :size="15" />{{ selectedEvent.location || 'Location to be announced' }}</p>
-                </div>
-                <div class="at-overview__actions">
-                  <button type="button" class="at-btn at-btn--secondary" :disabled="exporting || attendeesLoading || !filteredRows.length" :aria-busy="exporting" @click="exportFilteredExcel">
-                    <AppIcon name="download" :size="17" />{{ exporting ? 'Exporting…' : 'Excel' }}
-                  </button>
-                  <button type="button" class="at-btn at-btn--secondary" aria-label="Export filtered attendees to PDF" :disabled="attendeesLoading || !filteredRows.length" @click="exportFilteredPdf"><AppIcon name="file-text" :size="17" />PDF</button>
-                  <button type="button" class="at-btn at-btn--primary" @click="openCheckInDesk"><AppIcon name="scan" :size="17" />Check-in</button>
-                </div>
-              </div>
-              <p v-if="exportError" class="at-inline-error" role="alert">{{ exportError }}</p>
-              <p v-if="filteredRows.length && hasNarrowing" class="at-export-note">Export includes the {{ filteredRows.length }} {{ filteredRows.length === 1 ? 'attendee' : 'attendees' }} currently shown.</p>
-
-              <dl class="at-stats" :aria-busy="attendeesLoading">
-                <div class="at-stat">
-                  <dt><AppIcon name="users" :size="16" />Registered</dt>
-                  <dd>{{ attendeesLoading ? '—' : totalCount }}</dd>
-                </div>
-                <div class="at-stat at-stat--in">
-                  <dt><AppIcon name="user-check" :size="16" />Checked in</dt>
-                  <dd>{{ attendeesLoading ? '—' : checkedInCount }}</dd>
-                  <small>{{ attendeesLoading ? '' : `${checkInRate}% of registered` }}</small>
-                </div>
-                <div class="at-stat">
-                  <dt><AppIcon name="timer" :size="16" />Not checked in</dt>
-                  <dd>{{ attendeesLoading ? '—' : remainingCount }}</dd>
-                  <small>still to arrive</small>
-                </div>
-              </dl>
-            </section>
-
-            <section class="at-card at-roster" aria-labelledby="at-roster-title">
-              <div class="at-roster__head">
-                <h2 id="at-roster-title">Attendees</h2>
-              </div>
-
-              <div class="at-toolbar">
-                <label class="at-search at-search--wide">
-                  <AppIcon name="search" :size="17" />
-                  <span class="sr-only">Search attendees</span>
-                  <input v-model="search" type="search" placeholder="Search name, email, phone or code" :disabled="attendeesLoading" />
-                </label>
-                <label class="at-select">
-                  <span class="sr-only">Sort attendees</span>
-                  <AppIcon name="sort" :size="16" />
-                  <select v-model="sortBy">
-                    <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                  </select>
-                </label>
-              </div>
-              <div v-if="ageOptions.length || genderOptions.length || ethnicityOptions.length || disabilityOptions.length" class="at-filters">
-                <label v-if="ageOptions.length" class="at-select" :class="{ 'is-active': ageFilter !== 'all' }">
-                  <span class="sr-only">Filter by age</span>
-                  <select v-model="ageFilter"><option value="all">Any age</option><option v-for="option in ageOptions" :key="option" :value="option">{{ option }}</option></select>
-                </label>
-                <label v-if="genderOptions.length" class="at-select" :class="{ 'is-active': genderFilter !== 'all' }">
-                  <span class="sr-only">Filter by gender</span>
-                  <select v-model="genderFilter"><option value="all">Any gender</option><option v-for="option in genderOptions" :key="option" :value="option">{{ option }}</option></select>
-                </label>
-                <label v-if="ethnicityOptions.length" class="at-select" :class="{ 'is-active': ethnicityFilter !== 'all' }">
-                  <span class="sr-only">Filter by ethnicity</span>
-                  <select v-model="ethnicityFilter"><option value="all">Any ethnicity</option><option v-for="option in ethnicityOptions" :key="option" :value="option">{{ option }}</option></select>
-                </label>
-                <label v-if="disabilityOptions.length" class="at-select" :class="{ 'is-active': disabilityFilter !== 'all' }">
-                  <span class="sr-only">Filter by disability</span>
-                  <select v-model="disabilityFilter"><option value="all">Any disability</option><option v-for="option in disabilityOptions" :key="option" :value="option">{{ option }}</option></select>
-                </label>
-                <button v-if="hasNarrowing" type="button" class="at-btn at-btn--text" @click="clearFilters"><AppIcon name="filter-x" :size="16" />Clear filters</button>
-              </div>
-
-              <div v-if="attendeesLoading" class="at-table-loading" aria-busy="true">
-                <span class="sr-only" role="status">Loading attendees…</span>
-                <div v-for="n in 5" :key="n" class="at-skeleton at-skeleton--row" />
-              </div>
-              <div v-else-if="attendeesError" class="at-state" role="alert">
-                <AppIcon name="alert-circle" :size="26" />
-                <strong>{{ attendeesError }}</strong>
-                <p>Check your connection and try again.</p>
-                <button type="button" class="at-btn at-btn--secondary" @click="loadAttendees()"><AppIcon name="refresh" :size="16" />Try again</button>
-              </div>
-              <div v-else-if="!rows.length" class="at-state">
-                <AppIcon name="users" :size="26" />
-                <strong>No one has registered yet</strong>
-                <p>Attendees will appear here as soon as people sign up for this event.</p>
-              </div>
-              <div v-else-if="!filteredRows.length" class="at-state">
-                <AppIcon name="search" :size="26" />
-                <strong>No attendees match</strong>
-                <p>Try a different search or clear the filters.</p>
-                <button type="button" class="at-btn at-btn--secondary" @click="clearFilters"><AppIcon name="filter-x" :size="16" />Clear filters</button>
-              </div>
-              <template v-else>
-                <p class="sr-only" role="status">Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredRows.length }} attendees</p>
-                <div class="at-table-wrap">
-                  <table class="at-table">
-                    <thead>
-                      <tr>
-                        <th scope="col" :aria-sort="ariaSort('name')"><button type="button" class="at-sort" @click="sortColumn('name')">Attendee<AppIcon :name="ariaSort('name') === 'descending' ? 'arrow-down' : ariaSort('name') === 'ascending' ? 'arrow-up' : 'sort'" :size="14" /></button></th>
-                        <th scope="col">Gender</th>
-                        <th scope="col">Age</th>
-                        <th scope="col" class="at-col-registered" :aria-sort="ariaSort('registered')"><button type="button" class="at-sort" @click="sortColumn('registered')">Registered<AppIcon :name="ariaSort('registered') === 'descending' ? 'arrow-down' : ariaSort('registered') === 'ascending' ? 'arrow-up' : 'sort'" :size="14" /></button></th>
-                        <th scope="col" :aria-sort="ariaSort('checkin')"><button type="button" class="at-sort" @click="sortColumn('checkin')">Check-in<AppIcon :name="ariaSort('checkin') === 'descending' ? 'arrow-down' : ariaSort('checkin') === 'ascending' ? 'arrow-up' : 'sort'" :size="14" /></button></th>
-                        <th scope="col"><span class="sr-only">Actions</span></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="row in pageRows" :key="row.key" :class="{ 'is-open': row.key === detailKey }">
-                        <td class="at-cell-person">
-                          <div class="at-person">
-                            <span class="at-avatar" aria-hidden="true">{{ initials(row.name) }}</span>
-                            <span class="at-person__text">
-                              <strong>{{ row.name }}</strong>
-                              <small>{{ row.email || row.phone || 'No contact details' }}</small>
-                              <small v-if="row.code" class="at-code">{{ row.code }}</small>
-                            </span>
-                          </div>
-                        </td>
-                        <td data-label="Gender">{{ row.gender || '—' }}</td>
-                        <td data-label="Age">{{ row.age || '—' }}</td>
-                        <td data-label="Registered" class="at-col-registered"><time v-if="row.registeredAt" :datetime="row.registeredAt.toISOString()">{{ row.registeredAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) }}</time><template v-else>—</template></td>
-                        <td data-label="Check-in">
-                          <span v-if="row.checkedInAt" class="at-badge at-badge--in"><AppIcon name="check" :size="13" />Checked in · {{ checkedTimeLabel(row.checkedInAt) }}</span>
-                          <span v-else class="at-badge at-badge--out">Not checked in</span>
-                        </td>
-                        <td class="at-cell-actions">
-                          <button type="button" class="at-btn at-btn--ghost at-btn--sm at-btn--details" :aria-label="`View details for ${row.name}`" title="View details" @click="openDetails(row)"><AppIcon name="eye" :size="17" /><span class="at-btn__label">Details</span></button>
-                          <button v-if="!row.checkedInAt" type="button" class="at-btn at-btn--primary at-btn--sm" :disabled="pendingCheckIn !== null" :aria-label="`Check in ${row.name}`" @click="openDetails(row, { confirm: true })">Check in</button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <footer class="at-pagination">
-                  <p>Showing <b>{{ pageStart }}–{{ pageEnd }}</b> of <b>{{ filteredRows.length }}</b></p>
-                  <label class="at-page-size">Rows
-                    <select v-model.number="pageSize"><option v-for="size in pageSizes" :key="size" :value="size">{{ size }}</option></select>
-                  </label>
-                  <nav v-if="pageCount > 1" class="at-pager" aria-label="Attendee pages">
-                    <button type="button" :disabled="currentPage === 1" aria-label="Previous page" @click="goToPage(currentPage - 1)"><AppIcon name="chevron-left" :size="16" /></button>
-                    <template v-for="item in pageItems" :key="item">
-                      <span v-if="typeof item === 'string'" class="at-pager__gap" aria-hidden="true">…</span>
-                      <button v-else type="button" :class="{ 'is-current': item === currentPage }" :aria-current="item === currentPage ? 'page' : undefined" :aria-label="`Page ${item}`" @click="goToPage(item)">{{ item }}</button>
-                    </template>
-                    <button type="button" :disabled="currentPage === pageCount" aria-label="Next page" @click="goToPage(currentPage + 1)"><AppIcon name="chevron-right" :size="16" /></button>
-                  </nav>
-                </footer>
-              </template>
-            </section>
-          </template>
-
-          <div v-else class="at-card at-state at-state--page">
-            <AppIcon name="calendar-plus" :size="28" />
-            <strong>{{ events.length ? 'Select an event' : 'No events yet' }}</strong>
-            <p>{{ events.length ? 'Choose an event from the list to see its attendance.' : 'Create an event to start tracking attendance.' }}</p>
-            <RouterLink v-if="!events.length" to="/admin/events/new" class="at-btn at-btn--primary"><AppIcon name="plus" :size="16" />Create event</RouterLink>
-          </div>
+          </section>
+        </template>
+        <div v-else class="at-card at-state at-state--page">
+          <AppIcon name="calendar-plus" :size="28" /><strong>Select an event</strong><p>Choose an event above to see its registrants.</p>
         </div>
+      </template>
+
+      <div v-else-if="loading" class="at-loading-workspace" role="status" aria-label="Loading event details">
+        <div class="at-loading-picker"><span></span><i></i><b></b></div>
+        <div class="at-loading-summary"><span></span><b></b><i></i><i></i></div>
+        <div class="at-loading-roster">
+          <div class="at-loading-roster__head"><b></b><span></span></div>
+          <div class="at-loading-roster__toolbar"><i></i><i></i></div>
+          <div v-for="row in 4" :key="row" class="at-loading-roster__row"><i></i><span></span><b></b><b></b><em></em></div>
+        </div>
+        <span class="sr-only">Loading events…</span>
+      </div>
+      <div v-else class="at-card at-state at-state--page">
+        <AppIcon name="calendar-plus" :size="28" /><strong>No events yet</strong><p>Create an event to start collecting registrations.</p>
+        <RouterLink to="/admin/events/new" class="at-btn at-btn--primary"><AppIcon name="plus" :size="16" />Create event</RouterLink>
       </div>
 
       <p class="at-toast" :class="{ 'is-visible': notice }" role="status" aria-live="polite"><AppIcon v-if="notice" name="check-circle" :size="18" />{{ notice }}</p>
@@ -789,6 +810,44 @@ onBeforeUnmount(() => {
           <footer class="at-drawer__foot">
           </footer>
         </aside>
+      </div>
+      <div v-if="editingRow" class="at-modal-backdrop" @click.self="closeRegistrantDialog">
+        <section class="at-modal" role="dialog" aria-modal="true" aria-labelledby="at-edit-title">
+          <header class="at-modal__head">
+            <div><h2 id="at-edit-title">Edit registrant</h2><p>Update attendee contact and profile details.</p></div>
+            <button type="button" class="at-modal__close" aria-label="Close dialog" :disabled="savingRegistrant" @click="closeRegistrantDialog"><AppIcon name="x" :size="18" /></button>
+          </header>
+          <form class="at-modal__form" @submit.prevent="saveRegistrant">
+            <label>Full name<input v-model.trim="editForm.full_name" name="full_name" required minlength="2" maxlength="100" autocomplete="name" /></label>
+            <div class="at-modal__row">
+              <label>Email<input v-model.trim="editForm.email" type="email" maxlength="150" autocomplete="email" /></label>
+              <label>Phone<input v-model.trim="editForm.phone" type="tel" maxlength="30" autocomplete="tel" /></label>
+            </div>
+            <div class="at-modal__row">
+              <label>Gender<select v-model="editForm.gender"><option value="">Not provided</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label>
+              <label>Age<input v-model="editForm.age" type="number" min="1" max="120" /></label>
+            </div>
+            <p v-if="editError" class="at-inline-error" role="alert">{{ editError }}</p>
+            <footer class="at-modal__actions">
+              <button type="button" class="at-btn at-btn--ghost" :disabled="savingRegistrant" @click="closeRegistrantDialog">Cancel</button>
+              <button type="submit" class="at-btn at-btn--primary" :disabled="savingRegistrant">{{ savingRegistrant ? 'Saving…' : 'Save changes' }}</button>
+            </footer>
+          </form>
+        </section>
+      </div>
+      <div v-if="deleteRow" class="at-modal-backdrop" @click.self="closeRegistrantDialog">
+        <section class="at-modal" role="dialog" aria-modal="true" aria-labelledby="at-delete-title">
+          <header class="at-modal__head">
+            <div><h2 id="at-delete-title">Delete registrant?</h2><p>This removes {{ deleteRow.name }} from this event.</p></div>
+            <button type="button" class="at-modal__close" aria-label="Close dialog" :disabled="deletingRegistrant" @click="closeRegistrantDialog"><AppIcon name="x" :size="18" /></button>
+          </header>
+          <p class="at-modal__warning">This action cannot be undone. An attendee who has already checked in cannot be deleted.</p>
+          <p v-if="deleteError" class="at-inline-error" role="alert">{{ deleteError }}</p>
+          <footer class="at-modal__actions">
+            <button type="button" class="at-btn at-btn--ghost" :disabled="deletingRegistrant" @click="closeRegistrantDialog">Cancel</button>
+            <button type="button" class="at-btn at-btn--danger" :disabled="deletingRegistrant" @click="confirmDeleteRegistrant">{{ deletingRegistrant ? 'Deleting…' : 'Delete registrant' }}</button>
+          </footer>
+        </section>
       </div>
     </Teleport>
   </AdminLayout>

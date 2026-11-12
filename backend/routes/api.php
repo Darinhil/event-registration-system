@@ -97,6 +97,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update'])->middleware('can:update,event');
         Route::get('/events/{event}/registrants', [EventController::class, 'registrants'])->middleware('can:view,event');
+        Route::put('/events/{event}/registrants/{registration}', [AdminController::class, 'updateRegistrant'])->middleware('can:update,event');
+        Route::delete('/events/{event}/registrants/{registration}', [AdminController::class, 'deleteRegistrant'])->middleware('can:update,event');
         Route::post('/events/{event}/check-in-qr', [EventController::class, 'regenerateCheckInQr'])->middleware('can:update,event');
         Route::get('/events/{event}/form-builder', [FormBuilderController::class, 'show'])->middleware('can:view,event');
         Route::put('/events/{event}/form-builder', [FormBuilderController::class, 'update'])->middleware('can:update,event');
