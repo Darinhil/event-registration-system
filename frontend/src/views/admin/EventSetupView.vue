@@ -458,7 +458,7 @@ const saveDraft = async () => {
 const primaryLabel = computed(() => {
   if (activeStep.value === 2) return agenda.value.length ? 'Continue' : 'Skip agenda'
   if (activeStep.value === 3) return 'Review event'
-  if (activeStep.value === 4) return isLive.value ? 'Save changes' : 'Publish event'
+  if (activeStep.value === 4) return isLive.value ? 'Save changes' : 'Submit event'
   return 'Continue'
 })
 const onPrimary = () => {
@@ -661,7 +661,6 @@ onBeforeUnmount(() => {
         </div>
         <div class="es-header__actions">
           <span class="es-save-state" :class="`is-${saveIndicator.tone}`" role="status" aria-live="polite"><AppIcon :name="saveIndicator.icon" :size="15" :class="{ 'is-spinning': saveIndicator.tone === 'busy' }" />{{ saveIndicator.label }}</span>
-          <button v-if="canSaveDraft" type="button" class="es-btn" :disabled="busy || loading || Boolean(loadError)" @click="saveDraft"><AppIcon name="save" :size="16" />{{ saveState === 'saving' && !publishing ? 'Saving…' : 'Save draft' }}</button>
         </div>
       </header>
 
@@ -933,13 +932,15 @@ onBeforeUnmount(() => {
         </div>
 
         <footer class="es-footer">
-          <button v-if="activeStep > 1" type="button" class="es-btn" :disabled="busy" @click="goToStep(activeStep - 1)"><AppIcon name="chevron-left" :size="16" />Back</button>
           <span class="es-footer__progress" aria-hidden="true"><i v-for="step in steps" :key="step.id" :class="{ 'is-done': step.id <= activeStep }"></i></span>
-          <button v-if="activeStep === steps.length && canSaveDraft" type="button" class="es-btn es-footer__draft" :disabled="busy" @click="saveDraft"><AppIcon name="save" :size="16" />Save draft</button>
-          <button type="submit" class="es-btn es-btn--primary es-footer__primary" :disabled="busy">
-            <template v-if="activeStep === steps.length && publishing">Publishing…</template>
-            <template v-else>{{ primaryLabel }}<AppIcon :name="activeStep === steps.length ? (isLive ? 'check' : 'send') : 'arrow-right'" :size="16" /></template>
-          </button>
+          <div class="es-footer__actions">
+            <button v-if="activeStep > 1" type="button" class="es-btn" :disabled="busy" @click="goToStep(activeStep - 1)"><AppIcon name="chevron-left" :size="16" />Back</button>
+            <button v-if="canSaveDraft" type="button" class="es-btn es-footer__draft" :disabled="busy" @click="saveDraft"><AppIcon name="save" :size="16" />Save</button>
+            <button type="submit" class="es-btn es-btn--primary es-footer__primary" :disabled="busy">
+              <template v-if="activeStep === steps.length && publishing">Publishing…</template>
+              <template v-else>{{ primaryLabel }}<AppIcon :name="activeStep === steps.length ? (isLive ? 'check' : 'send') : 'arrow-right'" :size="16" /></template>
+            </button>
+          </div>
         </footer>
       </form>
     </section>
@@ -1013,7 +1014,7 @@ onBeforeUnmount(() => {
           <template v-else-if="event.registration_start && event.registration_start > toLocalParts(new Date().toISOString()).date">The event page goes live now. Registration opens on {{ formatDate(event.registration_start) }}.</template>
           <template v-else>The event page goes live and attendees can register right away.</template>
         </p>
-        <footer><button type="button" class="es-btn" :disabled="publishing" @click="confirmOpen = false">Cancel</button><button id="publish-confirm" type="button" class="es-btn es-btn--primary" :disabled="publishing" @click="confirmPublish">{{ publishing ? (isLive ? 'Saving…' : 'Publishing…') : (isLive ? 'Save changes' : 'Publish event') }}</button></footer>
+        <footer><button type="button" class="es-btn" :disabled="publishing" @click="confirmOpen = false">Cancel</button><button id="publish-confirm" type="button" class="es-btn es-btn--primary" :disabled="publishing" @click="confirmPublish">{{ publishing ? (isLive ? 'Saving…' : 'Publishing…') : (isLive ? 'Save changes' : 'Submit event') }}</button></footer>
       </section>
     </div>
 

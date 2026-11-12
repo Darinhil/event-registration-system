@@ -21,7 +21,6 @@ const EventSetupView = () => import('../views/admin/EventSetupView.vue')
 const FormBuilderView = () => import('../views/admin/FormBuilderView.vue')
 const EventsView = () => import('../views/admin/EventsView.vue')
 const EventDetailsView = () => import('../views/admin/EventDetailsView.vue')
-const EventRegistrantsView = () => import('../views/admin/EventRegistrantsView.vue')
 const AdminProfileView = () => import('../views/admin/AdminProfileView.vue')
 const PersonnelProfileView = () => import('../views/admin/PersonnelProfileView.vue')
 const ReportsView = () => import('../views/admin/ReportsView.vue')
@@ -53,7 +52,7 @@ const router = createRouter({
     { path: '/admin/events', component: EventsView, meta: eventStaff },
     { path: '/admin/events/new', component: EventSetupView, meta: eventStaff },
     { path: '/admin/events/:id/edit', component: EventSetupView, meta: eventStaff },
-    { path: '/admin/events/:id/registrants', component: EventRegistrantsView, meta: eventStaff },
+    { path: '/admin/events/:id/registrants', redirect: (to) => ({ path: '/admin/users', query: { ...to.query, event: to.params.id } }), meta: eventStaff },
     { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: eventStaff },
     { path: '/admin/events/:id', component: EventDetailsView, meta: eventStaff },
     { path: '/admin/users', component: UsersView, meta: eventStaff },

@@ -8,6 +8,7 @@ import api from '../../services/api'
 import { getEventCheckInSummary, getEventReportAttendees } from '../../services/adminService'
 import { copyText } from '../../utils/clipboard'
 import { capacityProgress, checkInProgress, downloadCsv, publicationStatus, registrationState, scheduleLabels, toLocalParts } from '../../utils/eventStats'
+import { ageCode, genderCode } from '../../utils/registrationCodes'
 
 const route = useRoute()
 const eventId = computed(() => route.params.id)
@@ -109,7 +110,17 @@ const exportRegistrants = async () => {
     const header = ['Registration ID', 'Name', 'Email', 'Phone', 'Status', 'Checked in at', 'Checked in by', ...profileKeys.map((key) => key[0].toUpperCase() + key.slice(1)), ...answerLabels]
     const rows = attendees.map((row) => {
       const checkedAt = toLocalParts(row.checked_in_at)
-      return [row.registration_code || row.id, row.name, row.email, row.phone, row.status, checkedAt.value ? `${checkedAt.date} ${checkedAt.time}` : '', row.checked_in_by, ...profileKeys.map((key) => row.profile?.[key]), ...answerLabels.map((label) => { const value = row.form_answers?.[label]; return Array.isArray(value) ? value.join('; ') : value })]
+      const answerFor = (key) => Object.entries(row.form_answers || {}).find(([label]) => {
+        const normalized = label.toLowerCase().replace(/[^a-z]/g, '')
+        return normalized === key || (key === 'age' && normalized === 'agegroup')
+      })?.[1]
+      return [row.registration_code || row.id, row.name, row.email, row.phone, row.status, checkedAt.value ? `${checkedAt.date} ${checkedAt.time}` : '', row.checked_in_by, ...profileKeys.map((key) => key === 'gender' ? genderCode(answerFor(key) || row.profile?.gender) : key === 'age' ? ageCode(answerFor(key) || row.profile?.age) : row.profile?.[key]), ...answerLabels.map((label) => {
+        const value = row.form_answers?.[label]
+        const normalized = label.toLowerCase().replace(/[^a-z]/g, '')
+        if (normalized === 'gender') return genderCode(value)
+        if (normalized === 'age' || normalized === 'agegroup') return ageCode(value)
+        return Array.isArray(value) ? value.join('; ') : value
+      })]
     })
     downloadCsv(`${(event.value?.name || 'event').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'event'}-registrants-${toLocalParts(new Date().toISOString()).date}.csv`, header, rows)
     notify(`Exported ${attendees.length} ${attendees.length === 1 ? 'registrant' : 'registrants'}.`)
@@ -157,7 +168,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 const actionGroups = computed(() => [
   { key: 'registration', label: 'Registration', actions: [
     { key: 'form', label: 'Manage registration form', description: 'Fields, steps and settings', icon: 'file-text', to: `/admin/events/${eventId.value}/form-builder` },
-    { key: 'registrants', label: 'View registrants', description: registered.value ? 'Everyone who signed up' : 'No one has registered yet', icon: 'users', to: `/admin/events/${eventId.value}/registrants`, badge: number(registered.value) },
+    { key: 'registrants', label: 'View registrants', description: registered.value ? 'Everyone who signed up' : 'No one has registered yet', icon: 'users', to: { path: '/admin/users', query: { event: eventId.value } }, badge: number(registered.value) },
   ] },
   { key: 'attendance', label: 'Attendance', actions: [
     { key: 'checkin', label: 'Check in participants', description: 'Scan passes or search by code', icon: 'scan', to: { path: '/admin/check-ins', query: { event: eventId.value } } },

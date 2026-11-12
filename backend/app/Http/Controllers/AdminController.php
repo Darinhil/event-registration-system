@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\FormField;
 use App\Models\Registration;
 use App\Models\User;
+use App\Services\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
@@ -163,6 +164,7 @@ class AdminController extends Controller
                 return [
                     'id' => $registration->id,
                     'registration_code' => $registration->registration_code,
+                    'registered_at' => $registration->created_at?->toIso8601String(),
                     'name' => $registration->full_name ?: $registration->user?->name,
                     'email' => $registration->email ?: $registration->user?->email,
                     'phone' => $registration->phone ?: $registration->user?->phone,
@@ -192,6 +194,27 @@ class AdminController extends Controller
             ],
             'attendees' => $attendees->values(),
         ]]);
+    }
+
+    public function updateRegistrant(\App\Http\Requests\RegistrationRequest $request, Event $event, Registration $registration, RegistrationService $registrations): JsonResponse
+    {
+        abort_unless((int) $registration->event_id === (int) $event->id, 404);
+
+        $data = $request->validated();
+        abort_unless((int) $data['event_id'] === (int) $event->id, 403, 'This registration does not belong to that event.');
+        $registrations->update($registration, $data);
+
+        return response()->json(['message' => 'Registrant updated successfully.']);
+    }
+
+    public function deleteRegistrant(Event $event, Registration $registration): JsonResponse
+    {
+        abort_unless((int) $registration->event_id === (int) $event->id, 404);
+        abort_if($registration->checkIn()->exists(), 422, 'This attendee has already checked in, so the registration cannot be deleted.');
+
+        $registration->delete();
+
+        return response()->json(['message' => 'Registrant deleted successfully.']);
     }
 
     public function users(\Illuminate\Http\Request $request)

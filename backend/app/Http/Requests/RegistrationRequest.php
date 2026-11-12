@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Event;
+use App\Models\Registration;
 use App\Support\FormConditions;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,7 @@ class RegistrationRequest extends FormRequest
             'organization' => ['required_without:form_data', 'nullable', 'string', 'min:2', 'max:150'], 'address' => ['nullable', 'string', 'max:500'],
             'position' => ['nullable', 'string', 'max:150'], 'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
             'emergency_contact_name' => ['nullable', 'string', 'max:100'], 'emergency_contact_phone' => ['nullable', 'string', 'max:30'],
-            'disability_type' => ['nullable', 'array'], 'disability_type.*' => ['string', 'in:C,H,M,R,S'], 'photo_consent' => ['boolean'], 'signature' => ['nullable', 'string', 'max:100000'],
+            'disability_type' => ['nullable', 'array'], 'disability_type.*' => ['string', 'in:C,H,M,R,S,X'], 'photo_consent' => ['boolean'], 'signature' => ['nullable', 'string', 'max:100000'],
         ];
 
         $event = Event::with('formFields')->find($this->input('event_id'));
@@ -92,7 +93,23 @@ class RegistrationRequest extends FormRequest
     {
         // Multipart submissions stringify booleans and drop empty strings for
         // unchecked boxes; coerce "[true]" single-checkbox values to booleans.
+        $disabilityTypes = $this->input('disability_type');
+        if (is_array($disabilityTypes) && array_key_exists('__empty', $disabilityTypes)) {
+            unset($disabilityTypes['__empty']);
+            $this->merge(['disability_type' => array_values($disabilityTypes)]);
+        }
         $formData = $this->input('form_data', []);
+        $event = $this->route('event');
+        $registration = $this->route('registration');
+        if ($event instanceof Event && $registration instanceof Registration) {
+            $formData = is_array($formData) ? $formData : [];
+            if ($formData === []) $formData = (array) $registration->form_data;
+            if ($formData === []) $formData['__empty'] = '';
+            $this->merge([
+                'event_id' => $this->input('event_id', $event->id),
+                'form_data' => $formData,
+            ]);
+        }
         if (! is_array($formData)) return;
 
         foreach ($formData as $key => $value) {
