@@ -63,6 +63,7 @@ class AdminAttendanceTest extends TestCase
             'full_name' => 'Sokha Leng',
             'gender' => 'female',
             'email' => 'sokha@example.com',
+            'photo_consent' => true,
         ]);
 
         $response = $this->getJson('/api/admin/users?event_id=' . $event->id);
@@ -76,6 +77,7 @@ class AdminAttendanceTest extends TestCase
         $this->assertSame('Female', $formValues['Gender']);
         $this->assertSame('M', $formValues['T-shirt Size']);
         $this->assertSame('legacy answer', $formValues['orphan_key']);
+        $this->assertTrue($user['registrations'][0]['photo_consent']);
     }
 
     public function test_users_endpoint_filters_by_event(): void

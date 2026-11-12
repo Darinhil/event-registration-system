@@ -13,6 +13,7 @@ const route = useRoute()
 const auth = useAuthStore()
 const store = useCheckInStore()
 const registration = ref(null)
+const photoConsent = ref(null)
 // Checking in needs the entrance token from the QR poster at the venue; it is sent with the check-in.
 const entranceToken = ref('')
 const isEntranceToken = (value) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value)
@@ -56,6 +57,7 @@ const resolveRegistration = async (token) => {
   lookupError.value = ''
   resolving.value = true
   registration.value = null
+  photoConsent.value = null
   store.reset()
   try {
     await store.preview({ entrance_token: token })
@@ -87,13 +89,18 @@ const onCameraError = (message) => { cameraError.value = message; cameraReady.va
 const retryCamera = () => { cameraError.value = ''; cameraReady.value = false; cameraKey.value += 1 }
 
 const confirm = async () => {
+  if (!registration.value || photoConsent.value === null || store.loading) return
   try {
-    await store.submit(registration.value.qr_token, entranceToken.value)
+    await store.submit(registration.value.qr_token, entranceToken.value, photoConsent.value)
     focusResult()
     auth.fetchMe().catch(() => {}) // drop this event from "Your upcoming events"
   } catch { /* the message is shown on the card */ }
 }
-const reset = () => { registration.value = null; lookupError.value = ''; entranceToken.value = ''; store.reset(); cameraError.value = ''; cameraReady.value = false; cameraKey.value += 1 }
+const chooseConsent = async (value) => {
+  photoConsent.value = value
+  await focusResult()
+}
+const reset = () => { registration.value = null; photoConsent.value = null; lookupError.value = ''; entranceToken.value = ''; store.reset(); cameraError.value = ''; cameraReady.value = false; cameraKey.value += 1 }
 const steps = [
   { icon: 'pin', title: 'Find the check-in QR', text: 'It’s on the poster or screen at the venue entrance.' },
   { icon: 'scan', title: 'Scan it', text: 'Use your phone’s camera app, or the scanner on this page.' },
@@ -145,6 +152,19 @@ const steps = [
               <button type="button" class="ci-btn ci-btn--ghost" @click="reset"><AppIcon name="scan" :size="16" />Scan again</button>
               <RouterLink v-if="lookupError.startsWith('You’re not registered')" class="ci-btn ci-btn--primary" to="/">Browse events</RouterLink>
               <button v-else-if="entranceToken" type="button" class="ci-btn ci-btn--primary" @click="resolveRegistration(entranceToken)"><AppIcon name="refresh" :size="16" />Try again</button>
+            </div>
+          </section>
+
+          <!-- Consent is collected before the registration details are revealed. -->
+          <section v-else-if="registration && !justCheckedIn && !alreadyIn && photoConsent === null" class="ci-card ci-consent" aria-labelledby="ci-consent-title">
+            <p class="ci-eyebrow">Please choose before continuing</p>
+            <h2 id="ci-consent-title" ref="resultHeading" tabindex="-1">Media consent</h2>
+            <p class="ci-consent__text" lang="km">ខ្ញុំយល់ព្រមឲ្យអ្នករៀបចំប្រើប្រាស់រូបថត វីដេអូរ សំឡេង និងសារនានារបស់ខ្ញុំសម្រាប់ប្រើប្រាស់ក្នុងរបាយការណ៍ និងការផ្សព្វផ្សាយជាសាធារណៈបាន</p>
+            <p class="ci-consent__text">I agree for the event host to use my photos, video, voice and message for communication purpose.</p>
+            <p class="ci-consent__note">Your choice will not affect your ability to check in.</p>
+            <div class="ci-consent__actions">
+              <button type="button" class="ci-btn ci-btn--primary" @click="chooseConsent(true)">Yes</button>
+              <button type="button" class="ci-btn ci-btn--ghost" @click="chooseConsent(false)">No</button>
             </div>
           </section>
 
@@ -259,6 +279,12 @@ const steps = [
 /* Confirm */
 .ci-confirm { display: grid; gap: 14px; padding: 24px; }
 .ci-confirm h2 { margin: 0; font-size: 1.4rem; font-weight: 700; outline: 0; }
+.ci-consent { display: grid; gap: 12px; padding: 24px; }
+.ci-consent h2 { margin: 0; font-size: 1.4rem; font-weight: 700; outline: 0; }
+.ci-consent__text { margin: 0; color: var(--ci-text); font-size: .96rem; line-height: 1.65; overflow-wrap: anywhere; }
+.ci-consent__note { margin: 0; color: var(--ci-muted); font-size: .88rem; }
+.ci-consent__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
+.ci-consent__actions .ci-btn { min-height: 50px; font-size: 1rem; }
 .ci-facts { display: grid; gap: 4px; margin: -6px 0 0; padding: 0; list-style: none; color: var(--ci-muted); font-size: .92rem; }
 .ci-facts li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
 .ci-facts li > svg { flex: none; margin-top: 2px; }

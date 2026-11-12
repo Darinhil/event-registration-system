@@ -132,6 +132,7 @@ const buildRow = (user, registration) => {
     gender: genderCode(pickAnswer(registration, ['gender'])) || genderCode(registration.gender),
     age: ageGroup,
     ageGroup,
+    photoConsent: registration.photo_consent === true,
     ethnicity: readable(registration.ethnicity || pickAnswer(registration, ['ethnicity', 'race'])),
     disabilities,
     registeredAt: registration.created_at ? new Date(registration.created_at) : null,
@@ -586,7 +587,7 @@ const exportFilteredExcel = async () => {
   exportError.value = ''
   try {
     const XLSX = await import('xlsx')
-    const baseHeaders = ['#', 'Full Name', 'Registration Code', 'Email', 'Phone', 'Gender', 'Age', 'Ethnicity', 'Disability', 'Registered At', 'Status', 'Checked-in Time']
+    const baseHeaders = ['#', 'Full Name', 'Registration Code', 'Email', 'Phone', 'Gender', 'Age', 'Photo/Media', 'Ethnicity', 'Disability', 'Registered At', 'Status', 'Checked-in Time']
     const headers = [...baseHeaders, ...dynamicColumns.value.map((field) => field.label)]
     const rowsOut = filteredRows.value.map((row, index) => [
       index + 1,
@@ -596,6 +597,7 @@ const exportFilteredExcel = async () => {
       row.phone || '-',
       row.gender || '-',
       row.age || '-',
+      row.photoConsent ? 'Yes' : 'No',
       row.ethnicity || '-',
       row.disabilities.join(', ') || '-',
       row.registeredAt ? dateTimeLabel(row.registeredAt) : '-',
@@ -606,7 +608,7 @@ const exportFilteredExcel = async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rowsOut])
     worksheet['!cols'] = [
       { wch: 6 }, { wch: 28 }, { wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
-      { wch: 10 }, { wch: 20 }, { wch: 30 }, { wch: 22 }, { wch: 16 }, { wch: 22 },
+      { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 30 }, { wch: 22 }, { wch: 16 }, { wch: 22 },
       ...dynamicColumns.value.map(() => ({ wch: 22 })),
     ]
     worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${rowsOut.length + 1}` }
@@ -638,9 +640,9 @@ const exportFilteredPdf = () => {
     return
   }
   popup.onload = () => { popup.focus(); popup.print() }
-  const headers = ['#', 'Full name', 'Registration code', 'Email', 'Phone', 'Gender', 'Age', 'Status', 'Checked-in time', ...dynamicColumns.value.map((field) => field.label)]
+  const headers = ['#', 'Full name', 'Registration code', 'Email', 'Phone', 'Gender', 'Age', 'Photo/Media', 'Status', 'Checked-in time', ...dynamicColumns.value.map((field) => field.label)]
   const rowsHtml = filteredRows.value.map((row, index) => {
-    const values = [index + 1, row.name, row.code || '—', row.email || '—', row.phone || '—', row.gender || '—', row.age || '—', row.checkedInAt ? 'Checked in' : 'Not checked in', row.checkedInAt ? dateTimeLabel(row.checkedInAt) : '—', ...dynamicColumns.value.map((field) => formatAnswer(formFieldAnswer(row.registration, field)))]
+    const values = [index + 1, row.name, row.code || '—', row.email || '—', row.phone || '—', row.gender || '—', row.age || '—', row.photoConsent ? 'Yes' : 'No', row.checkedInAt ? 'Checked in' : 'Not checked in', row.checkedInAt ? dateTimeLabel(row.checkedInAt) : '—', ...dynamicColumns.value.map((field) => formatAnswer(formFieldAnswer(row.registration, field)))]
     return `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`
   }).join('')
   const title = selectedEvent.value?.name || 'Attendee list'
@@ -794,6 +796,7 @@ onBeforeUnmount(() => {
                     <th scope="col" :aria-sort="ariaSort('name')"><button type="button" class="at-sort" @click="sortColumn('name')">Name<AppIcon :name="ariaSort('name') === 'descending' ? 'arrow-down' : ariaSort('name') === 'ascending' ? 'arrow-up' : 'sort'" :size="13" /></button></th>
                     <th scope="col">Gender</th>
                     <th scope="col">Age Group</th>
+                    <th scope="col">Photo/Media</th>
                     <th scope="col" :aria-sort="ariaSort('registered')"><button type="button" class="at-sort" @click="sortColumn('registered')">Registered Date<AppIcon :name="ariaSort('registered') === 'descending' ? 'arrow-down' : ariaSort('registered') === 'ascending' ? 'arrow-up' : 'sort'" :size="13" /></button></th>
                     <th scope="col" class="at-reference-actions-heading">Actions</th>
                   </tr></thead>
@@ -807,6 +810,7 @@ onBeforeUnmount(() => {
                       </td>
                       <td data-label="Gender"><span class="at-code-badge">{{ row.gender || '—' }}</span></td>
                       <td data-label="Age Group"><span class="at-code-badge">{{ row.age || '—' }}</span></td>
+                      <td data-label="Photo/Media"><span class="at-consent-badge" :class="row.photoConsent ? 'is-yes' : 'is-no'">Photo/Media: {{ row.photoConsent ? 'Yes' : 'No' }}</span></td>
                       <td data-label="Registered Date" class="at-reference-time"><time v-if="row.registeredAt" :datetime="row.registeredAt.toISOString()">{{ row.registeredAt.toLocaleString(undefined, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time><template v-else>—</template></td>
                       <td class="at-cell-actions at-reference-row-actions">
                         <button type="button" class="at-icon-action" :aria-label="`View ${row.name}`" title="View" @click="openDetails(row)"><AppIcon name="eye" :size="15" /></button>
@@ -886,6 +890,7 @@ onBeforeUnmount(() => {
               <dl>
                 <div><dt>Gender</dt><dd>{{ detailRow.gender || '—' }}</dd></div>
                 <div><dt>Age</dt><dd>{{ detailRow.age || '—' }}</dd></div>
+                <div><dt>Photo/Media consent</dt><dd>{{ detailRow.photoConsent ? 'Yes' : 'No' }}</dd></div>
                 <div><dt>Ethnicity</dt><dd>{{ detailRow.ethnicity || '—' }}</dd></div>
                 <div><dt>Disability</dt><dd>{{ detailRow.disabilities.join(', ') || 'None reported' }}</dd></div>
               </dl>

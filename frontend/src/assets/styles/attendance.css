@@ -298,7 +298,7 @@
 .at-reference-error, .at-reference-export-note { margin: 8px 16px 0; text-align: left; }
 .at-reference-export-note { margin-bottom: 0; }
 .at-table-wrap--reference { max-height: min(60vh, 560px); margin-top: 0; border-top: 1px solid #eef2f6; }
-.at-page .at-table--reference { min-width: 680px; font-size: .8rem; }
+.at-page .at-table--reference { min-width: 820px; font-size: .8rem; }
 .at-page .at-table--reference th { position: static; padding: 9px 14px; font-size: .65rem; }
 .at-page .at-table--reference th small { color: #9aabba; font-size: .62rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
 .at-page .at-table--reference td { padding: 8px 14px; font-size: .76rem; }
@@ -307,6 +307,9 @@
 .at-page .at-table--reference .at-person strong { font-size: .74rem; }
 .at-table--reference .at-person small { font-size: .67rem; }
 .at-code-badge { display: inline-grid; min-width: 20px; min-height: 18px; place-items: center; padding: 1px 5px; border-radius: 5px; background: #f0f4f7; color: #40566c; font-size: .68rem; font-weight: 700; }
+.at-consent-badge { display: inline-block; padding: 3px 7px; border-radius: 5px; font-size: .68rem; font-weight: 700; white-space: nowrap; }
+.at-consent-badge.is-yes { background: #e3f6ee; color: #08704f; }
+.at-consent-badge.is-no { background: #f0f4f7; color: #5f7286; }
 .at-reference-time { color: #63778b !important; white-space: nowrap; font-size: .69rem !important; }
 .at-reference-actions-heading { text-align: center !important; }
 .at-cell-actions.at-reference-row-actions { display: flex; justify-content: center; gap: 5px; white-space: normal; }

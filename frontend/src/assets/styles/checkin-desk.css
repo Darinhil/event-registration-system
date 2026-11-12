@@ -131,6 +131,17 @@
 .ck-success strong { font-size: 1.02rem; }
 .ck-success p { margin-top: 2px; opacity: .9; }
 .ck-person__head { display: flex; align-items: center; gap: 14px; }
+.ck-registration-message { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid #d6e4f2; border-radius: 12px; background: #f5f9fd; color: #23599a; }
+.ck-registration-message strong { font-size: .86rem; }
+.ck-registration-message p { margin: 0; color: #33475c; font-size: .92rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ck-consent { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 12px 14px; border: 1px solid #d9e2e9; border-radius: 12px; }
+.ck-consent legend { padding: 0 5px; color: #0f1c2e; font-size: .92rem; font-weight: 800; }
+.ck-consent > p { color: #33475c; font-size: .9rem; line-height: 1.55; overflow-wrap: anywhere; }
+.ck-consent__choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ck-consent__choice { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 7px 12px; border: 1px solid #d9e2e9; border-radius: 9px; color: #33475c; font-size: .9rem; font-weight: 700; cursor: pointer; }
+.ck-consent__choice.is-selected { border-color: #0b9a76; background: #eefaf5; color: #086a51; }
+.ck-consent__choice input { width: 17px; height: 17px; margin: 0; accent-color: #0b7f62; }
+.ck-consent__choice:focus-within { outline: 3px solid rgba(11, 127, 98, .3); outline-offset: 2px; }
 .ck-photo { display: grid; flex: none; place-items: center; width: 64px; height: 64px; overflow: hidden; border-radius: 50%; background: #e8f7f2; color: #087a5e; font-size: 1.2rem; font-weight: 800; }
 .ck-photo img { width: 100%; height: 100%; object-fit: cover; }
 .ck-person__id { display: grid; gap: 4px; min-width: 0; }
@@ -147,6 +158,7 @@
 
 /* Entrance QR */
 .ck-qr, .ck-log { padding: 18px 20px; }
+.ck-log { width: 100%; margin-top: 16px; }
 .ck-qr header, .ck-log header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .ck-qr h2, .ck-log h2 { color: #0f1c2e; font-size: 1.05rem; font-weight: 800; }
 .ck-qr__lead { color: #5f7286; font-size: .88rem; line-height: 1.45; }
@@ -174,7 +186,11 @@
 .ck-log li:last-child { border-bottom: 0; }
 .ck-log__text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .ck-log__text strong { color: #0f1c2e; font-size: .92rem; overflow-wrap: anywhere; }
-.ck-log__text small { color: #6f8295; font-size: .8rem; overflow-wrap: anywhere; }
+.ck-log__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.ck-log__meta small { color: #6f8295; font-size: .8rem; overflow-wrap: anywhere; }
+.ck-log__consent { align-self: center; padding: 2px 6px; border-radius: 5px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.ck-log__consent.is-yes { background: #e3f6ee; color: #08704f; }
+.ck-log__consent.is-no { background: #f0f4f7; color: #5f7286; }
 .ck-log time { flex: none; color: #5f7286; font-size: .84rem; font-variant-numeric: tabular-nums; }
 .ck-log__foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 

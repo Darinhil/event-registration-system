@@ -276,6 +276,7 @@ class AdminController extends Controller
                 'name' => $registration->full_name ?: $registration->user?->name,
                 'email' => $registration->email ?: $registration->user?->email,
                 'phone' => $registration->phone ?: $registration->user?->phone,
+                'photo_consent' => (bool) $registration->photo_consent,
                 'checked_in_by' => $registration->checkIn->staff?->name,
             ])
             ->sortByDesc('checked_in_at')
