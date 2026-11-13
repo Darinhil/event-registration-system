@@ -21,7 +21,7 @@ class RegistrationRequest extends FormRequest
             'organization' => ['required_without:form_data', 'nullable', 'string', 'min:2', 'max:150'], 'address' => ['nullable', 'string', 'max:500'],
             'position' => ['nullable', 'string', 'max:150'], 'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
             'emergency_contact_name' => ['nullable', 'string', 'max:100'], 'emergency_contact_phone' => ['nullable', 'string', 'max:30'],
-            'disability_type' => ['nullable', 'array'], 'disability_type.*' => ['string', 'in:C,H,M,R,S,X'], 'photo_consent' => ['boolean'], 'signature' => ['nullable', 'string', 'max:100000'],
+            'disability_type' => ['nullable', 'array'], 'disability_type.*' => ['string', 'in:C,H,M,R,S,X,O'], 'photo_consent' => ['boolean'], 'signature' => ['nullable', 'string', 'max:100000'],
         ];
 
         $event = Event::with('formFields')->find($this->input('event_id'));

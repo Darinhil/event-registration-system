@@ -8,7 +8,7 @@ import AppIcon from '../../components/AppIcon.vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import {
   FIELD_CATEGORIES, TYPE_META, FIELD_ICONS, FIELD_WIDTHS, OPTION_TYPES,
-  addNonBinaryGenderOption, choiceLabel, createField, createSteps, isLegacyStarterForm, starterFields, slugify, baseFieldSettings,
+  addNonBinaryGenderOption, choiceLabel, createField, createSteps, isLegacyStarterForm, starterFields, upgradeNumericAgeFields, slugify, baseFieldSettings,
 } from '../../utils/formFieldTypes'
 import { conditionAnswers, conditionOf, isConditionSource } from '../../utils/formConditions'
 import { copyText } from '../../utils/clipboard'
@@ -200,6 +200,9 @@ const load = async () => {
       fields.value = starterFields(0)
       upgradedLegacyStarter = true
     }
+    const fieldsBeforeAgeUpgrade = fields.value
+    fields.value = upgradeNumericAgeFields(fields.value)
+    if (fields.value.some((field, index) => field !== fieldsBeforeAgeUpgrade[index])) upgradedLegacyStarter = true
     fields.value = addNonBinaryGenderOption(fields.value)
     const serverSteps = payload.config?.steps
     if (Array.isArray(serverSteps) && serverSteps.length) steps.value = serverSteps
@@ -216,7 +219,12 @@ const load = async () => {
     loading.value = false
     pushHistory()
     dirty.value = false
-    if (upgradedLegacyStarter) touch()
+    if (upgradedLegacyStarter) {
+      touch()
+      // Live forms do not use the delayed draft autosave; persist this safe in-place
+      // field type upgrade immediately so the registration page receives the dropdown.
+      if (isLive.value) await saveNow()
+    }
   }
 }
 

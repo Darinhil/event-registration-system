@@ -142,6 +142,19 @@ export const createField = (type, step = 0) => {
 export const createSteps = (count = 1) =>
   Array.from({ length: count }, (_, index) => ({ id: `s${Date.now()}${index}${Math.random().toString(36).slice(2, 4)}`, name: `Step ${index + 1}` }))
 
+export const AGE_GROUP_OPTIONS = [
+  'K: ក្រោម 18 ឆ្នាំ/Under 18',
+  'Y: 18–29',
+  'A: 30–60',
+  'E: លើស 60 ឆ្នាំ/Above 60',
+]
+
+/** Convert existing numeric Age questions to age-group dropdowns without changing their field IDs. */
+export const upgradeNumericAgeFields = (fields) => fields.map((field) => {
+  if (field.type !== 'number' || !/\bage\b/i.test(String(field.label || ''))) return field
+  return { ...field, type: 'select', options: [...AGE_GROUP_OPTIONS], settings: { ...field.settings, multiple: false } }
+})
+
 /** Fallback starter form for events with no saved fields yet. */
 export const starterFields = (step = 0) => {
   const field = (type, label, required = false, options = [], settings = {}) => {
@@ -160,9 +173,22 @@ export const starterFields = (step = 0) => {
     field('text', 'នាមខ្លួន/First Name', true),
     field('text', 'នាមត្រកូល/Surname', true),
     field('select', 'ភេទ/Gender', true, ['ស្រី/Female', 'ប្រុស/Male', 'ផ្សេងៗ/Other', 'មិនបញ្ជាក់/Prefer not to say']),
-    field('number', 'អាយុ/Age'),
-    field('select', 'ពិការភាព/Disability', false, ['ទេ/No', 'មាន/Yes', 'មិនបញ្ជាក់/Prefer not to say']),
-    field('text', 'ជនជាតិ/Ethnicity'),
+    field('select', 'អាយុ/Age', false, AGE_GROUP_OPTIONS),
+    field('select', 'ពិការភាព/Disability', false, [
+      'C: ពិការភាពមើលឃើញ / Difficulty seeing',
+      'H: ពិការភាពស្តាប់ / Difficulty hearing',
+      'M: ពិការភាពធ្វើចលនា / Difficulty moving',
+      'R: ពិការភាពចងចាំ / Difficulty remembering',
+      'S: ពិការភាពថែទាំខ្លួនឯង / Difficulty with self-care',
+      'X: ពិការភាពទំនាក់ទំនង / Difficulty communicating',
+      'O: គ្មានពិការភាព / No disability',
+    ], { multiple: true }),
+    field('select', 'ជនជាតិ/Ethnicity', true, [
+      'ខ្មែរ/Khmer',
+      'ជនជាតិភាគតិច/Ethnic minorities',
+      'ជនជាតិដើមភាគតិច/Indigenous peoples',
+      'ជនបរទេស/Foreigner',
+    ]),
     field('text', 'ឈ្មោះស្ថាប័នរបស់អ្នក/Name of Your Institution', true),
     field('select', 'ប្រភេទប្រតិបត្តិការណ៍/Type of Operation', true, [
       'អង្គការក្រៅរដ្ឋាភិបាលក្នុងស្រុក/Local NGO/Association', 'អង្គការសហគមន៍/CBOs', 'អង្គការក្រៅរដ្ឋាភិបាលអន្តរជាតិ/International/Foreign NGO', 'ដៃគូអភិវឌ្ឍន៍/Development Partners',
@@ -202,6 +228,7 @@ export const choiceLabel = (field, option) =>
 /** Identify untouched built-in forms from earlier app versions for safe upgrades. */
 export const isLegacyStarterForm = (fields) => {
   const previousTemplates = [
+    ['នាមខ្លួន/First Name', 'នាមត្រកូល/Surname', 'ភេទ/Gender', 'អាយុ/Age', 'ពិការភាព/Disability', 'ជនជាតិ/Ethnicity', 'ឈ្មោះស្ថាប័នរបស់អ្នក/Name of Your Institution', 'ប្រភេទប្រតិបត្តិការណ៍/Type of Operation', 'មុខតំណែង/Position', 'អាសយដ្ឋានរបស់អ្នក (ខេត្ត)/Your Address (Province)', 'អាសយដ្ឋានអ៊ីមែល/E-mail address', 'លេខទូរស័ព្ទ/Phone Number', 'ចំណង់អាហារ/Food Preference'],
     ['Full Name', 'Email Address', 'Phone Number'],
     ['Full Name', 'Email', 'Phone Number', 'Department', 'Age Group', 'Organization / School'],
     ['Full Name', 'Email', 'Phone Number', 'Department', 'Age Group', 'Organization / School', 'Business Entity', 'Position', 'Photo request and Using', 'TEL', 'Signature'],

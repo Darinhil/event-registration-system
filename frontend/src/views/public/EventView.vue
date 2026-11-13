@@ -95,6 +95,10 @@ const onDayKeydown = (keyEvent, index) => {
 const mapsLink = computed(() => {
   const place = String(event.value?.location || '').trim()
   if (!place) return ''
+  const suppliedUrl = String(event.value?.location_url || '').trim()
+  try {
+    if (['http:', 'https:'].includes(new URL(suppliedUrl).protocol)) return suppliedUrl
+  } catch { /* use the address search for an invalid legacy link */ }
   return /^https?:\/\//i.test(place) ? place : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`
 })
 </script>
@@ -132,7 +136,7 @@ const mapsLink = computed(() => {
             <ul class="pe-hero__facts">
               <li><AppIcon name="calendar" :size="17" /><span>{{ dateLabel }}</span></li>
               <li><AppIcon name="clock" :size="17" /><span>{{ timeLabel }}</span></li>
-              <li><AppIcon name="pin" :size="17" /><LocationLink :location="event.location" /></li>
+              <li><AppIcon name="pin" :size="17" /><LocationLink :location="event.location" :location-url="event.location_url" /></li>
             </ul>
           </div>
         </header>
