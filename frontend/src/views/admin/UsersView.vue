@@ -970,7 +970,7 @@ onBeforeUnmount(() => {
             <div><h2 id="at-delete-title">Delete registrant?</h2><p>This removes {{ deleteRow.name }} from this event.</p></div>
             <button type="button" class="at-modal__close" aria-label="Close dialog" :disabled="deletingRegistrant" @click="closeRegistrantDialog"><AppIcon name="x" :size="18" /></button>
           </header>
-          <p class="at-modal__warning">This action cannot be undone. An attendee who has already checked in cannot be deleted.</p>
+          <p class="at-modal__warning">This action cannot be undone. Any check-in record for this registrant will also be deleted.</p>
           <p v-if="deleteError" class="at-inline-error" role="alert">{{ deleteError }}</p>
           <footer class="at-modal__actions">
             <button type="button" class="at-btn at-btn--ghost" :disabled="deletingRegistrant" @click="closeRegistrantDialog">Cancel</button>

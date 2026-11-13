@@ -217,7 +217,6 @@ class AdminController extends Controller
     public function deleteRegistrant(Event $event, Registration $registration): JsonResponse
     {
         abort_unless((int) $registration->event_id === (int) $event->id, 404);
-        abort_if($registration->checkIn()->exists(), 422, 'This attendee has already checked in, so the registration cannot be deleted.');
 
         $registration->delete();
 
