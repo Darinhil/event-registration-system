@@ -374,7 +374,7 @@ const printRegistrants = () => {
 
           <template v-else>
             <header><div><h2 id="edl-modal-delete">Delete registrant?</h2><p>This removes {{ selectedRow.name || 'this registrant' }} from the event.</p></div><button type="button" class="edl-modal-close" aria-label="Close" @click="closeModal"><AppIcon name="x" :size="18" /></button></header>
-            <p class="edl-delete-warning">This action cannot be undone. Registrants who have already checked in are protected from deletion.</p>
+            <p class="edl-delete-warning">This action cannot be undone. Any check-in record for this registrant will also be deleted.</p>
             <footer><button type="button" class="es-btn" :disabled="!!busyId" @click="closeModal">Cancel</button><button type="button" class="es-btn es-btn--danger" :disabled="!!busyId" @click="confirmDelete">{{ busyId ? 'Deleting…' : 'Delete registrant' }}</button></footer>
           </template>
         </section>
