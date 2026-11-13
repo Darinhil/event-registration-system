@@ -69,6 +69,37 @@ class EventDraftFlowTest extends TestCase
         $this->assertSame('published', Event::findOrFail($response->json('id'))->status);
     }
 
+    public function test_location_address_and_map_link_are_saved_and_returned_when_editing_an_event(): void
+    {
+        $this->admin();
+        $mapLink = 'https://maps.google.com/?q=PNC+Campus';
+
+        $response = $this->postJson('/api/admin/events', $this->fullEvent(['location_url' => $mapLink]))
+            ->assertCreated()
+            ->assertJsonPath('location', 'PNC Campus, Phnom Penh')
+            ->assertJsonPath('location_url', $mapLink);
+        $id = $response->json('id');
+
+        $this->getJson("/api/events/{$id}")
+            ->assertOk()
+            ->assertJsonPath('data.location', 'PNC Campus, Phnom Penh')
+            ->assertJsonPath('data.location_url', $mapLink);
+
+        $updatedLink = 'https://maps.google.com/?q=New+Venue';
+        $this->putJson("/api/admin/events/{$id}", ['location_url' => $updatedLink])
+            ->assertOk()
+            ->assertJsonPath('location_url', $updatedLink);
+    }
+
+    public function test_location_link_must_be_an_http_or_https_url(): void
+    {
+        $this->admin();
+
+        $this->postJson('/api/admin/events', $this->fullEvent(['location_url' => 'javascript:alert(1)']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['location_url']);
+    }
+
     public function test_draft_can_be_completed_and_published_later(): void
     {
         $this->admin();

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import api from '../../services/api'
 import { getEventCheckInSummary, getEventReportAttendees } from '../../services/adminService'
@@ -244,7 +245,7 @@ const actionGroups = computed(() => [
               <dl class="ed-dl">
                 <div><dt><AppIcon name="calendar" :size="16" />Date</dt><dd>{{ schedule.date }}</dd></div>
                 <div><dt><AppIcon name="clock" :size="16" />Time</dt><dd>{{ schedule.time }}</dd></div>
-                <div><dt><AppIcon name="pin" :size="16" />Location</dt><dd>{{ event.location || 'To be confirmed' }}</dd></div>
+                <div><dt><AppIcon name="pin" :size="16" />Location</dt><dd><LocationLink :location="event.location" :location-url="event.location_url" fallback="To be confirmed" /></dd></div>
                 <div><dt><AppIcon name="type" :size="16" />Category</dt><dd>{{ event.category || 'Not set' }}</dd></div>
                 <div><dt><AppIcon name="timer" :size="16" />Sign-up window</dt><dd>{{ registrationWindow }}</dd></div>
               </dl>
