@@ -93,6 +93,12 @@ const deleteEvent = async (event) => {
     await api.delete(`/admin/events/${event.id}`)
     events.value = events.value.filter((item) => item.id !== event.id)
     saveCachedEvents(events.value)
+    // Otherwise "Create event" would keep reopening the deleted draft.
+    try {
+      const savedDraft = JSON.parse(localStorage.getItem('event_setup_resume') || 'null')
+      if (String(savedDraft?.id) === String(event.id)) localStorage.removeItem('event_setup_resume')
+      localStorage.removeItem(`event_setup:${event.id}`)
+    } catch { /* optional */ }
   } catch (requestError) {
     error.value = requestError.response?.data?.message || 'Unable to delete this event.'
   } finally {

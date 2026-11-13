@@ -7,7 +7,7 @@ import AppIcon from '../../components/AppIcon.vue'
 import DateInput from '../../components/DateInput.vue'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
-import { replaceSetupUrl } from '../../router'
+import router, { replaceSetupUrl } from '../../router'
 import { addNonBinaryGenderOption, choiceLabel, isLegacyStarterForm, starterFields } from '../../utils/formFieldTypes'
 import { copyText } from '../../utils/clipboard'
 
@@ -130,6 +130,12 @@ const EVENT_DRAFT_RESUME_KEY = 'event_setup_resume'
 const rememberDraftForResume = () => {
   if (!eventId.value || eventStatus.value !== 'draft') return
   try { localStorage.setItem(EVENT_DRAFT_RESUME_KEY, JSON.stringify({ id: eventId.value, step: activeStep.value, userId: auth.user?.id })) } catch { /* optional */ }
+}
+const forgetDraftForResume = (id) => {
+  try {
+    const savedDraft = JSON.parse(localStorage.getItem(EVENT_DRAFT_RESUME_KEY) || 'null')
+    if (String(savedDraft?.id) === String(id)) localStorage.removeItem(EVENT_DRAFT_RESUME_KEY)
+  } catch { /* optional */ }
 }
 const stepIsValid = (step) => !Object.keys(validatorFor[step]?.() || {}).length
 const stepState = (step) => {
@@ -627,6 +633,16 @@ const loadEvent = async () => {
     else fields.value = addNonBinaryGenderOption(fields.value)
     markClean()
   } catch (requestError) {
+    if (requestError.response?.status === 404) {
+      // The draft was deleted elsewhere: drop the "resume" pointer so "Create event" stops sending us back here.
+      forgetDraftForResume(eventId.value)
+      removeAutosave()
+      if (route.query.creating === '1') {
+        allowNavigation = true
+        await router.replace('/admin/events/new?fresh=1')
+        return
+      }
+    }
     loadError.value = requestError.response?.status === 403 ? 'You don’t have permission to edit this event.' : requestError.response?.status === 404 ? 'This event no longer exists.' : 'Could not load this event. Check your connection and try again.'
   } finally {
     loading.value = false
@@ -732,7 +748,7 @@ onBeforeUnmount(() => {
       <div v-else-if="loadError" class="es-card es-empty" role="alert">
         <span class="es-empty__icon is-danger"><AppIcon name="alert-circle" :size="26" /></span>
         <h2>{{ loadError }}</h2>
-        <div class="es-empty__actions"><button type="button" class="es-btn" @click="loadEvent"><AppIcon name="refresh" :size="16" />Try again</button><RouterLink class="es-btn es-btn--primary" to="/admin/events">Back to events</RouterLink></div>
+        <div class="es-empty__actions"><RouterLink v-if="loadError === 'This event no longer exists.'" class="es-btn" to="/admin/events/new?fresh=1"><AppIcon name="plus" :size="16" />Create a new event</RouterLink><button v-else type="button" class="es-btn" @click="loadEvent"><AppIcon name="refresh" :size="16" />Try again</button><RouterLink class="es-btn es-btn--primary" to="/admin/events">Back to events</RouterLink></div>
       </div>
 
       <form v-else class="es-card" novalidate @submit.prevent="onPrimary">
