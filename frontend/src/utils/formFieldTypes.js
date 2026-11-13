@@ -156,30 +156,31 @@ export const starterFields = (step = 0) => {
     }
   }
 
-  return [
-    field('text', 'ឈ្មោះពេញ/Full Name', true),
-    field('email', 'អ៊ីមែល/Email', true),
-    field('select', 'ភេទ/Gender', true, ['M: ប្រុស/Male', 'F: ស្រី/Female', 'P: មិនបញ្ជាក់/Prefer not to say', 'N: មិនមែនពីរភេទ/Non-binary']),
-    field('select', 'អាយុ/Age', true, ['K: ក្រោម 18 ឆ្នាំ/Under 18', 'Y: 18–29', 'A: 30–60', 'E: លើស 60 ឆ្នាំ/Above 60']),
-    field('checkbox', 'ពិការភាព/Disability', true, [
-      'C: ពិបាកមើលឃើញ/Difficulty seeing',
-      'H: ពិបាកស្តាប់/Difficulty hearing',
-      'M: ពិបាកធ្វើចលនា/Difficulty moving',
-      'R: ពិបាកចងចាំ/Difficulty remembering',
-      'S: ពិបាកថែទាំខ្លួនឯង/Difficulty with self-care',
-      'X: ពិបាកទំនាក់ទំនង/Difficulty communicating',
-      'គ្មានពិការភាព/No disability',
-    ], { multiple: true }),
-    field('select', 'ជនជាតិ/Ethnicity', true, [
-      'ខ្មែរ/Khmer people',
-      'ជនជាតិភាគតិច/Ethnic minorities',
-      'ជនជាតិដើមភាគតិច/Indigenous peoples',
+  return [ 
+    field('text', 'នាមខ្លួន/First Name', true),
+    field('text', 'នាមត្រកូល/Surname', true),
+    field('select', 'ភេទ/Gender', true, ['ស្រី/Female', 'ប្រុស/Male', 'ផ្សេងៗ/Other', 'មិនបញ្ជាក់/Prefer not to say']),
+    field('number', 'អាយុ/Age'),
+    field('select', 'ពិការភាព/Disability', false, ['ទេ/No', 'មាន/Yes', 'មិនបញ្ជាក់/Prefer not to say']),
+    field('text', 'ជនជាតិ/Ethnicity'),
+    field('text', 'ឈ្មោះស្ថាប័នរបស់អ្នក/Name of Your Institution', true),
+    field('select', 'ប្រភេទប្រតិបត្តិការណ៍/Type of Operation', true, [
+      'អង្គការក្រៅរដ្ឋាភិបាលក្នុងស្រុក/Local NGO/Association', 'អង្គការសហគមន៍/CBOs', 'អង្គការក្រៅរដ្ឋាភិបាលអន្តរជាតិ/International/Foreign NGO', 'ដៃគូអភិវឌ្ឍន៍/Development Partners',
+      'វិស័យឯកជន/Private Sector', 'រដ្ឋាភិបាលជាតិ/National Government', 'រដ្ឋបាលថ្នាក់ក្រោមជាតិ/Sub-national Government', 'អាជ្ញាធរមូលដ្ឋាន/Local authority',
+      'សហគមន៍មូលដ្ឋាន/Local Community', 'គ្រឹះស្ថានអប់រំ/Education Institution', 'ផ្សេងៗ/Other',
     ]),
-    field('text', 'ស្ថាប័ន/Institution', true),
-    field('text', 'អង្គភាពអាជីវកម្ម/Business Entity'),
-    field('text', 'មុខតំណែង/Position', true),
-    field('radio', 'ការអនុញ្ញាតប្រើប្រាស់រូបថត/Photo consent', true, ['បាទ/ចាស/Yes', 'ទេ/No']),
-    field('phone', 'លេខទូរស័ព្ទ/Phone', true),
+    field('select', 'មុខតំណែង/Position', true, ['នាយកប្រតិបត្តិ/Executive Officer', 'មន្ត្រីជាន់ខ្ពស់/Senior Officer', 'មន្ត្រី/Officer', 'និស្សិត/Student', 'ផ្សេងៗ/Others']),
+    field('select', 'អាសយដ្ឋានរបស់អ្នក (ខេត្ត)/Your Address (Province)', true, [
+      'Banteay Meanchey', 'Battambang', 'Kampong Cham', 'Kampong Chhnang', 'Kampong Speu',
+      'Kampong Thom', 'Kampot', 'Kandal', 'Kep', 'Koh Kong', 'Kratie', 'Mondul Kiri',
+      'Oddar Meanchey', 'Pailin', 'Phnom Penh', 'Preah Sihanouk', 'Preah Vihear', 'Prey Veng',
+      'Pursat', 'Ratanak Kiri', 'Siem Reap', 'Stung Treng', 'Svay Rieng', 'Takeo', 'Tboung Khmum',
+    ]),
+    field('email', 'អាសយដ្ឋានអ៊ីមែល/E-mail address', true),
+    field('phone', 'លេខទូរស័ព្ទ/Phone Number', true),
+    field('checkbox', 'ចំណង់អាហារ/Food Preference', false, [
+      'មិនមានចំណង់ពិសេស/No Preference', 'ហាឡាល់/Halal', 'បួស/Vegan/Vegetarian', 'អាឡែស៊ីអាហារសមុទ្រ/Allergic to Seafood', 'មិនញ៉ាំអាហារហឹរ/No Spicy Food', 'ផ្សេងៗ/Others',
+    ], { multiple: true }),
   ]
 }
 

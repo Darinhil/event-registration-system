@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
             <footer class="ev-card__actions">
               <RouterLink class="ev-btn ev-btn--primary" :to="`/admin/events/${event.id}`"><AppIcon name="eye" :size="16" />View</RouterLink>
               <RouterLink class="ev-btn" :to="`/admin/events/${event.id}/edit`"><AppIcon name="pen" :size="16" />Edit</RouterLink>
-              <RouterLink class="ev-btn" :to="`/admin/events/${event.id}/registrants`"><AppIcon name="users" :size="16" />Registrants</RouterLink>
+              <RouterLink class="ev-btn" :to="{ path: '/admin/users', query: { event: event.id } }"><AppIcon name="users" :size="16" />Registrants</RouterLink>
               <div class="ev-menu">
                 <button type="button" class="ev-btn ev-btn--icon" :aria-expanded="openMenuId === event.id" aria-haspopup="menu" :aria-label="`More actions for ${event.name}`" @click="toggleMenu(event.id)"><AppIcon name="more" :size="18" /></button>
                 <div v-if="openMenuId === event.id" class="ev-menu__panel" role="menu">
@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
                     <div class="ev-menu">
                       <button type="button" class="ev-btn ev-btn--icon" :aria-expanded="openMenuId === event.id" aria-haspopup="menu" :aria-label="`More actions for ${event.name}`" @click="toggleMenu(event.id)"><AppIcon name="more" :size="18" /></button>
                       <div v-if="openMenuId === event.id" class="ev-menu__panel" role="menu">
-                        <RouterLink role="menuitem" :to="`/admin/events/${event.id}/registrants`"><AppIcon name="users" :size="16" />Registrants</RouterLink>
+                        <RouterLink role="menuitem" :to="{ path: '/admin/users', query: { event: event.id } }"><AppIcon name="users" :size="16" />Registrants</RouterLink>
                         <RouterLink role="menuitem" :to="`/admin/events/${event.id}#qr`"><AppIcon name="qr-code" :size="16" />Registration QR</RouterLink>
                         <hr />
                         <button type="button" role="menuitem" class="is-danger" :disabled="deletingId === event.id" @click="deleteEvent(event)"><AppIcon name="trash" :size="16" />{{ deletingId === event.id ? 'Deleting…' : 'Delete event' }}</button>

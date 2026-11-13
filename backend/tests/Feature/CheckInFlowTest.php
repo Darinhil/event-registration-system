@@ -169,12 +169,69 @@ class CheckInFlowTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_attendees_can_self_check_in_after_either_media_consent_response(): void
+    {
+        $event = $this->event();
+        $entranceToken = $event->checkInQrToken();
+        $agreed = $this->register(User::factory()->create(), $event, ['registration_code' => 'SELF-CONSENT-YES']);
+        $declined = $this->register(User::factory()->create(), $event, ['registration_code' => 'SELF-CONSENT-NO']);
+
+        Sanctum::actingAs($agreed->user);
+        $this->postJson('/api/check-ins', [
+            'credential' => $agreed->qr_token,
+            'entrance_token' => $entranceToken,
+            'photo_consent' => true,
+        ])->assertCreated();
+
+        Sanctum::actingAs($declined->user);
+        $this->postJson('/api/check-ins', [
+            'credential' => $declined->qr_token,
+            'entrance_token' => $entranceToken,
+            'photo_consent' => false,
+        ])->assertCreated();
+
+        $this->assertTrue($agreed->fresh()->photo_consent);
+        $this->assertFalse($declined->fresh()->photo_consent);
+        $this->assertDatabaseCount('check_ins', 2);
+
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $checkIns = collect($this->getJson("/api/admin/events/{$event->id}/check-ins")
+            ->assertOk()
+            ->json('data.check_ins'));
+        $this->assertFalse($checkIns->firstWhere('registration_id', $declined->id)['photo_consent']);
+        $this->assertTrue($checkIns->firstWhere('registration_id', $agreed->id)['photo_consent']);
+    }
+
     public function test_staff_desk_check_in_does_not_need_the_entrance_qr(): void
     {
         $registration = $this->register(User::factory()->create(), $this->event());
         Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
 
         $this->postJson('/api/check-ins', ['credential' => $registration->qr_token])->assertCreated();
+    }
+
+    public function test_staff_check_in_records_either_media_consent_response(): void
+    {
+        $event = $this->event();
+        $agreed = $this->register(User::factory()->create(), $event, ['registration_code' => 'CONSENT-YES']);
+        $declined = $this->register(User::factory()->create(), $event, ['registration_code' => 'CONSENT-NO']);
+        $existingConsent = $this->register(User::factory()->create(), $event, [
+            'registration_code' => 'CONSENT-EXISTING',
+            'photo_consent' => true,
+        ]);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->postJson('/api/check-ins', ['credential' => $agreed->qr_token, 'photo_consent' => true])
+            ->assertCreated();
+        $this->postJson('/api/check-ins', ['credential' => $declined->qr_token, 'photo_consent' => false])
+            ->assertCreated();
+        $this->postJson('/api/check-ins', ['credential' => $existingConsent->qr_token])
+            ->assertCreated();
+
+        $this->assertTrue($agreed->fresh()->photo_consent);
+        $this->assertFalse($declined->fresh()->photo_consent);
+        $this->assertTrue($existingConsent->fresh()->photo_consent);
+        $this->assertDatabaseCount('check_ins', 3);
     }
 
     public function test_event_check_in_log_requires_admin(): void
@@ -252,6 +309,25 @@ class CheckInFlowTest extends TestCase
         $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => 'NOPE-999'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('query');
+    }
+
+    public function test_desk_lookup_and_search_return_the_event_registration_message(): void
+    {
+        $event = $this->event();
+        $event->update(['form_config' => ['settings' => ['success_message' => 'Show this confirmation at the registration desk.']]]);
+        $registration = $this->register(User::factory()->create(), $event, [
+            'full_name' => 'Sokha Leng',
+            'registration_code' => 'CTS-MESSAGE',
+        ]);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->getJson('/api/admin/check-ins/lookup?credential='.$registration->qr_token)
+            ->assertOk()
+            ->assertJsonPath('data.success_message', 'Show this confirmation at the registration desk.');
+
+        $this->postJson('/api/admin/check-ins/search', ['event_id' => $event->id, 'query' => 'CTS-MESSAGE'])
+            ->assertOk()
+            ->assertJsonPath('data.registration.success_message', 'Show this confirmation at the registration desk.');
     }
 
     public function test_desk_search_suggests_when_multiple_people_match(): void

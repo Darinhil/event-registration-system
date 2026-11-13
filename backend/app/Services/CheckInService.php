@@ -45,7 +45,7 @@ class CheckInService
      * also present the event's entrance token, which only the QR poster at the
      * venue carries — so self check-in proves they are actually there.
      */
-    public function checkIn(string $credential, User $user, ?string $entranceToken = null): CheckIn
+    public function checkIn(string $credential, User $user, ?string $entranceToken = null, ?bool $photoConsent = null): CheckIn
     {
         $registration = $this->findRegistration($credential, $user, allowOwner: true);
         if ($registration->event?->status === 'cancelled') { throw ValidationException::withMessages(['credential' => 'This event was cancelled, so check-in is closed.']); }
@@ -59,9 +59,12 @@ class CheckInService
 
         // Two desks can scan the same pass at once; the unique index decides who wins.
         try {
-            return DB::transaction(function () use ($registration, $user): CheckIn {
+            return DB::transaction(function () use ($registration, $user, $photoConsent): CheckIn {
                 $checkIn = $registration->checkIn()->create(['checked_in_at' => now(), 'checked_in_by' => $user->id]);
-                $registration->update(['status' => 'checked_in']);
+                $registration->update([
+                    'status' => 'checked_in',
+                    ...($photoConsent === null ? [] : ['photo_consent' => $photoConsent]),
+                ]);
 
                 return $checkIn;
             });

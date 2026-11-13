@@ -84,7 +84,7 @@ watch(selectedEventId, (id, previous) => {
 const modes = [
   { value: 'search', label: 'Search', icon: 'search' },
   { value: 'scan', label: 'Scan QR', icon: 'scan' },
-  { value: 'code', label: 'Enter code', icon: 'hash' },
+  { value: 'code', label: 'Enter ID', icon: 'hash' },
 ]
 const mode = ref('search')
 const searchQuery = ref('')
@@ -99,6 +99,7 @@ const busy = ref(false) // a lookup is running
 const lookupError = ref(null) // { title, message, retry? }
 const suggestions = ref([])
 const attendee = ref(null)
+const photoConsent = ref(null)
 const lastCredential = ref('')
 const confirming = ref(false)
 const success = ref(null) // { name, at }
@@ -121,6 +122,7 @@ const stopCamera = () => { cameraOn.value = false }
 
 function resetLookup({ keepMode = false } = {}) {
   attendee.value = null
+  photoConsent.value = null
   suggestions.value = []
   lookupError.value = null
   success.value = null
@@ -199,14 +201,17 @@ const handleScan = (value) => {
 const handleCameraError = (message) => {
   cameraOn.value = false
   cameraError.value = /HTTPS/.test(message)
-    ? 'The camera only works on a secure (HTTPS) address. Open this page over HTTPS, or use Search or Enter code instead.'
-    : 'We couldn’t use the camera. Allow camera access in the browser, close other apps using it, or use Search or Enter code instead.'
+    ? 'The camera only works on a secure (HTTPS) address. Open this page over HTTPS, or use Search or Enter ID instead.'
+    : 'We couldn’t use the camera. Allow camera access in the browser, close other apps using it, or use Search or Enter ID instead.'
 }
 
 // ----- Step 3: validate -----
 const apiOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '')
 const photoFailed = ref(false)
-watch(attendee, () => { photoFailed.value = false })
+watch(attendee, () => {
+  photoFailed.value = false
+  photoConsent.value = null
+})
 const photoUrl = computed(() => {
   const photo = attendee.value?.profile_photo
   if (!photo || photoFailed.value || typeof photo !== 'string') return ''
@@ -252,14 +257,14 @@ const confirmButton = ref(null)
 const nextButton = ref(null)
 const confirmCheckIn = async () => {
   const item = attendee.value
-  if (!item || state.value !== 'ready' || store.checkingIn) return
+  if (!item || state.value !== 'ready' || photoConsent.value === null || store.checkingIn) return
   const credential = item.registration_code || item.qr_token
   lookupError.value = null
   try {
-    const result = await store.submit(credential)
+    const result = await store.submit(credential, undefined, photoConsent.value)
     // Only now — after the server accepted it — show the attendee as checked in.
     const at = result?.check_in?.checked_in_at || new Date().toISOString()
-    attendee.value = { ...item, checked_in_at: at, status: 'checked_in' }
+    attendee.value = { ...item, checked_in_at: at, status: 'checked_in', photo_consent: photoConsent.value }
     success.value = { name: item.full_name || 'Attendee', at }
     confirming.value = false
     searchQuery.value = ''
@@ -360,8 +365,8 @@ const regenerate = async () => {
 
 // ----- Log export -----
 const exportLog = () => {
-  const header = ['Attendee', 'Registration code', 'Email', 'Phone', 'Checked in at', 'Checked in by']
-  const rows = recentCheckIns.value.map((item) => [item.name, item.registration_code, item.email, item.phone, item.checked_in_at ? new Date(item.checked_in_at).toLocaleString() : '', item.checked_in_by])
+  const header = ['Attendee', 'Registration code', 'Email', 'Phone', 'Photo/Media', 'Checked in at', 'Checked in by']
+  const rows = recentCheckIns.value.map((item) => [item.name, item.registration_code, item.email, item.phone, item.photo_consent ? 'Yes' : 'No', item.checked_in_at ? new Date(item.checked_in_at).toLocaleString() : '', item.checked_in_by])
   const blob = new Blob(['﻿' + toCsv(header, rows)], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -482,13 +487,13 @@ onBeforeUnmount(() => { cameraOn.value = false })
             </div>
             <div class="ck-scan__foot">
               <button v-if="cameraOn" type="button" class="ck-btn ck-btn--ghost ck-btn--sm" @click="stopCamera">Stop camera</button>
-              <span class="ck-hint">Camera not working? <button type="button" class="ck-link" @click="setMode('code')">Enter the code instead</button></span>
+              <span class="ck-hint">Camera not working? <button type="button" class="ck-link" @click="setMode('code')">Enter ID instead</button></span>
             </div>
             <p v-if="cameraError" class="ck-alert ck-alert--error" role="alert"><AppIcon name="alert-circle" :size="18" /><span>{{ cameraError }}</span></p>
           </div>
 
           <form v-else class="ck-find" @submit.prevent="submitCode">
-            <label for="ck-code" class="ck-label">Registration code or QR token</label>
+            <label for="ck-code" class="ck-label">Registration ID or QR token</label>
             <div class="ck-find__row">
               <div class="ck-input"><AppIcon name="hash" :size="18" /><input id="ck-code" ref="codeInput" v-model="manualCode" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. CTS-004 or the token under the QR" :disabled="!selectedEventId" /></div>
               <button type="submit" class="ck-btn ck-btn--primary" :disabled="busy || !manualCode.trim()">{{ busy ? 'Checking…' : 'Look up' }}</button>
@@ -540,6 +545,11 @@ onBeforeUnmount(() => { cameraOn.value = false })
                 </div>
               </header>
 
+              <section v-if="attendee.success_message" class="ck-registration-message" role="status" aria-live="polite" aria-label="Registration confirmation message">
+                <strong>Registration confirmation message</strong>
+                <p>{{ attendee.success_message }}</p>
+              </section>
+
               <dl class="ck-facts">
                 <div><dt>Event</dt><dd>{{ attendee.event_name || otherEvent?.name || selectedEvent?.name }}</dd></div>
                 <div v-for="[label, value] in details" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
@@ -553,9 +563,24 @@ onBeforeUnmount(() => { cameraOn.value = false })
               <footer class="ck-person__foot">
                 <template v-if="state === 'ready'">
                   <p v-if="timingNote" class="ck-alert ck-alert--warn"><AppIcon name="info" :size="18" /><span>{{ timingNote }}</span></p>
+                  <fieldset class="ck-consent">
+                    <legend>Media consent</legend>
+                    <p lang="km">ខ្ញុំយល់ព្រមឲ្យអ្នករៀបចំប្រើប្រាស់រូបថត វីដេអូរ សំឡេង និងសារនានារបស់ខ្ញុំសម្រាប់ប្រើប្រាស់ក្នុងរបាយការណ៍ និងការផ្សព្វផ្សាយជាសាធារណៈបាន</p>
+                    <p>I agree for the event host to use my photos, video, voice and message for communication purpose.</p>
+                    <div class="ck-consent__choices" role="group" aria-label="Registrant’s consent response">
+                      <label class="ck-consent__choice" :class="{ 'is-selected': photoConsent === true }">
+                        <input v-model="photoConsent" type="radio" name="photo-consent" :value="true" />
+                        <span>Yes, I agree</span>
+                      </label>
+                      <label class="ck-consent__choice" :class="{ 'is-selected': photoConsent === false }">
+                        <input v-model="photoConsent" type="radio" name="photo-consent" :value="false" />
+                        <span>No, I do not agree</span>
+                      </label>
+                    </div>
+                  </fieldset>
                   <div class="ck-actions">
-                    <button ref="confirmButton" type="button" class="ck-btn ck-btn--primary ck-btn--lg" :disabled="store.checkingIn" :aria-busy="store.checkingIn" @click="confirmCheckIn">
-                      <span v-if="store.checkingIn" class="ck-spinner ck-spinner--light" aria-hidden="true" /><AppIcon v-else name="user-check" :size="19" />{{ store.checkingIn ? 'Checking in…' : 'Confirm Check-in' }}
+                    <button ref="confirmButton" type="button" class="ck-btn ck-btn--primary ck-btn--lg" :disabled="photoConsent === null || store.checkingIn" :aria-busy="store.checkingIn" @click="confirmCheckIn">
+                      <span v-if="store.checkingIn" class="ck-spinner ck-spinner--light" aria-hidden="true" /><AppIcon v-else name="user-check" :size="19" />{{ store.checkingIn ? 'Checking in…' : 'Confirm check-in' }}
                     </button>
                     <button type="button" class="ck-btn ck-btn--ghost ck-btn--lg" :disabled="store.checkingIn" @click="nextAttendee">Cancel</button>
                   </div>
@@ -635,28 +660,35 @@ onBeforeUnmount(() => { cameraOn.value = false })
             <p class="ck-qr__notice" role="status">{{ qrNotice }}</p>
           </section>
 
-          <!-- Recent check-ins -->
-          <section class="ck-card ck-log" aria-labelledby="ck-log-title">
-            <header>
-              <h2 id="ck-log-title">Recent check-ins</h2>
-              <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" :disabled="!recentCheckIns.length" @click="exportLog"><AppIcon name="download" :size="16" />Export</button>
-            </header>
-            <p v-if="deskLoading" class="ck-muted">Loading…</p>
-            <p v-else-if="!recentCheckIns.length" class="ck-muted">No one has checked in to this event yet.</p>
-            <ul v-else>
-              <li v-for="item in visibleRecent" :key="item.id">
-                <span class="ck-avatar ck-avatar--sm" aria-hidden="true">{{ initials(item.name) }}</span>
-                <span class="ck-log__text"><strong>{{ item.name || 'Unnamed attendee' }}</strong><small>{{ item.registration_code }}<template v-if="item.checked_in_by"> · by {{ item.checked_in_by }}</template></small></span>
-                <time :datetime="item.checked_in_at">{{ shortTime(item.checked_in_at) }}</time>
-              </li>
-            </ul>
-            <div class="ck-log__foot">
-              <button v-if="recentCheckIns.length > 6" type="button" class="ck-link" @click="showAllRecent = !showAllRecent">{{ showAllRecent ? 'Show fewer' : `Show all ${recentCheckIns.length}` }}</button>
-              <RouterLink v-if="selectedEventId" :to="{ path: '/admin/users', query: { event: selectedEventId } }" class="ck-link">Full attendee list<AppIcon name="arrow-up-right" :size="15" /></RouterLink>
-            </div>
-          </section>
         </div>
       </div>
+
+      <!-- Recent check-ins -->
+      <section class="ck-card ck-log" aria-labelledby="ck-log-title">
+        <header>
+          <h2 id="ck-log-title">Recent check-ins</h2>
+          <button type="button" class="ck-btn ck-btn--ghost ck-btn--sm" :disabled="!recentCheckIns.length" @click="exportLog"><AppIcon name="download" :size="16" />Export</button>
+        </header>
+        <p v-if="deskLoading" class="ck-muted">Loading…</p>
+        <p v-else-if="!recentCheckIns.length" class="ck-muted">No one has checked in to this event yet.</p>
+        <ul v-else>
+          <li v-for="item in visibleRecent" :key="item.id">
+            <span class="ck-avatar ck-avatar--sm" aria-hidden="true">{{ initials(item.name) }}</span>
+            <span class="ck-log__text">
+              <strong>{{ item.name || 'Unnamed attendee' }}</strong>
+              <span class="ck-log__meta">
+                <small>{{ item.registration_code }}<template v-if="item.checked_in_by"> · by {{ item.checked_in_by }}</template></small>
+                <span class="ck-log__consent" :class="item.photo_consent ? 'is-yes' : 'is-no'">Photo/Media: {{ item.photo_consent ? 'Yes' : 'No' }}</span>
+              </span>
+            </span>
+            <time :datetime="item.checked_in_at">{{ shortTime(item.checked_in_at) }}</time>
+          </li>
+        </ul>
+        <div class="ck-log__foot">
+          <button v-if="recentCheckIns.length > 6" type="button" class="ck-link" @click="showAllRecent = !showAllRecent">{{ showAllRecent ? 'Show fewer' : `Show all ${recentCheckIns.length}` }}</button>
+          <RouterLink v-if="selectedEventId" :to="{ path: '/admin/users', query: { event: selectedEventId } }" class="ck-link">Full registrant list<AppIcon name="arrow-up-right" :size="15" /></RouterLink>
+        </div>
+      </section>
     </section>
   </AdminLayout>
 </template>

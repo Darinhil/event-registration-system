@@ -51,7 +51,9 @@ const eventItems = [
   { to: '/admin/reports', label: 'Event Report', icon: 'chart-column' },
 ]
 const underPath = (path, base) => path === base || path.startsWith(`${base}/`)
-const isEventsActive = computed(() => underPath(route.path, '/admin/events') && !underPath(route.path, '/admin/events/new'))
+// A new event moves to /admin/events/:id/edit once its draft is saved; `creating` marks it as still being created.
+const isCreatingEvent = computed(() => underPath(route.path, '/admin/events/new') || (route.query.creating === '1' && /^\/admin\/events\/[^/]+\/edit$/.test(route.path)))
+const isEventsActive = computed(() => underPath(route.path, '/admin/events') && !isCreatingEvent.value)
 const isEventSection = computed(() => isEventsActive.value || eventItems.some((item) => underPath(route.path, item.to)))
 const isSectionActive = (id) => isPersonnelSection.value && route.query.section === id
 const isWorkspaceActive = computed(() => workspaceItems.some((item) => isSectionActive(item.id) || isChildActive(item)))
@@ -75,7 +77,11 @@ const settings = useSettingsStore()
 setThemeActive(true)
 onBeforeUnmount(() => setThemeActive(false))
 onMounted(() => settings.load())
-const logout = async () => { await auth.logout(); router.push('/login') }
+const logout = async () => {
+  await router.push({ path: '/login', query: { logout: '1' } })
+  if (router.currentRoute.value.path !== '/login' || router.currentRoute.value.query.logout !== '1') return
+  await auth.logout()
+}
 </script>
 
 <template>
@@ -92,7 +98,7 @@ const logout = async () => { await auth.logout(); router.push('/login') }
               <button type="button" class="sb-toggle" :aria-expanded="eventMenuOpen" aria-controls="sb-events" :aria-label="`${eventMenuOpen ? 'Collapse' : 'Expand'} event pages`" @click="eventMenuOpen = !eventMenuOpen"><AppIcon name="chevron-down" :size="16" /></button>
             </div>
             <ul v-show="eventMenuOpen" id="sb-events" class="sb-sublist">
-              <li v-for="item in eventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
+              <li v-for="item in eventItems" :key="item.to"><RouterLink :to="item.to" class="sb-sublink" active-class="is-active" :class="{ 'is-active': item.to === '/admin/events/new' && isCreatingEvent }" :aria-current="item.to === '/admin/events/new' && isCreatingEvent ? 'page' : undefined"><AppIcon class="sb-icon" :name="item.icon" :size="16" /><span class="sb-text">{{ item.label }}</span></RouterLink></li>
             </ul>
           </li>
         </ul>

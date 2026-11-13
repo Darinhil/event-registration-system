@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\FormField;
 use App\Models\Registration;
 use App\Models\User;
+use App\Services\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
@@ -82,7 +83,14 @@ class AdminController extends Controller
                 // append_form_values() reads the event's archived field labels; without this it reloads the whole event per registration.
                 $registration->setRelation('event', $event);
                 $registration->append_form_values($event->formFields);
-                $answers = collect($registration->form_values ?? [])->mapWithKeys(fn ($value, $label) => [mb_strtolower(trim((string) $label)) => $value]);
+                // Bilingual labels ("ជនជាតិ/Ethnicity") also answer to each language on its own ("ethnicity", "ជនជាតិ").
+                $answers = collect();
+                foreach ((array) ($registration->form_values ?? []) as $label => $value) {
+                    $label = mb_strtolower(trim((string) $label));
+                    foreach ([$label, ...array_map('trim', explode('/', $label))] as $key) {
+                        if ($key !== '' && ! $answers->has($key)) $answers->put($key, $value);
+                    }
+                }
                 $increment = function (string $group, $value) use (&$demographics): void {
                     $label = trim((string) $value);
                     if ($label !== '') $demographics[$group][$label] = ($demographics[$group][$label] ?? 0) + 1;
@@ -163,6 +171,7 @@ class AdminController extends Controller
                 return [
                     'id' => $registration->id,
                     'registration_code' => $registration->registration_code,
+                    'registered_at' => $registration->created_at?->toIso8601String(),
                     'name' => $registration->full_name ?: $registration->user?->name,
                     'email' => $registration->email ?: $registration->user?->email,
                     'phone' => $registration->phone ?: $registration->user?->phone,
@@ -192,6 +201,27 @@ class AdminController extends Controller
             ],
             'attendees' => $attendees->values(),
         ]]);
+    }
+
+    public function updateRegistrant(\App\Http\Requests\RegistrationRequest $request, Event $event, Registration $registration, RegistrationService $registrations): JsonResponse
+    {
+        abort_unless((int) $registration->event_id === (int) $event->id, 404);
+
+        $data = $request->validated();
+        abort_unless((int) $data['event_id'] === (int) $event->id, 403, 'This registration does not belong to that event.');
+        $registrations->update($registration, $data);
+
+        return response()->json(['message' => 'Registrant updated successfully.']);
+    }
+
+    public function deleteRegistrant(Event $event, Registration $registration): JsonResponse
+    {
+        abort_unless((int) $registration->event_id === (int) $event->id, 404);
+        abort_if($registration->checkIn()->exists(), 422, 'This attendee has already checked in, so the registration cannot be deleted.');
+
+        $registration->delete();
+
+        return response()->json(['message' => 'Registrant deleted successfully.']);
     }
 
     public function users(\Illuminate\Http\Request $request)
@@ -253,6 +283,7 @@ class AdminController extends Controller
                 'name' => $registration->full_name ?: $registration->user?->name,
                 'email' => $registration->email ?: $registration->user?->email,
                 'phone' => $registration->phone ?: $registration->user?->phone,
+                'photo_consent' => (bool) $registration->photo_consent,
                 'checked_in_by' => $registration->checkIn->staff?->name,
             ])
             ->sortByDesc('checked_in_at')
