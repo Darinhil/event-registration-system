@@ -21,6 +21,7 @@ const listId = computed(() => `${props.id}-list`)
 const optionId = (index) => `${props.id}-opt-${index}`
 const LIST_HEIGHT = 280
 const GAP = 6
+const MIN_LIST_WIDTH = 260
 
 const onOutside = (event) => { if (!root.value?.contains(event.target)) closeList() }
 // The list is fixed to the screen (body is a scroll container and would clip it), so it's moved along with the page.
@@ -36,9 +37,12 @@ const placeList = () => {
   const below = window.innerHeight - box.bottom - GAP * 2
   const above = box.top - GAP * 2
   const up = below < LIST_HEIGHT && above > below
+  // Narrow fields still get a readable list, kept inside the screen on phones.
+  const width = Math.min(Math.max(box.width, MIN_LIST_WIDTH), window.innerWidth - GAP * 2)
+  const left = Math.min(Math.max(box.left, GAP), window.innerWidth - width - GAP)
   listStyle.value = {
-    left: `${box.left}px`,
-    width: `${box.width}px`,
+    left: `${left}px`,
+    width: `${width}px`,
     maxHeight: `${Math.min(LIST_HEIGHT, up ? above : below)}px`,
     ...(up ? { bottom: `${window.innerHeight - box.top + GAP}px` } : { top: `${box.bottom + GAP}px` }),
   }
@@ -136,19 +140,21 @@ const onKeydown = (event) => {
 </template>
 
 <style scoped>
-.fs { position: relative; width: 100%; }
+.fs { position: relative; width: 100%; min-width: 0; }
 .fs.is-open { z-index: 30; }
-.fs button.fs__trigger { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 10px 12px 10px 13px; border: 1px solid var(--fr-border, #cfd9e2); border-radius: var(--fr-radius, 10px); background: #fff; box-shadow: none; color: var(--fr-ink, #0f1c2e); font: inherit; font-size: 16px; font-weight: 400; line-height: 1.4; text-align: left; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.fs button.fs__trigger { display: flex; width: 100%; min-width: 0; max-width: 100%; min-height: 46px; height: auto; white-space: normal; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 10px 12px 10px 13px; border: 1px solid var(--fr-border, #cfd9e2); border-radius: var(--fr-radius, 10px); background: #fff; box-shadow: none; color: var(--fr-ink, #0f1c2e); font: inherit; font-size: 16px; font-weight: 400; line-height: 1.4; text-align: left; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
 .fs button.fs__trigger:hover { border-color: #aebdca; background: #fff; color: var(--fr-ink, #0f1c2e); transform: none; }
 .fs button.fs__trigger:focus, .fs.is-open button.fs__trigger { border-color: var(--fr-primary, #0b7f62); box-shadow: 0 0 0 3px rgba(11, 127, 98, .18); outline: 0; }
 .fs button.fs__trigger[aria-invalid="true"] { border-color: var(--fr-danger, #b42318); background: #fffbfa; }
 .fs button.fs__trigger[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, .16); }
-.fs__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Long answers (e.g. "Khmer/English" pairs) wrap instead of being cut off on small screens. */
+.fs__value { flex: 1; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
 .fs__value.is-placeholder { color: #94a3b8; }
 .fs__chevron { flex: none; color: var(--fr-muted, #5f7286); transition: transform .18s ease, color .18s ease; }
 .fs.is-open .fs__chevron { color: var(--fr-primary, #0b7f62); transform: rotate(180deg); }
 .fs__list { position: fixed; z-index: 1000; margin: 0; padding: 6px; overflow-y: auto; border: 1px solid var(--fr-line, #e6ecf1); border-radius: 12px; background: #fff; box-shadow: 0 14px 34px rgba(16, 36, 61, .16); list-style: none; }
-.fs__option { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 9px 10px; border-radius: 8px; color: var(--fr-ink-2, #33475c); font-size: 15px; line-height: 1.4; cursor: pointer; }
+.fs__option { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 9px 10px; border-radius: 8px; color: var(--fr-ink-2, #33475c); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; cursor: pointer; }
+.fs__option > span { min-width: 0; }
 .fs__option.is-active { background: #f1f5f8; color: var(--fr-ink, #0f1c2e); }
 .fs__option.is-selected { background: var(--fr-primary-wash, #e8f7f2); color: var(--fr-primary-hover, #086a51); font-weight: 600; }
 .fs__option svg { flex: none; color: var(--fr-primary, #0b7f62); }

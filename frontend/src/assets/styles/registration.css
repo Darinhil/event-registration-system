@@ -168,3 +168,32 @@
 .fr-field--invalid .fr-select-wrap select { border-color: var(--fr-danger); background: #fffbfa }
 .fr-field--invalid .fr-select-wrap select:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, .16) }
 @media (max-width: 600px) { .fr-w25, .fr-w33, .fr-w50 { width: 100% } }
+
+/* ---------- Responsive: long Khmer/English text and every screen size ---------- */
+/* Khmer stacks letters vertically and has no spaces between words, so give it room and let it break anywhere. */
+.fr-label-text, .fr-field-help, .fr-choice, .fr-field-error, .fr-heading, .rg-form__head p { overflow-wrap: anywhere; }
+.fr-label-text, .fr-choice { line-height: 1.5; }
+.fr-choice > span { min-width: 0; }
+.fr-choices--grid { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); }
+.fr-steps li { max-width: 100%; }
+.fr-step-name { white-space: normal; overflow-wrap: anywhere; }
+.fr-field > input, .fr-field > textarea, .fr-field .fr-file input { max-width: 100%; }
+
+/* Small laptops / large tablets: slimmer event panel so the form keeps its width. */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .rg-layout { grid-template-columns: 300px minmax(0, 1fr); gap: 20px; }
+  .rg-form { padding: 24px 26px 28px; }
+}
+/* Tablets: quarter and third-width fields are too narrow to type in, so pair them up. */
+@media (max-width: 900px) and (min-width: 601px) {
+  .fr-w25, .fr-w33 { width: calc(50% - 8px); }
+}
+/* Small phones (iPhone SE, older Android). */
+@media (max-width: 380px) {
+  .rg-form { padding: 18px 12px 20px; }
+  .rg-form__head { margin-bottom: 16px; }
+  .rg-event__body { padding: 14px 12px; }
+  .fr-fields { gap: 16px 0; }
+  .fr-choice { padding: 10px 11px; }
+  .fr-choices--inline .fr-choice--pill { flex: 1 1 0; min-width: 0; }
+}
