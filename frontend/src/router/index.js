@@ -32,6 +32,7 @@ const SystemSettingsView = () => import('../views/admin/SystemSettingsView.vue')
 // `events` marks the event workspace: Master Admins and Event Admins only (see the sidebar).
 const staff = { auth: true, staff: true }
 const eventStaff = { ...staff, events: true }
+const EVENT_DRAFT_RESUME_KEY = 'event_setup_resume'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -82,7 +83,16 @@ router.beforeEach((to) => {
   if (to.meta.adminOnly && !auth.isAdmin) return '/admin'
   if (to.meta.events && !auth.canManageEvents) return '/admin'
   if (to.meta.auth && !auth.isAuthenticated) return signIn(to.meta.signupFirst ? '/account/register' : '/login', to)
-  if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated) {
+  if (to.path === '/admin/events/new' && !to.query.fresh) {
+    try {
+      const savedDraft = JSON.parse(localStorage.getItem(EVENT_DRAFT_RESUME_KEY) || 'null')
+      if (savedDraft?.id && String(savedDraft.userId) === String(auth.user?.id)) {
+        return { path: `/admin/events/${savedDraft.id}/edit`, query: { step: savedDraft.step || 1 } }
+      }
+      if (savedDraft) localStorage.removeItem(EVENT_DRAFT_RESUME_KEY)
+    } catch { /* ignore unavailable or invalid local storage */ }
+  }
+  if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated && to.query.logout !== '1') {
     return homeAfterSignIn(auth, typeof to.query.redirect === 'string' ? to.query.redirect : '')
   }
   // Staff accounts only use the admin area: public and attendee pages send them to the dashboard.

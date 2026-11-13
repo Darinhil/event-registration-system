@@ -25,7 +25,11 @@ const submitSearch = () => {
   searchInput.value?.blur()
 }
 
-const logout = async () => { await auth.logout(); router.push('/login') }
+const logout = async () => {
+  await router.push({ path: '/login', query: { logout: '1' } })
+  if (router.currentRoute.value.path !== '/login' || router.currentRoute.value.query.logout !== '1') return
+  await auth.logout()
+}
 const loadProfilePhoto = async () => {
   const requestId = ++profilePhotoRequest
   if (!auth.user?.profile_photo) {

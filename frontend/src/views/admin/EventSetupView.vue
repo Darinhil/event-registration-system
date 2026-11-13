@@ -6,11 +6,13 @@ import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import DateInput from '../../components/DateInput.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 import { replaceSetupUrl } from '../../router'
 import { addNonBinaryGenderOption, choiceLabel, isLegacyStarterForm, starterFields } from '../../utils/formFieldTypes'
 import { copyText } from '../../utils/clipboard'
 
 const route = useRoute()
+const auth = useAuthStore()
 
 /* ------------------------------------------------------------------
    Wizard state
@@ -124,6 +126,11 @@ const focusField = async (key) => {
   element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   element?.focus({ preventScroll: true })
 }
+const EVENT_DRAFT_RESUME_KEY = 'event_setup_resume'
+const rememberDraftForResume = () => {
+  if (!eventId.value || eventStatus.value !== 'draft') return
+  try { localStorage.setItem(EVENT_DRAFT_RESUME_KEY, JSON.stringify({ id: eventId.value, step: activeStep.value, userId: auth.user?.id })) } catch { /* optional */ }
+}
 const stepIsValid = (step) => !Object.keys(validatorFor[step]?.() || {}).length
 const stepState = (step) => {
   if (step === activeStep.value) return 'current'
@@ -136,22 +143,26 @@ const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 const showStep = (step) => {
   activeStep.value = step
   furthestStep.value = Math.max(furthestStep.value, step)
+  rememberDraftForResume()
   replaceSetupUrl({ query: { ...route.query, step } })
   scrollToTop()
 }
 // Moving forward checks every required step in between; moving back is always allowed.
-const goToStep = (target) => {
+const goToStep = async (target) => {
   target = clampStep(target)
-  if (target <= activeStep.value) return showStep(target)
-  for (let step = activeStep.value; step < target; step += 1) {
-    if (!stepIsValid(step)) {
-      shownSteps.add(step)
-      if (step !== activeStep.value) showStep(step)
-      const firstInvalid = (step === 1 ? basicsOrder : ['fields']).find((key) => validatorFor[step]()[key])
-      focusField(firstInvalid)
-      return
+  if (target === activeStep.value) return
+  if (target > activeStep.value) {
+    for (let step = activeStep.value; step < target; step += 1) {
+      if (!stepIsValid(step)) {
+        shownSteps.add(step)
+        if (step !== activeStep.value) showStep(step)
+        const firstInvalid = (step === 1 ? basicsOrder : ['fields']).find((key) => validatorFor[step]()[key])
+        focusField(firstInvalid)
+        return
+      }
     }
   }
+  if (canSaveDraft.value && event.name.trim() && isDirty.value && !(await saveDraft())) return
   showStep(target)
 }
 const canVisit = (step) => step <= furthestStep.value || step === activeStep.value + 1
@@ -425,13 +436,13 @@ const handleApiError = (requestError, fallback) => {
 }
 
 const autosaveKey = computed(() => `event_setup:${eventId.value || 'new'}`)
-const saveDraft = async () => {
-  if (busy.value || !canSaveDraft.value) return
+const saveDraft = async ({ navigateAfterCreate = true } = {}) => {
+  if (busy.value || !canSaveDraft.value) return false
   if (!event.name.trim()) {
     serverErrors.name = 'Add an event name before saving a draft.'
     if (activeStep.value !== 1) showStep(1)
     focusField('name')
-    return
+    return false
   }
   saveState.value = 'saving'; saveError.value = ''
   try {
@@ -443,23 +454,28 @@ const saveDraft = async () => {
       eventStatus.value = 'draft'
       removeAutosave(previousKey)
       // Further saves update this draft instead of creating new events.
-      allowNavigation = true
-      await replaceSetupUrl({ path: `/admin/events/${data.id}/edit`, query: { step: activeStep.value } })
-      allowNavigation = false
+      if (navigateAfterCreate) {
+        allowNavigation = true
+        try { await replaceSetupUrl({ path: `/admin/events/${data.id}/edit`, query: { step: activeStep.value } }) }
+        finally { allowNavigation = false }
+      }
     }
+    rememberDraftForResume()
     markClean(); removeAutosave()
     lastSavedAt.value = new Date()
     saveState.value = 'saved'
+    return true
   } catch (requestError) {
     saveError.value = handleApiError(requestError, 'Unable to save the draft. Try again.')
     saveState.value = 'error'
+    return false
   }
 }
 
 const primaryLabel = computed(() => {
   if (activeStep.value === 2) return agenda.value.length ? 'Continue' : 'Skip agenda'
   if (activeStep.value === 3) return 'Review event'
-  if (activeStep.value === 4) return isLive.value ? 'Save changes' : 'Publish event'
+  if (activeStep.value === 4) return isLive.value ? 'Save changes' : 'Submit event'
   return 'Continue'
 })
 const onPrimary = () => {
@@ -495,6 +511,10 @@ const confirmPublish = async () => {
     const { data } = eventId.value ? await api.put(`/admin/events/${eventId.value}`, payload) : await api.post('/admin/events', payload)
     removeAutosave()
     if (!eventId.value) removeLegacyDraft()
+    try {
+      const savedDraft = JSON.parse(localStorage.getItem(EVENT_DRAFT_RESUME_KEY) || 'null')
+      if (String(savedDraft?.id) === String(data.id ?? eventId.value)) localStorage.removeItem(EVENT_DRAFT_RESUME_KEY)
+    } catch { /* optional */ }
     markClean()
     confirmOpen.value = false
     saveState.value = 'saved'
@@ -519,13 +539,16 @@ const removeLegacyDraft = () => { try { localStorage.removeItem('event_draft') }
 let autosaveTimer = null
 // Stays false until any earlier recovery copy has been offered, so loading an event can't erase it.
 const autosaveReady = ref(false)
+const persistRecoveryCopy = () => {
+  try { localStorage.setItem(autosaveKey.value, JSON.stringify(autosavePayload())) }
+  catch { try { localStorage.setItem(autosaveKey.value, JSON.stringify({ ...autosavePayload(), event: { ...event, image: '' } })) } catch { /* storage full */ } }
+}
 watch(snapshotOf, () => {
   if (!autosaveReady.value || loading.value || publishedEvent.value || restoreCandidate.value) return
   clearTimeout(autosaveTimer)
   autosaveTimer = setTimeout(() => {
     if (!isDirty.value) return removeAutosave()
-    try { localStorage.setItem(autosaveKey.value, JSON.stringify(autosavePayload())) }
-    catch { try { localStorage.setItem(autosaveKey.value, JSON.stringify({ ...autosavePayload(), event: { ...event, image: '' } })) } catch { /* storage full */ } }
+    persistRecoveryCopy()
   }, 800)
 })
 const restoreCandidate = ref(null)
@@ -559,9 +582,16 @@ const discardRecovery = () => {
 
 let allowNavigation = false
 const beforeUnload = (unloadEvent) => { if (isDirty.value && !publishedEvent.value) { unloadEvent.preventDefault(); unloadEvent.returnValue = '' } }
-onBeforeRouteLeave(() => {
+onBeforeRouteLeave(async () => {
   if (allowNavigation || !isDirty.value || publishedEvent.value) return true
-  return window.confirm('You have unsaved changes. Leave this page? A copy stays on this device and can be restored when you come back.')
+  if (canSaveDraft.value) {
+    if (!event.name.trim()) {
+      persistRecoveryCopy()
+      return true
+    }
+    return saveDraft({ navigateAfterCreate: false })
+  }
+  return window.confirm('You have unsaved changes to this live event. Leave anyway? A recovery copy stays on this device.')
 })
 
 /* ------------------------------------------------------------------
@@ -642,6 +672,7 @@ onMounted(async () => {
   window.addEventListener('beforeunload', beforeUnload)
   const recovery = findRecovery()
   await loadEvent()
+  rememberDraftForResume()
   if (!eventId.value) markClean()
   restoreCandidate.value = loadError.value ? null : recovery
   autosaveReady.value = true
@@ -661,11 +692,11 @@ onBeforeUnmount(() => {
       <header class="es-header">
         <div class="es-header__title">
           <div><h1>{{ headerTitle }}</h1><span class="es-status" :class="`is-${statusBadge.tone}`">{{ statusBadge.label }}</span></div>
-          <p>{{ event.name.trim() || 'Set up your event in four short steps. You can save a draft at any time.' }}</p>
+          <p>{{ event.name.trim() || 'Set up your event in four short steps.' }}</p>
         </div>
         <div class="es-header__actions">
           <span class="es-save-state" :class="`is-${saveIndicator.tone}`" role="status" aria-live="polite"><AppIcon :name="saveIndicator.icon" :size="15" :class="{ 'is-spinning': saveIndicator.tone === 'busy' }" />{{ saveIndicator.label }}</span>
-          <button v-if="canSaveDraft" type="button" class="es-btn" :disabled="busy || loading || Boolean(loadError)" @click="saveDraft"><AppIcon name="save" :size="16" />{{ saveState === 'saving' && !publishing ? 'Saving…' : 'Save draft' }}</button>
+          <RouterLink v-if="eventId" class="es-btn" to="/admin/events/new?fresh=1"><AppIcon name="plus" :size="16" />Create another event</RouterLink>
         </div>
       </header>
 
@@ -941,9 +972,10 @@ onBeforeUnmount(() => {
         </div>
 
         <footer class="es-footer">
-          <button v-if="activeStep > 1" type="button" class="es-btn" :disabled="busy" @click="goToStep(activeStep - 1)"><AppIcon name="chevron-left" :size="16" />Back</button>
           <span class="es-footer__progress" aria-hidden="true"><i v-for="step in steps" :key="step.id" :class="{ 'is-done': step.id <= activeStep }"></i></span>
-          <button v-if="activeStep === steps.length && canSaveDraft" type="button" class="es-btn es-footer__draft" :disabled="busy" @click="saveDraft"><AppIcon name="save" :size="16" />Save draft</button>
+          <RouterLink v-if="activeStep === 1" class="es-btn" to="/admin/events"><AppIcon name="chevron-left" :size="16" />Back</RouterLink>
+          <button v-else type="button" class="es-btn" :disabled="busy" @click="goToStep(activeStep - 1)"><AppIcon name="chevron-left" :size="16" />Back</button>
+          <button v-if="canSaveDraft" type="button" class="es-btn" :disabled="busy" @click="saveDraft"><AppIcon name="save" :size="16" />{{ saveState === 'saving' ? 'Saving…' : 'Save' }}</button>
           <button type="submit" class="es-btn es-btn--primary es-footer__primary" :disabled="busy">
             <template v-if="activeStep === steps.length && publishing">Publishing…</template>
             <template v-else>{{ primaryLabel }}<AppIcon :name="activeStep === steps.length ? (isLive ? 'check' : 'send') : 'arrow-right'" :size="16" /></template>

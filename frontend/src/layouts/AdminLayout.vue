@@ -75,7 +75,11 @@ const settings = useSettingsStore()
 setThemeActive(true)
 onBeforeUnmount(() => setThemeActive(false))
 onMounted(() => settings.load())
-const logout = async () => { await auth.logout(); router.push('/login') }
+const logout = async () => {
+  await router.push({ path: '/login', query: { logout: '1' } })
+  if (router.currentRoute.value.path !== '/login' || router.currentRoute.value.query.logout !== '1') return
+  await auth.logout()
+}
 </script>
 
 <template>
