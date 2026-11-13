@@ -148,7 +148,7 @@ const onSubmit = async (values) => {
           <ul class="rg-facts">
             <li><AppIcon name="calendar" :size="16" /><span>{{ dateLabel }}</span></li>
             <li v-if="timeLabel"><AppIcon name="clock" :size="16" /><span>{{ timeLabel }}</span></li>
-            <li><AppIcon name="pin" :size="16" /><LocationLink :location="event.location" /></li>
+            <li><AppIcon name="pin" :size="16" /><LocationLink :location="event.location" :location-url="event.location_url" /></li>
           </ul>
           <p v-if="event.description" class="rg-event__desc">{{ event.description }}</p>
         </div>

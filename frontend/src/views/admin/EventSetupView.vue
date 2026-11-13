@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import QRCodeDisplay from '../../components/QRCodeDisplay.vue'
 import AppIcon from '../../components/AppIcon.vue'
+import LocationLink from '../../components/LocationLink.vue'
 import DateInput from '../../components/DateInput.vue'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
@@ -45,7 +46,10 @@ const previewOpen = ref(false)
 const imagePreview = ref('')
 const imageError = ref('')
 
-const event = reactive({ name: '', description: '', category: 'Conference', image: '', start_date: '', end_date: '', start_time: '', end_time: '', location: '', registration_start: '', deadline: '', maximum_participants: 200, allow_registration: true })
+const event = reactive({ name: '', description: '', category: 'Conference', image: '', start_date: '', end_date: '', start_time: '', end_time: '', location: '', location_url: '', registration_start: '', deadline: '', maximum_participants: 200, allow_registration: true })
+const isValidLocationUrl = (value) => {
+  try { return ['http:', 'https:'].includes(new URL(String(value).trim()).protocol) } catch { return false }
+}
 const setupFieldType = (type) => ({ text: 'Text', textarea: 'Text area', email: 'Email', phone: 'Phone', number: 'Number', date: 'Date', time: 'Time', select: 'Select', radio: 'Radio', checkbox: 'Checkbox', file: 'File', url: 'URL', yesno: 'Yes/No' })[String(type).toLowerCase()] || type
 const fields = ref(starterFields().map((field, index) => ({ ...field, id: index + 1, type: setupFieldType(field.type) })))
 const agenda = ref([])
@@ -83,7 +87,7 @@ const eventDuration = computed(() => {
 /* ------------------------------------------------------------------
    Validation — each step validates only its own fields
    ------------------------------------------------------------------ */
-const basicsOrder = ['name', 'start_date', 'start_time', 'end_date', 'end_time', 'location', 'registration_start', 'deadline', 'maximum_participants']
+const basicsOrder = ['name', 'start_date', 'start_time', 'end_date', 'end_time', 'location', 'location_url', 'registration_start', 'deadline', 'maximum_participants']
 const validateBasics = () => {
   const errors = {}
   if (!event.name.trim()) errors.name = 'Enter an event name.'
@@ -98,6 +102,7 @@ const validateBasics = () => {
   // The API only accepts future start times when an event is first published.
   if (start && !isLive.value && start <= new Date()) errors.start_time = errors.start_time || 'The event must start in the future.'
   if (!event.location.trim()) errors.location = 'Enter where the event takes place.'
+  if (event.location_url.trim() && !isValidLocationUrl(event.location_url)) errors.location_url = 'Enter a valid http or https map link.'
   const capacity = Number(event.maximum_participants)
   if (!Number.isInteger(capacity) || capacity < 1) errors.maximum_participants = 'Enter a whole number of 1 or more.'
   else if (capacity < registeredCount.value) errors.maximum_participants = `Capacity can’t be lower than the ${registeredCount.value} people already registered.`
@@ -410,6 +415,7 @@ const buildPayload = (status) => {
     starts_at: toIso(event.start_date, event.start_time),
     ends_at: toIso(event.end_date, event.end_time),
     location: event.location.trim() || null,
+    location_url: event.location_url.trim() || null,
     capacity: Number.isInteger(capacity) && capacity > 0 ? capacity : null,
     branding: event.image ? { image: event.image } : null,
     enabled_fields: fields.value,
@@ -422,7 +428,7 @@ const buildPayload = (status) => {
   return payload
 }
 
-const apiFieldMap = { name: 'name', starts_at: 'start_time', ends_at: 'end_time', location: 'location', capacity: 'maximum_participants' }
+const apiFieldMap = { name: 'name', starts_at: 'start_time', ends_at: 'end_time', location: 'location', location_url: 'location_url', capacity: 'maximum_participants' }
 const handleApiError = (requestError, fallback) => {
   const response = requestError.response
   const apiErrors = response?.data?.errors || {}
@@ -444,6 +450,12 @@ const handleApiError = (requestError, fallback) => {
 const autosaveKey = computed(() => `event_setup:${eventId.value || 'new'}`)
 const saveDraft = async ({ navigateAfterCreate = true } = {}) => {
   if (busy.value || !canSaveDraft.value) return false
+  if (event.location_url.trim() && !isValidLocationUrl(event.location_url)) {
+    serverErrors.location_url = 'Enter a valid http or https map link.'
+    showStep(1)
+    focusField('location_url')
+    return false
+  }
   if (!event.name.trim()) {
     serverErrors.name = 'Add an event name before saving a draft.'
     if (activeStep.value !== 1) showStep(1)
@@ -616,7 +628,7 @@ const loadEvent = async () => {
     const settings = loadedFormConfig.value.settings || {}
     eventStatus.value = item.status || 'draft'
     registeredCount.value = Number(data.registered || 0)
-    Object.assign(event, { name: item.name || '', description: item.description || '', category: item.category || 'Conference', image: item.branding?.image || '', start_date: start.date, start_time: start.time, end_date: end.date, end_time: end.time, location: item.location || '', maximum_participants: item.capacity || 200, registration_start: settings.registration_start?.slice(0, 10) || '', deadline: settings.registration_end?.slice(0, 10) || '', allow_registration: settings.allow_registration !== false })
+    Object.assign(event, { name: item.name || '', description: item.description || '', category: item.category || 'Conference', image: item.branding?.image || '', start_date: start.date, start_time: start.time, end_date: end.date, end_time: end.time, location: item.location || '', location_url: item.location_url || '', maximum_participants: item.capacity || 200, registration_start: settings.registration_start?.slice(0, 10) || '', deadline: settings.registration_end?.slice(0, 10) || '', allow_registration: settings.allow_registration !== false })
     agenda.value = Array.isArray(loadedFormConfig.value.agenda) ? loadedFormConfig.value.agenda.map((session, index) => ({ ...session, id: session.id ?? index + 1, day: Number(session.day) || 1 })) : []
     imagePreview.value = event.image
     if (Array.isArray(item.enabled_fields) && item.enabled_fields.length && item.enabled_fields.every((field) => field && typeof field === 'object' && field.label)) {
@@ -819,6 +831,11 @@ onBeforeUnmount(() => {
               <input v-model="event.location" v-bind="fieldAttrs('location')" maxlength="200" placeholder="e.g. Live &amp; Learn Cambodia, Phnom Penh" required />
               <small v-if="errors.location" id="ev-location-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.location }}</small>
             </label>
+            <label class="es-field"><span class="es-label">Location link</span>
+              <input v-model="event.location_url" v-bind="fieldAttrs('location_url')" type="url" maxlength="2048" inputmode="url" placeholder="https://maps.google.com/..." autocomplete="url" />
+              <small class="es-hint">Optional Google Maps or other http/https directions link.</small>
+              <small v-if="errors.location_url" id="ev-location_url-error" class="es-error"><AppIcon name="alert-circle" :size="14" />{{ errors.location_url }}</small>
+            </label>
           </section>
 
           <section class="es-section">
@@ -957,7 +974,7 @@ onBeforeUnmount(() => {
               <header><h3>Schedule &amp; registration</h3><button type="button" class="es-link" @click="showStep(1)"><AppIcon name="pen" :size="14" />Edit</button></header>
               <dl class="es-dl">
                 <div><dt><AppIcon name="calendar" :size="15" />When</dt><dd>{{ scheduleSummary }}</dd></div>
-                <div><dt><AppIcon name="pin" :size="15" />Where</dt><dd>{{ event.location || 'Not set' }}</dd></div>
+                <div><dt><AppIcon name="pin" :size="15" />Where</dt><dd><LocationLink :location="event.location" :location-url="event.location_url" /></dd></div>
                 <div><dt><AppIcon name="clock" :size="15" />Registration</dt><dd>{{ event.registration_start ? formatDate(event.registration_start) : 'Opens on publish' }} → {{ event.deadline ? formatDate(event.deadline) : 'No deadline' }}</dd></div>
                 <div><dt><AppIcon name="users" :size="15" />Capacity</dt><dd>{{ Number(event.maximum_participants) > 0 ? `${Number(event.maximum_participants).toLocaleString()} people` : 'Not set' }} · {{ event.allow_registration ? 'Accepting registrations' : 'Registration paused' }}</dd></div>
               </dl>
@@ -1022,7 +1039,7 @@ onBeforeUnmount(() => {
               <h2>{{ publishedEvent.name }}</h2>
               <ul class="es-done__facts">
                 <li><AppIcon name="calendar" :size="16" /><span>{{ scheduleSummary }}</span></li>
-                <li><AppIcon name="pin" :size="16" /><span>{{ publishedEvent.location || 'Location pending' }}</span></li>
+                <li><AppIcon name="pin" :size="16" /><LocationLink :location="publishedEvent.location" :location-url="publishedEvent.location_url" fallback="Location pending" /></li>
                 <li><AppIcon name="users" :size="16" /><span>{{ Number(event.maximum_participants).toLocaleString() }} spots<template v-if="event.deadline"> · register by {{ formatDate(event.deadline, { month: 'short', day: 'numeric', year: 'numeric' }) }}</template></span></li>
               </ul>
             </div>

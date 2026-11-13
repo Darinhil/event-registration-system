@@ -125,7 +125,7 @@ class RegistrationFlowTest extends TestCase
         $name = $event->formFields()->create(['label' => 'Name', 'type' => 'text', 'required' => true]);
         $email = $event->formFields()->create(['label' => 'Email', 'type' => 'email', 'required' => true]);
         $gender = $event->formFields()->create(['label' => 'Gender', 'type' => 'radio', 'required' => true, 'options' => ['M: Male', 'F: Female', 'P: Prefer not to say']]);
-        $age = $event->formFields()->create(['label' => 'Age', 'type' => 'radio', 'required' => true, 'options' => ['K: Under 18', 'Y: 18–29', 'A: 30–60', 'E: Above 60']]);
+        $age = $event->formFields()->create(['label' => 'Age', 'type' => 'select', 'required' => true, 'options' => ['K: ក្រោម 18 ឆ្នាំ/Under 18', 'Y: 18–29', 'A: 30–60', 'E: លើស 60 ឆ្នាំ/Above 60']]);
         $disability = $event->formFields()->create(['label' => 'Disability', 'type' => 'checkbox', 'options' => ['C: Difficulty seeing', 'H: Difficulty hearing'], 'settings' => ['multiple' => true]]);
         $institution = $event->formFields()->create(['label' => 'Institution', 'type' => 'text', 'required' => true]);
         $telephone = $event->formFields()->create(['label' => 'TEL', 'type' => 'phone', 'required' => true]);

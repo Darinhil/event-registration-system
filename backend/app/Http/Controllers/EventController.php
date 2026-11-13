@@ -10,12 +10,12 @@ use App\Http\Resources\RegistrationResource;
 
 class EventController extends Controller
 {
-    public function index(Request $request) { return Event::attachBannerLinks(Event::query()->where('status', 'published')->where('ends_at', '>', now())->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'form_config', 'status', 'created_by', 'updated_at'])->with('creator:id,name')->withCount('registrations')->latest('starts_at')->get()->filter(fn (Event $event) => $event->registrations_count < $event->registrationLimit())->each(fn (Event $event) => $event->makeHidden('form_config'))->values()); }
+    public function index(Request $request) { return Event::attachBannerLinks(Event::query()->where('status', 'published')->where('ends_at', '>', now())->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'location_url', 'capacity', 'form_config', 'status', 'created_by', 'updated_at'])->with('creator:id,name')->withCount('registrations')->latest('starts_at')->get()->filter(fn (Event $event) => $event->registrations_count < $event->registrationLimit())->each(fn (Event $event) => $event->makeHidden('form_config'))->values()); }
     public function adminIndex(Request $request)
     {
         // Banners are attached afterwards: see Event::attachBannerLinks().
         return Event::attachBannerLinks(Event::visibleTo($request->user())
-            ->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'status', 'created_by', 'updated_at'])
+            ->select(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'location_url', 'capacity', 'status', 'created_by', 'updated_at'])
             ->withCount('registrations')
             ->latest('starts_at')
             ->get());
@@ -40,7 +40,7 @@ class EventController extends Controller
         // so organisers can open their own drafts and closed events for editing.
         $staff = $this->authorizePublicView($request->user('sanctum'), $event);
         $registered = $event->registrations()->count();
-        $data = $event->load('creator:id,name')->only(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'creator']);
+        $data = $event->load('creator:id,name')->only(['id', 'name', 'category', 'description', 'starts_at', 'ends_at', 'location', 'location_url', 'capacity', 'branding', 'enabled_fields', 'form_config', 'status', 'creator']);
         if ($staff) {
             $data['check_in_qr_token'] = $event->check_in_qr_token;
         }
@@ -114,6 +114,7 @@ class EventController extends Controller
             'starts_at' => [...$required, 'date', ...($creating && ! $draft ? ['after:now'] : [])],
             'ends_at' => [...$required, 'date', 'after:starts_at'],
             'location' => [...$required, 'string', 'max:200'],
+            'location_url' => ['nullable', 'url:http,https', 'max:2048'],
             'capacity' => [...$required, 'integer', 'min:1'],
             'branding' => ['nullable', 'array'], 'branding.image' => ['nullable', 'string', 'max:2000000'],
             'enabled_fields' => ['nullable', 'array'], 'form_config' => ['nullable', 'array'],

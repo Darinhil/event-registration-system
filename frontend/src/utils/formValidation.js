@@ -4,6 +4,7 @@
  * "edit registration" page, mirroring the backend's dynamic rules.
  */
 import { isFieldVisible } from './formConditions'
+import { AGE_GROUP_OPTIONS } from './formFieldTypes'
 
 /** True when a field answer has no content (also counts unchecked boxes). */
 export const isAnswerEmpty = (value) =>
@@ -84,6 +85,14 @@ export const validateFields = (fields, values) => {
 export const normalizeStoredValue = (field, stored) => {
   const s = field.settings || {}
   const isMultiple = (field.type === 'checkbox' || field.type === 'select') && Boolean(s.multiple)
+
+  // Existing numeric Age answers can still be edited after the field is upgraded to age groups.
+  if (field.type === 'select' && /\bage\b/i.test(String(field.label || '')) && stored !== null && stored !== undefined && stored !== '' && Number.isFinite(Number(stored))) {
+    const age = Number(stored)
+    const code = age < 18 ? 'K' : age < 30 ? 'Y' : age <= 60 ? 'A' : 'E'
+    const ageGroup = (field.options || []).find((option) => String(option).startsWith(`${code}:`))
+    if (ageGroup && AGE_GROUP_OPTIONS.some((option) => option.startsWith(`${code}:`))) return ageGroup
+  }
 
   // Form values are displayed as comma-separated text by some API responses.
   // Convert them back to arrays for multi-choice controls before submitting.

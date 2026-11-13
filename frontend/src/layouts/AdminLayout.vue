@@ -26,6 +26,15 @@ const personnelItems = [
   { id: 'compliances', label: 'Compliances', icon: 'shield-check' },
   { id: 'contract-history', label: 'Contract History', icon: 'file-text' },
   { id: 'training', label: 'Staff Online Training', icon: 'graduation' },
+  { id: 'disability', label: 'Disability', hint: '6 types', icon: 'accessibility', children: [
+    { id: 'V', label: 'ពិការភាពមើលឃើញ / Difficulty seeing' },
+    { id: 'H', label: 'ពិការភាពស្តាប់ / Difficulty hearing' },
+    { id: 'M', label: 'ពិការភាពធ្វើចលនា / Difficulty moving' },
+    { id: 'R', label: 'ពិការភាពចងចាំ / Difficulty remembering' },
+    { id: 'S', label: 'ពិការភាពថែទាំខ្លួនឯង / Difficulty with self-care' },
+    { id: 'X', label: 'ពិការភាពទំនាក់ទំនង / Difficulty communicating' },
+    { id: 'O', label: 'គ្មានពិការភាព / No disability' },
+  ] },
 ]
 const workspaceItems = [
   { id: 'time-management', label: 'Time Management', icon: 'clock', children: [

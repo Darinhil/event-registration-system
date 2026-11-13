@@ -137,7 +137,7 @@ class AdminRegistrantManagementTest extends TestCase
         $this->assertDatabaseMissing('registrations', ['id' => $registration->id]);
     }
 
-    public function test_registrant_with_check_in_cannot_be_deleted(): void
+    public function test_event_admin_can_delete_a_registrant_who_has_checked_in(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         Sanctum::actingAs($admin);
@@ -150,9 +150,11 @@ class AdminRegistrantManagementTest extends TestCase
         ]);
 
         $this->deleteJson("/api/admin/events/{$event->id}/registrants/{$registration->id}")
-            ->assertUnprocessable();
+            ->assertOk()
+            ->assertJsonPath('message', 'Registrant deleted successfully.');
 
-        $this->assertDatabaseHas('registrations', ['id' => $registration->id]);
+        $this->assertDatabaseMissing('registrations', ['id' => $registration->id]);
+        $this->assertDatabaseMissing('check_ins', ['registration_id' => $registration->id]);
     }
 
     public function test_registrant_cannot_be_managed_through_a_different_event(): void
