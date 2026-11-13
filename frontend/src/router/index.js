@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { takeIdleSignOut } from '../utils/idleLogout'
@@ -30,6 +31,7 @@ const SystemSettingsView = () => import('../views/admin/SystemSettingsView.vue')
 // `events` marks the event workspace: Master Admins and Event Admins only (see the sidebar).
 const staff = { auth: true, staff: true }
 const eventStaff = { ...staff, events: true }
+const EVENT_DRAFT_RESUME_KEY = 'event_setup_resume'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -50,8 +52,8 @@ const router = createRouter({
     { path: '/profile', component: AdminProfileView, meta: { auth: true } },
     { path: '/admin', component: DashboardView, meta: staff },
     { path: '/admin/events', component: EventsView, meta: eventStaff },
-    { path: '/admin/events/new', component: EventSetupView, meta: eventStaff },
-    { path: '/admin/events/:id/edit', component: EventSetupView, meta: eventStaff },
+    { path: '/admin/events/new', component: EventSetupView, meta: { ...eventStaff, setupPage: true } },
+    { path: '/admin/events/:id/edit', component: EventSetupView, meta: { ...eventStaff, setupPage: true } },
     { path: '/admin/events/:id/registrants', redirect: (to) => ({ path: '/admin/users', query: { ...to.query, event: to.params.id } }), meta: eventStaff },
     { path: '/admin/events/:id/form-builder', component: FormBuilderView, meta: eventStaff },
     { path: '/admin/events/:id', component: EventDetailsView, meta: eventStaff },
@@ -80,11 +82,34 @@ router.beforeEach((to) => {
   if (to.meta.adminOnly && !auth.isAdmin) return '/admin'
   if (to.meta.events && !auth.canManageEvents) return '/admin'
   if (to.meta.auth && !auth.isAuthenticated) return signIn(to.meta.signupFirst ? '/account/register' : '/login', to)
-  if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated) {
+  if (to.path === '/admin/events/new' && !to.query.fresh) {
+    try {
+      const savedDraft = JSON.parse(localStorage.getItem(EVENT_DRAFT_RESUME_KEY) || 'null')
+      if (savedDraft?.id && String(savedDraft.userId) === String(auth.user?.id)) {
+        return { path: `/admin/events/${savedDraft.id}/edit`, query: { step: savedDraft.step || 1, creating: '1' } }
+      }
+      if (savedDraft) localStorage.removeItem(EVENT_DRAFT_RESUME_KEY)
+    } catch { /* ignore unavailable or invalid local storage */ }
+  }
+  if ((to.path === '/login' || to.path === '/account/register') && auth.isAuthenticated && to.query.logout !== '1') {
     return homeAfterSignIn(auth, typeof to.query.redirect === 'string' ? to.query.redirect : '')
   }
   // Staff accounts only use the admin area: public and attendee pages send them to the dashboard.
   if (auth.isAuthenticated && auth.canAccessAdmin && !to.path.startsWith('/admin')) return '/admin'
+})
+
+// "Create event" and "Edit event" share EventSetupView, so Vue would reuse the open page when moving between them
+// (e.g. "Create event" from an edit or published screen) and keep showing the old event. Each visit gets its own
+// page instance instead (App.vue keys the page by this counter). The page's own URL updates go through
+// replaceSetupUrl() so the form isn't rebuilt while it is being used.
+export const setupPageVisit = ref(0)
+let keepSetupPage = false
+export const replaceSetupUrl = async (location) => {
+  keepSetupPage = true
+  try { return await router.replace(location) } finally { keepSetupPage = false }
+}
+router.afterEach((to, from, failure) => {
+  if (!failure && to.meta.setupPage && !keepSetupPage) setupPageVisit.value++
 })
 
 export default router
