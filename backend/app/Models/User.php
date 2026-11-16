@@ -84,4 +84,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(FinanceVoucher::class);
     }
+
+    public function financeBudgets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(FinanceBudget::class);
+    }
 }

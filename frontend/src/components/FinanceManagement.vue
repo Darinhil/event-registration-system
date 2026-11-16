@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import organizationLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
-import { createFinanceVoucher, getFinanceVoucher, getFinanceVouchers, updateFinanceVoucher } from '../services/financeVoucherService'
+import { createFinanceBudget, createFinanceVoucher, getFinanceBudgets, getFinanceVoucher, getFinanceVouchers, transitionFinanceBudget, updateFinanceBudget, updateFinanceVoucher } from '../services/financeVoucherService'
 
 const today = new Date()
 const dateStamp = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
@@ -17,15 +17,18 @@ const voucher = reactive({
   paymentMode: '',
   chequeNumber: '',
   remarks: '',
+  department: 'HR and Operations',
+  projectName: 'Project A',
+  fiscalYear: today.getFullYear(),
+  workflowStatus: 'draft',
 })
-const voucherTypes = ['Cash Advance', 'Adv. Settlement', 'Direct Payment', 'Journal', 'Receipt']
+const voucherTypes = ['Cash Advance', 'Liquidation', 'Reimbursement', 'Third Party Payment', 'Journal', 'Receipt']
 const paymentModes = ['Cash', 'Non-Cash', 'Bank Transfer', 'Bank Cheque']
 const approvalRoles = [
-  { key: 'checker', label: 'CHECKER', badge: 'Review' },
+  { key: 'preparer', label: 'PREPARER', badge: 'Prepare' },
+  { key: 'checker', label: 'CHECKER', badge: 'Check' },
   { key: 'verifier', label: 'VERIFIER', badge: 'Verify' },
   { key: 'approver', label: 'APPROVER', badge: 'Approve' },
-  { key: 'receiver', label: 'RECEIVER', badge: 'Receive' },
-  { key: 'posting-agent', label: 'POSTING AGENT', badge: 'Post' },
 ]
 const approvals = reactive(Object.fromEntries(approvalRoles.map(({ key }) => [key, { name: '', position: '', date: '', signature: '' }])))
 const signatureCanvases = new Map()
@@ -35,6 +38,77 @@ const currentVoucherId = ref(null)
 const selectedVoucherId = ref('')
 const savingVoucher = ref(false)
 const voucherMessage = ref('')
+const activeFinanceView = ref('budgets')
+const financeViews = [
+  { id: 'budgets', label: 'Project Budgets' },
+  { id: 'reports', label: 'Financial Reports' },
+  { id: 'vouchers', label: 'Finance Vouchers' },
+]
+const departments = ['HR and Operations', 'Activities']
+const projectOptions = Array.from({ length: 14 }, (_, index) => `Project ${String.fromCharCode(65 + index)}`)
+const budgetStages = ['draft', 'submitted', 'checked', 'reviewed', 'approved']
+const budgetStageLabels = { draft: 'Draft', submitted: 'Submitted', checked: 'Checked', reviewed: 'Reviewed', approved: 'Approved', returned: 'Returned' }
+const budgets = ref([])
+const budgetMessage = ref('')
+const savingBudget = ref(false)
+const currentBudgetId = ref(null)
+const selectedBudgetId = ref('')
+const budgetForm = reactive({
+  budgetNumber: `PB-${dateStamp}-${String(Date.now()).slice(-3)}`,
+  department: 'HR and Operations',
+  projectName: 'Project A',
+  fiscalYear: today.getFullYear(),
+  currency: 'USD',
+  purpose: '',
+})
+const budgetLines = reactive([{ description: '', budgetCode: '', amount: '' }])
+const budgetTotal = computed(() => budgetLines.reduce((sum, line) => sum + numericValue(line.amount), 0))
+const budgetCanEdit = computed(() => !currentBudgetId.value || ['draft', 'returned'].includes(selectedBudget.value?.workflow_status))
+const selectedBudget = computed(() => budgets.value.find((budget) => String(budget.id) === String(currentBudgetId.value)))
+const reportRows = computed(() => {
+  const groups = new Map()
+  const addProject = (department, projectName, fiscalYear = today.getFullYear()) => {
+    const key = `${department}|${projectName}|${fiscalYear}`
+    if (!groups.has(key)) groups.set(key, { id: key, department, project_name: projectName, fiscal_year: fiscalYear, currency: 'USD', totalBudget: 0, hasApprovedBudget: false })
+    return groups.get(key)
+  }
+  departments.forEach((department) => projectOptions.forEach((projectName) => addProject(department, projectName)))
+  budgets.value.filter((budget) => budget.workflow_status === 'approved').forEach((budget) => {
+    const details = budget.payload || {}
+    const fiscalYear = details.fiscalYear || budget.fiscal_year || today.getFullYear()
+    const group = addProject(budget.department, budget.project_name, fiscalYear)
+    group.currency = details.currency || 'USD'
+    group.hasApprovedBudget = true
+    group.totalBudget += (details.lines || []).reduce((sum, line) => sum + numericValue(line.amount), 0)
+  })
+  savedVouchers.value.filter((saved) => saved.payload?.workflowStatus === 'approved' && saved.payload?.department && saved.payload?.projectName).forEach((saved) => {
+    addProject(saved.payload.department, saved.payload.projectName, saved.payload.fiscalYear || today.getFullYear())
+  })
+  return [...groups.values()].map((group) => {
+    const projectBudgets = budgets.value.filter((budget) => budget.department === group.department && budget.project_name === group.project_name && Number(budget.payload?.fiscalYear || budget.fiscal_year || today.getFullYear()) === Number(group.fiscal_year))
+    const latestBudget = projectBudgets[0]
+    const expenses = savedVouchers.value
+      .filter((saved) => saved.payload?.workflowStatus === 'approved' && saved.payload?.department === group.department && saved.payload?.projectName === group.project_name && Number(saved.payload?.fiscalYear || today.getFullYear()) === Number(group.fiscal_year))
+      .reduce((sum, saved) => sum + (saved.payload?.lines || []).reduce((lineSum, line) => lineSum + numericValue(line.amount), 0), 0)
+    return { ...group, expenses, balance: group.totalBudget - expenses, budgetStatus: group.hasApprovedBudget ? 'approved' : latestBudget?.workflow_status || 'no-budget' }
+  })
+})
+const reportDepartments = computed(() => departments.map((department) => ({
+  name: department,
+  rows: reportRows.value.filter((row) => row.department === department).sort((a, b) => a.project_name.localeCompare(b.project_name) || a.fiscal_year - b.fiscal_year),
+})))
+const reportSummary = computed(() => reportRows.value.reduce((summary, row) => ({
+  approvedBudget: summary.approvedBudget + row.totalBudget,
+  expenses: summary.expenses + row.expenses,
+  projects: summary.projects + 1,
+}), { approvedBudget: 0, expenses: 0, projects: 0 }))
+let nextBudgetLineId = 1
+const createBudgetLine = () => ({ id: nextBudgetLineId++, description: '', budgetCode: '', amount: '' })
+const addBudgetLine = () => budgetLines.push(createBudgetLine())
+const removeBudgetLine = (id) => {
+  const index = budgetLines.findIndex((line) => line.id === id)
+  if (budgetLines.length > 1 && index !== -1) budgetLines.splice(index, 1)
+}
 let nextLineId = 1
 const createLine = () => ({
   id: nextLineId++,
@@ -58,6 +132,7 @@ const totalBalance = computed(() => lines.reduce((total, line) => total + numeri
 const totalDebit = computed(() => lines.reduce((total, line) => total + numericValue(line.debit), 0))
 const totalCredit = computed(() => lines.reduce((total, line) => total + numericValue(line.credit), 0))
 const formatAmount = (amount) => amount === 0 ? '-' : amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const formatCurrency = (amount) => numericValue(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const addLine = () => lines.push(createLine())
 const printVoucher = () => window.print()
 const removeLine = (lineId) => {
@@ -128,6 +203,81 @@ const refreshSavedVouchers = async (quiet = false) => {
     if (!quiet) voucherMessage.value = 'Unable to load saved vouchers.'
   }
 }
+const refreshBudgets = async (quiet = false) => {
+  try {
+    const { data } = await getFinanceBudgets()
+    budgets.value = data.data || []
+  } catch {
+    if (!quiet) budgetMessage.value = 'Unable to load project budgets.'
+  }
+}
+const startNewBudget = () => {
+  currentBudgetId.value = null
+  selectedBudgetId.value = ''
+  Object.assign(budgetForm, {
+    budgetNumber: `PB-${dateStamp}-${String(Date.now()).slice(-3)}`,
+    department: 'HR and Operations', projectName: 'Project A', fiscalYear: today.getFullYear(), currency: 'USD', purpose: '',
+  })
+  budgetLines.splice(0, budgetLines.length, createBudgetLine())
+  budgetMessage.value = ''
+}
+const loadBudget = (id) => {
+  const record = budgets.value.find((budget) => String(budget.id) === String(id))
+  if (!record) return
+  const payload = record.payload || {}
+  currentBudgetId.value = record.id
+  selectedBudgetId.value = String(record.id)
+  Object.assign(budgetForm, {
+    budgetNumber: payload.budgetNumber || record.budget_number,
+    department: payload.department || record.department,
+    projectName: payload.projectName || record.project_name,
+    fiscalYear: payload.fiscalYear || record.fiscal_year || today.getFullYear(),
+    currency: payload.currency || 'USD',
+    purpose: payload.purpose || '',
+  })
+  budgetLines.splice(0, budgetLines.length, ...(payload.lines || []).map((line) => ({ ...line, id: nextBudgetLineId++ })))
+  if (!budgetLines.length) budgetLines.push(createBudgetLine())
+  budgetMessage.value = `Loaded ${record.budget_number}.`
+}
+const saveBudget = async (action = 'save') => {
+  if (action === 'submit' && budgetLines.some((line) => !line.description.trim() || line.amount === '')) {
+    budgetMessage.value = 'Add a description and amount to every budget line before submitting.'
+    return
+  }
+  savingBudget.value = true
+  budgetMessage.value = ''
+  const payload = {
+    ...budgetForm,
+    lines: budgetLines.map(({ description, budgetCode, amount }) => ({ description, budgetCode, amount })),
+    action,
+  }
+  try {
+    const response = currentBudgetId.value
+      ? await updateFinanceBudget(currentBudgetId.value, payload)
+      : await createFinanceBudget(payload)
+    const record = response.data.data
+    currentBudgetId.value = record.id
+    selectedBudgetId.value = String(record.id)
+    budgetMessage.value = action === 'submit' ? 'Budget submitted for checking.' : 'Budget saved.'
+    await refreshBudgets(true)
+  } catch (error) {
+    budgetMessage.value = error.response?.data?.message || 'Could not save this budget. Check the required fields and try again.'
+  } finally {
+    savingBudget.value = false
+  }
+}
+const advanceBudget = async (action) => {
+  if (!currentBudgetId.value) return
+  budgetMessage.value = ''
+  try {
+    const { data } = await transitionFinanceBudget(currentBudgetId.value, action)
+    const index = budgets.value.findIndex((budget) => budget.id === data.data.id)
+    if (index !== -1) budgets.value[index] = data.data
+    budgetMessage.value = action === 'return' ? 'Budget returned for changes.' : `Budget ${budgetStageLabels[data.data.workflow_status].toLowerCase()}.`
+  } catch (error) {
+    budgetMessage.value = error.response?.data?.message || 'That workflow action is not available.'
+  }
+}
 const saveVoucher = async () => {
   savingVoucher.value = true
   voucherMessage.value = ''
@@ -144,8 +294,10 @@ const saveVoucher = async () => {
     selectedVoucherId.value = String(currentVoucherId.value)
     voucherMessage.value = 'Voucher saved.'
     await refreshSavedVouchers(true)
+    return true
   } catch (error) {
     voucherMessage.value = error.response?.data?.message || 'Could not save voucher. Check your connection and try again.'
+    return false
   } finally {
     savingVoucher.value = false
   }
@@ -157,9 +309,13 @@ const loadVoucher = async (id) => {
     const { data } = await getFinanceVoucher(id)
     const record = data.data
     const payload = record.payload
-    for (const key of ['number', 'date', 'advanceNumber', 'name', 'position', 'purpose', 'signatureDate', 'voucherType', 'paymentMode', 'chequeNumber', 'remarks']) {
+    for (const key of ['number', 'date', 'advanceNumber', 'name', 'position', 'purpose', 'signatureDate', 'voucherType', 'paymentMode', 'chequeNumber', 'remarks', 'department', 'projectName', 'fiscalYear', 'workflowStatus']) {
       voucher[key] = payload[key] ?? ''
     }
+    if (!voucher.department) voucher.department = 'HR and Operations'
+    if (!voucher.projectName) voucher.projectName = 'Project A'
+    if (!voucher.fiscalYear) voucher.fiscalYear = today.getFullYear()
+    if (!voucher.workflowStatus) voucher.workflowStatus = 'draft'
     currentVoucherId.value = record.id
     lines.splice(0, lines.length, ...(payload.lines || []).map((line) => ({ ...line, id: nextLineId++ })))
     if (!lines.length) lines.push(createLine())
@@ -182,6 +338,7 @@ const startNewVoucher = () => {
     number: `GV-${dateStamp}-${String(Date.now()).slice(-3)}`,
     date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
     advanceNumber: '', name: '', position: '', purpose: '', signatureDate: '', voucherType: '', paymentMode: '', chequeNumber: '', remarks: '',
+    department: 'HR and Operations', projectName: 'Project A', fiscalYear: today.getFullYear(), workflowStatus: 'draft',
   })
   lines.splice(0, lines.length, ...Array.from({ length: 5 }, createLine))
   for (const { key } of approvalRoles) {
@@ -190,15 +347,98 @@ const startNewVoucher = () => {
   }
   voucherMessage.value = ''
 }
-onMounted(refreshSavedVouchers)
+const voucherStages = ['draft', 'prepared', 'checked', 'verified', 'approved']
+const voucherStageLabels = { draft: 'Draft', prepared: 'Prepared', checked: 'Checked', verified: 'Verified', approved: 'Approved' }
+const advanceVoucher = async () => {
+  const currentIndex = voucherStages.indexOf(voucher.workflowStatus)
+  if (currentIndex < 0 || currentIndex >= voucherStages.length - 1) return
+  const previous = voucher.workflowStatus
+  voucher.workflowStatus = voucherStages[currentIndex + 1]
+  const saved = await saveVoucher()
+  if (!saved) voucher.workflowStatus = previous
+}
+onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 </script>
 
 <template>
   <section class="finance-page">
+    <header class="finance-workspace-heading">
+      <div><span class="finance-kicker">FINANCE WORKSPACE</span><h1>Finance Management</h1><p>Plan project budgets, track spending, and process finance vouchers.</p></div>
+    </header>
+    <nav class="finance-view-nav" aria-label="Finance sections">
+      <button v-for="view in financeViews" :key="view.id" type="button" :class="{ 'is-active': activeFinanceView === view.id }" :aria-current="activeFinanceView === view.id ? 'page' : undefined" @click="activeFinanceView = view.id">{{ view.label }}</button>
+    </nav>
+
+    <template v-if="activeFinanceView === 'budgets'">
+      <div class="finance-budget-layout">
+        <aside class="finance-budget-list finance-card">
+          <div class="finance-card-heading"><div><h2>Project budgets</h2><p>Drafts and items in the approval process</p></div><button type="button" class="finance-new-button" @click="startNewBudget">New budget</button></div>
+          <label class="finance-budget-open">Open a saved budget
+            <select v-model="selectedBudgetId" @change="loadBudget(selectedBudgetId)"><option value="">Select a budget</option><option v-for="budget in budgets" :key="budget.id" :value="String(budget.id)">{{ budget.budget_number }} · {{ budget.project_name }}</option></select>
+          </label>
+          <div v-if="budgets.length" class="finance-budget-records">
+            <button v-for="budget in budgets" :key="budget.id" type="button" class="finance-budget-record" :class="{ 'is-selected': String(currentBudgetId) === String(budget.id) }" @click="loadBudget(budget.id)">
+              <span><strong>{{ budget.project_name }}</strong><small>{{ budget.department }} · {{ budget.budget_number }}</small></span><span class="finance-status" :class="`status-${budget.workflow_status}`">{{ budgetStageLabels[budget.workflow_status] || budget.workflow_status }}</span>
+            </button>
+          </div>
+          <p v-else class="finance-empty">No budgets saved yet. Start a project budget to begin.</p>
+        </aside>
+
+        <form class="finance-budget-form finance-card" @submit.prevent="saveBudget('save')">
+          <header class="finance-card-heading"><div><span class="finance-card-kicker">PROJECT BUDGET</span><h2>{{ currentBudgetId ? budgetForm.budgetNumber : 'Create a project budget' }}</h2><p>Create, submit, and track a budget through review and approval.</p></div><span v-if="selectedBudget" class="finance-status" :class="`status-${selectedBudget.workflow_status}`">{{ budgetStageLabels[selectedBudget.workflow_status] || selectedBudget.workflow_status }}</span></header>
+          <div class="finance-budget-fields">
+            <label>Budget number<input v-model.trim="budgetForm.budgetNumber" required :disabled="!budgetCanEdit" /></label>
+            <label>Department / structure<select v-model="budgetForm.department" :disabled="!budgetCanEdit"><option v-for="department in departments" :key="department">{{ department }}</option></select></label>
+            <label>Project<select v-model="budgetForm.projectName" :disabled="!budgetCanEdit"><option v-for="project in projectOptions" :key="project">{{ project }}</option></select></label>
+            <label>Fiscal year<input v-model.number="budgetForm.fiscalYear" type="number" min="2000" max="2200" :disabled="!budgetCanEdit" /></label>
+            <label class="is-wide">Purpose / notes<textarea v-model.trim="budgetForm.purpose" rows="2" placeholder="What will this budget support?" :disabled="!budgetCanEdit"></textarea></label>
+          </div>
+          <div class="finance-budget-lines-heading"><div><h3>Budget lines</h3><p>Enter the planned cost for each activity or expense.</p></div><button v-if="budgetCanEdit" type="button" class="finance-line-add" @click="addBudgetLine">+ Add line</button></div>
+          <div class="finance-budget-line-list">
+            <div v-for="(line, index) in budgetLines" :key="line.id" class="finance-budget-line">
+              <span class="finance-budget-line-number">{{ index + 1 }}</span>
+              <label>Description<input v-model.trim="line.description" placeholder="Expense or activity" :disabled="!budgetCanEdit" /></label>
+              <label>Budget code<input v-model.trim="line.budgetCode" placeholder="Optional" :disabled="!budgetCanEdit" /></label>
+              <label>Amount (USD)<input v-model="line.amount" type="number" min="0" step="0.01" placeholder="0.00" :disabled="!budgetCanEdit" /></label>
+              <button v-if="budgetCanEdit && budgetLines.length > 1" type="button" class="finance-line-remove" :aria-label="`Remove budget line ${index + 1}`" @click="removeBudgetLine(line.id)">×</button>
+            </div>
+          </div>
+          <div class="finance-budget-total"><span>Total requested</span><strong>USD {{ formatCurrency(budgetTotal) }}</strong></div>
+          <div v-if="currentBudgetId" class="finance-budget-workflow" aria-label="Budget approval progress">
+            <div v-for="(stage, index) in budgetStages.slice(1)" :key="stage" :class="{ 'is-complete': budgetStages.indexOf(selectedBudget?.workflow_status) >= index + 1 }"><i>{{ index + 1 }}</i><span>{{ budgetStageLabels[stage] }}</span></div>
+          </div>
+          <p v-if="budgetMessage" class="finance-feedback" role="status">{{ budgetMessage }}</p>
+          <footer class="finance-budget-actions">
+            <template v-if="budgetCanEdit"><button type="submit" class="finance-action-secondary" :disabled="savingBudget">{{ savingBudget ? 'Saving…' : 'Save draft' }}</button><button type="button" class="finance-action-primary" :disabled="savingBudget" @click="saveBudget('submit')">Submit for checking <span>→</span></button></template>
+            <template v-else-if="selectedBudget?.workflow_status === 'submitted'"><button type="button" class="finance-action-secondary" @click="advanceBudget('return')">Return for changes</button><button type="button" class="finance-action-primary" @click="advanceBudget('check')">Mark checked <span>→</span></button></template>
+            <template v-else-if="selectedBudget?.workflow_status === 'checked'"><button type="button" class="finance-action-secondary" @click="advanceBudget('return')">Return for changes</button><button type="button" class="finance-action-primary" @click="advanceBudget('review')">Complete review <span>→</span></button></template>
+            <template v-else-if="selectedBudget?.workflow_status === 'reviewed'"><button type="button" class="finance-action-secondary" @click="advanceBudget('return')">Return for changes</button><button type="button" class="finance-action-primary" @click="advanceBudget('approve')">Approve budget <span>→</span></button></template>
+            <span v-else-if="selectedBudget?.workflow_status === 'approved'" class="finance-approved-note">Budget approved</span>
+          </footer>
+        </form>
+      </div>
+    </template>
+
+    <template v-else-if="activeFinanceView === 'reports'">
+      <section class="finance-card finance-report-card">
+        <header class="finance-card-heading"><div><span class="finance-card-kicker">FINANCIAL REPORTS</span><h2>Budgets vs. expenses</h2><p>Track all projects. Approved budgets and vouchers update the totals as they move through review.</p></div></header>
+        <div class="finance-report-summary">
+          <article><span>Projects tracked</span><strong>{{ reportSummary.projects }}</strong></article>
+          <article><span>Approved budgets</span><strong>USD {{ formatCurrency(reportSummary.approvedBudget) }}</strong></article>
+          <article><span>Approved expenses</span><strong>USD {{ formatCurrency(reportSummary.expenses) }}</strong></article>
+        </div>
+        <section v-for="group in reportDepartments" :key="group.name" class="finance-report-group" :aria-label="`${group.name} project budget report`">
+          <header><h3>{{ group.name }}</h3><span>{{ group.rows.length }} projects</span></header>
+          <div class="finance-report-table-wrap"><table class="finance-report-table"><thead><tr><th>Project</th><th>Fiscal year</th><th>Approved budget</th><th>Expenses</th><th>Remaining</th><th>Status</th></tr></thead><tbody><tr v-for="row in group.rows" :key="row.id"><td>{{ row.project_name }}</td><td>{{ row.fiscal_year }}</td><td>{{ row.hasApprovedBudget ? `${row.currency} ${formatCurrency(row.totalBudget)}` : '—' }}</td><td>{{ row.currency }} {{ formatCurrency(row.expenses) }}</td><td :class="{ 'is-over-budget': row.hasApprovedBudget && row.balance < 0 }">{{ row.hasApprovedBudget ? `${row.currency} ${formatCurrency(row.balance)}` : '—' }}</td><td><span class="finance-status" :class="`status-${row.budgetStatus}`">{{ row.budgetStatus === 'no-budget' ? 'No budget yet' : budgetStageLabels[row.budgetStatus] || row.budgetStatus }}</span></td></tr></tbody></table></div>
+        </section>
+      </section>
+    </template>
+
+    <template v-else>
     <header class="finance-page-toolbar">
       <div>
-        <h1>General Voucher</h1>
-        <p>Complete the voucher details, then print a copy for approval and posting.</p>
+        <h1>Finance Vouchers</h1>
+        <p>Prepare, check, verify, and approve finance vouchers.</p>
       </div>
       <div class="finance-toolbar-actions">
         <select v-model="selectedVoucherId" aria-label="Load a saved voucher" @change="loadSelectedVoucher">
@@ -217,13 +457,19 @@ onMounted(refreshSavedVouchers)
         <div class="voucher-brand">
           <img :src="organizationLogo" alt="Live &amp; Learn Cambodia Organization" />
         </div>
-        <h2>GENERAL VOUCHER</h2>
+        <h2>{{ voucher.voucherType || 'FINANCE VOUCHER' }}</h2>
         <div class="voucher-reference-fields">
           <label>Voucher No:<input v-model.trim="voucher.number" aria-label="Voucher number" /></label>
           <label>Voucher Date:<input v-model="voucher.date" type="date" aria-label="Voucher date" /></label>
           <label>Adv. No:<input v-model.trim="voucher.advanceNumber" aria-label="Advance number" /></label>
         </div>
       </header>
+
+      <section class="voucher-project-fields" aria-label="Project budget assignment">
+        <label>Structure<select v-model="voucher.department"><option v-for="department in departments" :key="department">{{ department }}</option></select></label>
+        <label>Project<select v-model="voucher.projectName"><option v-for="project in projectOptions" :key="project">{{ project }}</option></select></label>
+        <label>Fiscal year<input v-model.number="voucher.fiscalYear" type="number" min="2000" max="2200" /></label>
+      </section>
 
       <section class="voucher-parties" aria-label="Voucher details">
         <div class="voucher-person-fields">
@@ -302,6 +548,13 @@ onMounted(refreshSavedVouchers)
 
       <label class="voucher-remarks"><strong>REMARKS</strong><textarea v-model.trim="voucher.remarks" rows="3"></textarea></label>
 
+      <section class="voucher-workflow-strip" aria-label="Voucher workflow">
+        <div><strong>Approval workflow</strong><span>Prepare → Check → Verify → Approve</span></div>
+        <ol><li v-for="(stage, index) in voucherStages.slice(1)" :key="stage" :class="{ 'is-complete': voucherStages.indexOf(voucher.workflowStatus) >= index + 1 }"><i>{{ index + 1 }}</i>{{ voucherStageLabels[stage] }}</li></ol>
+        <button v-if="voucher.workflowStatus !== 'approved'" type="button" class="finance-action-primary" :disabled="savingVoucher" @click="advanceVoucher">{{ voucher.workflowStatus === 'draft' ? 'Prepare voucher' : `Mark ${voucherStageLabels[voucherStages[voucherStages.indexOf(voucher.workflowStatus) + 1]] || 'approved'}` }} <span>→</span></button>
+        <span v-else class="finance-approved-note">Voucher approved</span>
+      </section>
+
       <div class="voucher-approvals-wrap">
         <header class="approval-section-heading"><strong>AUTHORIZATION &amp; SIGN-OFF WORKFLOW</strong><span>Electronic verification sequence from submission to financial posting</span></header>
         <div class="voucher-approval-cards">
@@ -316,6 +569,7 @@ onMounted(refreshSavedVouchers)
         </div>
       </div>
     </form>
+    </template>
   </section>
 </template>
 
@@ -393,6 +647,80 @@ onMounted(refreshSavedVouchers)
 .voucher-approvals input{min-height:19px}
 @media(max-width:680px){.finance-page{padding:12px 7px 35px}.finance-page-toolbar{align-items:flex-start;flex-direction:column}.finance-page-toolbar h1{font-size:22px}.finance-paper{padding:10px}.voucher-header{grid-template-columns:1fr 1fr}.voucher-header h2{grid-column:1/-1;grid-row:1;text-align:right;font-size:16px}.voucher-brand{grid-row:2}.voucher-reference-fields{grid-row:2}.voucher-parties{grid-template-columns:minmax(0,1.2fr) minmax(100px,.8fr) minmax(110px,.9fr)}.voucher-person-fields>label{grid-template-columns:57px minmax(0,1fr)}.voucher-person-fields .voucher-signature-field{grid-template-columns:57px minmax(12px,1fr) 26px 62px}.voucher-choice-group{grid-template-columns:25px minmax(0,1fr);gap:2px}.voucher-choice-group legend{font-size:12px}.voucher-choice-group label{font-size:12px}.voucher-lines{min-width:620px}.voucher-approvals{font-size:12px}}
 .finance-page{max-width:1360px;padding:28px clamp(16px,3vw,40px) 56px;color:#172a3a}
+.finance-workspace-heading{margin:0 0 20px}
+.finance-workspace-heading h1{margin:6px 0;color:#172a3a;font-size:clamp(28px,3vw,36px);font-weight:760;letter-spacing:-.04em}
+.finance-workspace-heading p{margin:0;color:#65758a;font-size:15px}
+.finance-view-nav{display:flex;gap:6px;margin:0 0 22px;padding:5px;border:1px solid #e2eaf1;border-radius:12px;background:#f2f6fa}
+.finance-view-nav button{min-height:42px;padding:0 18px;border:0;border-radius:8px;background:transparent;color:#5a6c80;font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.finance-view-nav button:hover{background:#e9eff5;color:#29435d}
+.finance-view-nav button.is-active{background:#fff;color:#12695e;box-shadow:0 2px 7px #233d5212}
+.finance-card{min-width:0;padding:22px;border:1px solid #e0e8ef;border-radius:14px;background:#fff;box-shadow:0 5px 18px #19344a09}
+.finance-budget-layout{display:grid;grid-template-columns:minmax(270px,.72fr) minmax(0,1.65fr);align-items:start;gap:18px}
+.finance-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:0 0 20px;padding:0 0 16px;border-bottom:1px solid #edf1f5}
+.finance-card-heading h2{margin:4px 0 5px;color:#1b3044;font-size:21px;letter-spacing:-.02em}
+.finance-card-heading p{margin:0;color:#708094;font-size:13px;line-height:1.5}
+.finance-card-kicker{color:#167568;font-size:11px;font-weight:750;letter-spacing:.12em}
+.finance-card-heading .finance-new-button{min-height:38px;padding:0 12px;border:1px solid #cbd9e5;border-radius:8px;background:#fff;color:#2d4963;font:inherit;font-size:13px;font-weight:650;cursor:pointer;white-space:nowrap}
+.finance-budget-open,.finance-budget-fields label,.finance-budget-line label{display:grid;gap:7px;color:#40566e;font-size:13px;font-weight:650}
+.finance-budget-open{margin:0 0 14px}
+.finance-budget-open select,.finance-budget-fields input,.finance-budget-fields select,.finance-budget-fields textarea,.finance-budget-line input,.voucher-project-fields input,.voucher-project-fields select{box-sizing:border-box;width:100%;min-width:0;min-height:42px;padding:9px 11px;border:1px solid #dce5ed;border-radius:8px;background:#fbfcfe;color:#243c53;font:inherit;font-size:14px}
+.finance-budget-fields textarea{resize:vertical}
+.finance-budget-fields input:focus,.finance-budget-fields select:focus,.finance-budget-fields textarea:focus,.finance-budget-line input:focus,.finance-budget-open select:focus,.voucher-project-fields input:focus,.voucher-project-fields select:focus{outline:3px solid #14756820;border-color:#168675}
+.finance-budget-records{display:grid;gap:7px;max-height:540px;overflow:auto}
+.finance-budget-record{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px;border:1px solid #e8edf2;border-radius:9px;background:#fff;color:inherit;text-align:left;cursor:pointer}
+.finance-budget-record:hover,.finance-budget-record.is-selected{border-color:#a6d8c9;background:#f6fbf9}
+.finance-budget-record>span:first-child{display:grid;gap:4px;min-width:0}
+.finance-budget-record strong{overflow:hidden;color:#243c53;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.finance-budget-record small{overflow:hidden;color:#748398;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.finance-status{display:inline-flex;flex:none;align-items:center;padding:5px 8px;border-radius:99px;background:#edf1f5;color:#526579;font-size:11px;font-weight:700}
+.status-submitted{background:#fff6df;color:#896300}.status-checked{background:#eaf3ff;color:#285d9b}.status-reviewed{background:#f1eaff;color:#6743a0}.status-approved{background:#e7f7ef;color:#14734f}.status-returned{background:#fff0f0;color:#b44242}.status-no-budget{background:#edf1f5;color:#65768a}
+.finance-empty{margin:0;padding:18px;border:1px dashed #d7e1e9;border-radius:10px;color:#718197;font-size:13px;line-height:1.5}
+.finance-budget-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.finance-budget-fields .is-wide{grid-column:1/-1}
+.finance-budget-lines-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 12px}
+.finance-budget-lines-heading h3{margin:0 0 4px;color:#29425a;font-size:16px}
+.finance-budget-lines-heading p{margin:0;color:#748398;font-size:12px}
+.finance-line-add,.finance-action-secondary,.finance-action-primary{display:inline-flex;min-height:40px;align-items:center;justify-content:center;gap:8px;padding:0 14px;border:1px solid #d2dee8;border-radius:8px;background:#fff;color:#36516b;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.finance-line-add{min-height:36px;color:#147568}
+.finance-action-primary{border-color:#147568;background:#147568;color:#fff;box-shadow:0 3px 9px #14756824}
+.finance-action-primary:hover:not(:disabled){background:#105f55}
+.finance-action-primary:disabled{opacity:.6;cursor:wait}
+.finance-budget-line-list{display:grid;gap:9px}
+.finance-budget-line{display:grid;grid-template-columns:30px minmax(0,1.6fr) minmax(100px,.8fr) minmax(120px,.7fr) 34px;align-items:end;gap:10px;padding:12px;border:1px solid #e5ebf1;border-radius:9px;background:#fafbfd}
+.finance-budget-line-number{align-self:center;color:#8190a2;font-size:13px;font-weight:700;text-align:center}
+.finance-line-remove{width:32px;height:38px;border:1px solid #f0d8d8;border-radius:7px;background:#fff;color:#b44242;font-size:20px;cursor:pointer}
+.finance-budget-total{display:flex;align-items:center;justify-content:space-between;margin:14px 0 0;padding:14px 16px;border-radius:9px;background:#f1f7f5;color:#476257;font-size:14px}
+.finance-budget-total strong{color:#12695e;font-size:16px}
+.finance-budget-workflow{display:flex;justify-content:space-between;gap:8px;margin:22px 0 14px}
+.finance-budget-workflow>div{display:grid;justify-items:center;gap:7px;flex:1;color:#8592a2;font-size:11px;font-weight:650;text-align:center}
+.finance-budget-workflow i{display:grid;width:28px;height:28px;place-items:center;border:1px solid #dce5ed;border-radius:50%;background:#fff;font-style:normal}
+.finance-budget-workflow .is-complete{color:#147568}.finance-budget-workflow .is-complete i{border-color:#147568;background:#eaf7f2;color:#147568}
+.finance-budget-actions{display:flex;justify-content:flex-end;gap:9px;margin:18px 0 0;padding-top:14px;border-top:1px solid #edf1f5}
+.finance-feedback{margin:12px 0 0;color:#147568;font-size:13px}
+.finance-approved-note{align-self:center;color:#14734f;font-size:14px;font-weight:700}
+.finance-report-card{padding:24px}
+.finance-report-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 22px}
+.finance-report-summary article{display:grid;gap:7px;padding:15px;border:1px solid #e5ecf2;border-radius:10px;background:#f8fafc}
+.finance-report-summary span{color:#718197;font-size:12px;font-weight:600}
+.finance-report-summary strong{color:#243c53;font-size:18px;font-variant-numeric:tabular-nums}
+.finance-report-group{margin-top:18px}
+.finance-report-group>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px}
+.finance-report-group>header h3{margin:0;color:#29425a;font-size:16px}
+.finance-report-group>header span{color:#7a8a9c;font-size:12px}
+.finance-report-table-wrap{overflow:auto}
+.finance-report-table{width:100%;border-collapse:collapse;font-size:14px}
+.finance-report-table th,.finance-report-table td{padding:13px 12px;border-bottom:1px solid #e9eef3;text-align:left;white-space:nowrap}
+.finance-report-table th{background:#f7f9fb;color:#617287;font-size:12px;font-weight:700}
+.finance-report-table td{color:#344b63}.finance-report-table td:nth-child(n+4){font-variant-numeric:tabular-nums;text-align:right}
+.finance-report-table .is-over-budget{color:#b44242;font-weight:700}
+.voucher-project-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 12px;padding:14px;border:1px solid #e2eaf1;border-radius:10px;background:#f8fafc}
+.voucher-project-fields label{display:grid;gap:6px;color:#465b70;font-size:12px;font-weight:700}
+.voucher-workflow-strip{display:grid;grid-template-columns:minmax(190px,.8fr) minmax(0,2fr) auto;align-items:center;gap:16px;margin-top:14px;padding:15px;border:1px solid #e1e9ef;border-radius:10px;background:#f8fafc}
+.voucher-workflow-strip>div:first-child{display:grid;gap:4px}.voucher-workflow-strip>div:first-child strong{color:#30485f;font-size:13px}.voucher-workflow-strip>div:first-child span{color:#748398;font-size:11px}
+.voucher-workflow-strip ol{display:flex;justify-content:space-between;gap:6px;margin:0;padding:0;list-style:none}
+.voucher-workflow-strip li{display:grid;justify-items:center;gap:5px;flex:1;color:#8290a1;font-size:10px;font-weight:650}
+.voucher-workflow-strip li i{display:grid;width:25px;height:25px;place-items:center;border:1px solid #dce5ed;border-radius:50%;background:#fff;font-style:normal}
+.voucher-workflow-strip li.is-complete{color:#147568}.voucher-workflow-strip li.is-complete i{border-color:#147568;background:#eaf7f2;color:#147568}
 .finance-page-toolbar{align-items:center;margin-bottom:22px}
 .finance-page-toolbar h1{margin:6px 0 5px;color:#172a3a;font-size:clamp(27px,3vw,34px);font-weight:750;letter-spacing:-.035em}
 .finance-page-toolbar p{color:#65758a;font-size:14px}
@@ -536,7 +864,7 @@ onMounted(refreshSavedVouchers)
 .voucher-header h2{display:none}
 .voucher-brand img{width:min(100%,290px);max-height:72px}
 .voucher-reference-fields{gap:7px;padding:10px;border:1px solid #e5ecf3;border-radius:9px;background:#f8fafc}
-.voucher-reference-fields::before{content:"DOCUMENT TYPE\A GENERAL VOUCHER";white-space:pre-line;text-align:right;color:#29374a;font-size:12px;font-weight:750;line-height:1.6}
+.voucher-reference-fields::before{content:"FINANCE VOUCHER";white-space:pre-line;text-align:right;color:#29374a;font-size:12px;font-weight:750;line-height:1.6}
 .voucher-reference-fields label{grid-template-columns:78px minmax(0,1fr);font-size:12px;font-weight:500;color:#6b7c91}
 .voucher-reference-fields input{height:24px;padding:0 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;text-align:right;font-size:12px}
 .voucher-parties{grid-template-columns:minmax(1.25fr,1.5fr) minmax(180px,1fr) minmax(180px,1fr);gap:12px;min-height:0;margin:14px 0;padding:14px;border:1px solid #e7edf3;border-radius:10px;background:#fff}
@@ -575,7 +903,7 @@ onMounted(refreshSavedVouchers)
 .approval-section-heading{display:grid;gap:3px;margin-bottom:12px}
 .approval-section-heading strong{color:#35495d;font-size:12px;letter-spacing:.04em}
 .approval-section-heading span{color:#91a0b0;font-size:12px}
-.voucher-approval-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.voucher-approval-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .voucher-approval-card{display:grid;gap:7px;min-width:0;padding:9px;border:1px solid #e6edf3;border-radius:8px;background:#fbfcfd}
 .voucher-approval-card>header{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#34465a;font-size:12px}
 .voucher-approval-card>header span{padding:3px 5px;border-radius:4px;background:#eef2f6;color:#738398;font-size:12px}
@@ -652,6 +980,46 @@ onMounted(refreshSavedVouchers)
 .finance-save-button:hover:not(:disabled){background:#105f55}
 .finance-save-button:disabled{opacity:.65;cursor:wait}
 .voucher-message{margin:-7px 0 12px;color:#147568;font-size:12px}
+@media(max-width:900px){
+  .finance-budget-layout{grid-template-columns:1fr}
+  .finance-budget-records{max-height:250px}
+  .voucher-workflow-strip{grid-template-columns:1fr auto}
+  .voucher-workflow-strip ol{grid-column:1/-1;grid-row:2}
+}
+@media(max-width:680px){
+  .finance-workspace-heading{margin-bottom:16px}
+  .finance-workspace-heading h1{font-size:28px}
+  .finance-workspace-heading p{font-size:13px}
+  .finance-view-nav{overflow-x:auto;margin-bottom:16px}
+  .finance-view-nav button{flex:none;padding:0 13px;font-size:13px}
+  .finance-card{padding:16px;border-radius:11px}
+  .finance-card-heading{gap:8px;margin-bottom:15px;padding-bottom:13px}
+  .finance-card-heading h2{font-size:18px}
+  .finance-card-heading p{font-size:12px}
+  .finance-card-heading .finance-new-button{font-size:12px}
+  .finance-budget-fields{grid-template-columns:1fr;gap:12px}
+  .finance-budget-fields .is-wide{grid-column:auto}
+  .finance-budget-line{grid-template-columns:24px minmax(0,1fr);gap:9px}
+  .finance-budget-line label{grid-column:2}
+  .finance-line-remove{grid-column:2;justify-self:end}
+  .finance-budget-lines-heading{align-items:flex-end}
+  .finance-budget-lines-heading p{max-width:25ch;line-height:1.4}
+  .finance-budget-workflow{flex-wrap:wrap}
+  .finance-budget-workflow>div{min-width:58px}
+  .finance-budget-actions{flex-wrap:wrap}
+  .finance-budget-actions>*{flex:1}
+  .finance-budget-total{gap:10px;padding:12px;font-size:13px}
+  .finance-budget-total strong{font-size:14px;white-space:nowrap}
+  .finance-report-card{padding:16px}
+  .finance-report-summary{grid-template-columns:1fr;gap:8px}
+  .finance-report-summary article{padding:12px}
+  .finance-report-table{font-size:12px}
+  .finance-report-table th,.finance-report-table td{padding:10px}
+  .voucher-project-fields{grid-template-columns:1fr;padding:12px}
+  .voucher-workflow-strip{grid-template-columns:1fr;gap:12px;padding:12px}
+  .voucher-workflow-strip ol{grid-column:auto;grid-row:auto}
+  .voucher-workflow-strip>.finance-action-primary,.voucher-workflow-strip>.finance-approved-note{justify-self:stretch;text-align:center}
+}
 @media(max-width:680px){
   .finance-page-toolbar{align-items:flex-start}
   .finance-toolbar-actions{justify-content:flex-start}
@@ -676,7 +1044,7 @@ onMounted(refreshSavedVouchers)
   .voucher-choice-group{padding:0 0 11px;border-right:0;border-bottom:1px solid #edf1f5}
   .voucher-payment-group{padding-bottom:0;border-bottom:0}
   .voucher-approval-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .voucher-approval-card:last-child{grid-column:1/-1}
+  .voucher-approval-card:last-child{grid-column:auto}
   .voucher-approvals-wrap{padding:11px}
   .voucher-parties{gap:12px}
   .voucher-person-fields{padding:0 0 12px;border-right:0;border-bottom:1px solid #edf1f5}

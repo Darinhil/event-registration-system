@@ -10,6 +10,7 @@ use App\Http\Controllers\ContractController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FinanceBudgetController;
 use App\Http\Controllers\FinanceVoucherController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\OvertimeController;
@@ -110,6 +111,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/finance-vouchers', [FinanceVoucherController::class, 'store']);
         Route::get('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'show']);
         Route::put('/finance-vouchers/{financeVoucher}', [FinanceVoucherController::class, 'update']);
+        Route::get('/finance-budgets', [FinanceBudgetController::class, 'index']);
+        Route::post('/finance-budgets', [FinanceBudgetController::class, 'store']);
+        Route::put('/finance-budgets/{financeBudget}', [FinanceBudgetController::class, 'update']);
+        Route::patch('/finance-budgets/{financeBudget}/workflow', [FinanceBudgetController::class, 'transition']);
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/notifications', [AdminController::class, 'notifications']);
         Route::get('/reports', [AdminController::class, 'reports']);
