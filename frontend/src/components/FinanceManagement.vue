@@ -102,6 +102,17 @@ const reportSummary = computed(() => reportRows.value.reduce((summary, row) => (
   expenses: summary.expenses + row.expenses,
   projects: summary.projects + 1,
 }), { approvedBudget: 0, expenses: 0, projects: 0 }))
+const selectedVoucherRecord = computed(() => savedVouchers.value.find((saved) => String(saved.id) === String(selectedVoucherId.value)))
+const lastModifiedLabel = computed(() => {
+  const updatedAt = selectedVoucherRecord.value?.updated_at
+  if (!updatedAt) return ''
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(updatedAt).getTime()) / 60000))
+  if (minutes < 1) return 'Last modified just now'
+  if (minutes < 60) return `Last modified ${minutes} min${minutes === 1 ? '' : 's'} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `Last modified ${hours} hr${hours === 1 ? '' : 's'} ago`
+  return `Last modified ${Math.floor(hours / 24)} day${Math.floor(hours / 24) === 1 ? '' : 's'} ago`
+})
 let nextBudgetLineId = 1
 const createBudgetLine = () => ({ id: nextBudgetLineId++, description: '', budgetCode: '', amount: '' })
 const addBudgetLine = () => budgetLines.push(createBudgetLine())
@@ -363,11 +374,11 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 <template>
   <section class="finance-page">
     <header class="finance-workspace-heading">
-      <div><span class="finance-kicker">FINANCE WORKSPACE</span><h1>Finance Management</h1><p>Plan project budgets, track spending, and process finance vouchers.</p></div>
+      <div class="finance-workspace-copy"><h1>Finance Management</h1><p>Plan project budgets, track expenditures, and process compliance vouchers seamlessly.</p></div>
+      <nav class="finance-view-nav" aria-label="Finance sections">
+        <button v-for="view in financeViews" :key="view.id" type="button" :class="{ 'is-active': activeFinanceView === view.id }" :aria-current="activeFinanceView === view.id ? 'page' : undefined" @click="activeFinanceView = view.id">{{ view.label }}</button>
+      </nav>
     </header>
-    <nav class="finance-view-nav" aria-label="Finance sections">
-      <button v-for="view in financeViews" :key="view.id" type="button" :class="{ 'is-active': activeFinanceView === view.id }" :aria-current="activeFinanceView === view.id ? 'page' : undefined" @click="activeFinanceView = view.id">{{ view.label }}</button>
-    </nav>
 
     <template v-if="activeFinanceView === 'budgets'">
       <div class="finance-budget-layout">
@@ -435,19 +446,17 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
     </template>
 
     <template v-else>
-    <header class="finance-page-toolbar">
-      <div>
-        <h1>Finance Vouchers</h1>
-        <p>Prepare, check, verify, and approve finance vouchers.</p>
-      </div>
+    <header class="finance-voucher-toolbar">
       <div class="finance-toolbar-actions">
         <select v-model="selectedVoucherId" aria-label="Load a saved voucher" @change="loadSelectedVoucher">
           <option value="">{{ savedVouchers.length ? 'Open saved voucher…' : 'No saved vouchers' }}</option>
-          <option v-for="saved in savedVouchers" :key="saved.id" :value="String(saved.id)">{{ saved.voucher_number }} · {{ saved.payee_name || 'Untitled' }}</option>
+          <option v-for="saved in savedVouchers" :key="saved.id" :value="String(saved.id)">{{ saved.voucher_number }} ({{ voucherStageLabels[saved.payload?.workflowStatus || 'draft'] || 'Draft' }})</option>
         </select>
-        <button type="button" class="finance-new-button" @click="startNewVoucher">New</button>
-        <button type="button" class="finance-save-button" :disabled="savingVoucher" @click="saveVoucher">{{ savingVoucher ? 'Saving…' : 'Save voucher' }}</button>
-        <button type="button" class="finance-print-button" @click="printVoucher">Print</button>
+        <span v-if="lastModifiedLabel" class="finance-last-modified">{{ lastModifiedLabel }}</span>
+        <span class="finance-toolbar-spacer"></span>
+        <button type="button" class="finance-new-button" @click="startNewVoucher"><AppIcon name="plus" :size="14" />New Voucher</button>
+        <button type="button" class="finance-save-button" :disabled="savingVoucher" @click="saveVoucher"><AppIcon name="save" :size="14" />{{ savingVoucher ? 'Saving…' : 'Save Voucher' }}</button>
+        <button type="button" class="finance-pdf-button" @click="printVoucher"><AppIcon name="printer" :size="14" />Print / PDF</button>
       </div>
     </header>
     <p v-if="voucherMessage" class="voucher-message" role="status" aria-live="polite">{{ voucherMessage }}</p>
@@ -980,6 +989,24 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 .finance-save-button:hover:not(:disabled){background:#105f55}
 .finance-save-button:disabled{opacity:.65;cursor:wait}
 .voucher-message{margin:-7px 0 12px;color:#147568;font-size:12px}
+.finance-workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 18px;padding:0 0 15px;border-bottom:1px solid #e6edf2}
+.finance-workspace-copy{min-width:0}
+.finance-workspace-heading h1{margin:0 0 4px;color:#172a3a;font-size:29px;font-weight:740;letter-spacing:-.035em}
+.finance-workspace-heading p{margin:0;color:#6f8093;font-size:14px;line-height:1.45}
+.finance-view-nav{display:flex;flex:none;align-items:center;gap:2px;height:42px;min-height:42px;box-sizing:border-box;margin:0;padding:3px;border:1px solid #e3eaf0;border-radius:10px;background:#f3f6f9}
+.finance-view-nav button{align-self:center;height:32px;min-height:32px;margin:0;padding:0 12px;border:0;border-radius:7px;background:transparent;color:#5a6c80;font-size:12px;font-weight:600;line-height:1;white-space:nowrap}
+.finance-view-nav button:hover{background:#e9eff5;color:#29435d}
+.finance-view-nav button.is-active{background:#fff;color:#172a3a;box-shadow:0 1px 4px #233d5217}
+.finance-voucher-toolbar{display:flex;align-items:center;min-height:50px;margin:0 0 12px;padding:7px 10px;border:1px solid #e4ebf1;border-radius:11px;background:#fff}
+.finance-toolbar-actions{width:100%;justify-content:stretch;gap:8px}
+.finance-toolbar-actions select{flex:0 1 250px;width:250px;max-width:none;height:38px;min-height:38px;padding:0 11px;border-radius:7px;font-size:13px}
+.finance-toolbar-spacer{flex:1}
+.finance-last-modified{color:#77879a;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;white-space:nowrap}
+.finance-toolbar-actions button{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;min-height:38px;padding:0 13px;border-radius:7px;font-size:13px;font-weight:650;white-space:nowrap}
+.finance-toolbar-actions .finance-new-button{border-color:#dce5ed;background:#fff;color:#40566d}
+.finance-toolbar-actions .finance-save-button{border-color:#129477;background:#129477;color:#fff}
+.finance-pdf-button{border:1px solid #e2e9ef;background:#f5f7f9;color:#4d6074;cursor:pointer}
+.finance-pdf-button:hover{background:#ebf0f4}
 @media(max-width:900px){
   .finance-budget-layout{grid-template-columns:1fr}
   .finance-budget-records{max-height:250px}
@@ -987,11 +1014,6 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
   .voucher-workflow-strip ol{grid-column:1/-1;grid-row:2}
 }
 @media(max-width:680px){
-  .finance-workspace-heading{margin-bottom:16px}
-  .finance-workspace-heading h1{font-size:28px}
-  .finance-workspace-heading p{font-size:13px}
-  .finance-view-nav{overflow-x:auto;margin-bottom:16px}
-  .finance-view-nav button{flex:none;padding:0 13px;font-size:13px}
   .finance-card{padding:16px;border-radius:11px}
   .finance-card-heading{gap:8px;margin-bottom:15px;padding-bottom:13px}
   .finance-card-heading h2{font-size:18px}
@@ -1051,6 +1073,18 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
   .voucher-choice-group{padding:0 0 12px;border-right:0;border-bottom:1px solid #edf1f5}
   .voucher-payment-group{padding-bottom:0;border-bottom:0}
 }
+@media(max-width:680px){
+  .finance-workspace-heading{align-items:flex-start;flex-direction:column;gap:12px;margin-bottom:14px;padding-bottom:12px}
+  .finance-workspace-heading h1{font-size:25px}
+  .finance-view-nav{width:max-content;max-width:100%;gap:2px;margin:0;overflow-x:auto}
+  .finance-view-nav button{flex:none;padding:0 10px;font-size:11px}
+  .finance-voucher-toolbar{padding:8px}
+  .finance-toolbar-actions{flex-wrap:wrap;justify-content:flex-start;gap:7px}
+  .finance-toolbar-actions select{flex:1 1 100%;width:100%}
+  .finance-toolbar-spacer{display:none}
+  .finance-last-modified{flex:1 1 100%;order:2}
+  .finance-toolbar-actions button{flex:1 1 auto;padding:0 8px;font-size:12px}
+}
 @media print{
   .finance-page{padding:0}
   .finance-paper{border-radius:0}
@@ -1065,7 +1099,7 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
   body *{visibility:hidden!important}
   .finance-page,.finance-page *{visibility:visible!important}
   .finance-page{position:absolute;inset:0;width:100%;max-width:none;margin:0;padding:0;background:#fff}
-  .finance-page-toolbar,.finance-toolbar-actions,.voucher-message,.voucher-line-actions{display:none!important}
+  .finance-workspace-heading,.finance-voucher-toolbar,.finance-page-toolbar,.finance-toolbar-actions,.voucher-message,.voucher-line-actions{display:none!important}
   .finance-paper{max-width:none;margin:0;padding:0;border:0;box-shadow:none;font-size:7pt}
   .voucher-header{padding-bottom:6px}
   .voucher-brand img{max-height:48px}
