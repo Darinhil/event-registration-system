@@ -41,12 +41,12 @@ const countryOptions = COUNTRY_CODES.split(' ').map((code) => regionNames.of(cod
 const basicFields = [
   { key: 'firstName', label: 'First name', required: true, autocomplete: 'given-name' },
   { key: 'surname', label: 'Surname', required: true, autocomplete: 'family-name' },
-  { key: 'khmerName', label: 'Name in Khmer', hint: 'ឈ្មោះជាភាសាខ្មែរ', lang: 'km' },
   { key: 'gender', label: 'Gender', required: true, type: 'select', options: ['Male', 'Female', 'Non-binary', 'Prefer not to say'] },
   { key: 'dob', label: 'Date of birth', required: true, type: 'date', autocomplete: 'bday' },
   { key: 'birthPlace', label: 'Place of birth', required: true },
   { key: 'citizenship', label: 'Citizenship (if foreigner)', type: 'select', options: countryOptions, hint: 'Only if you are not a Cambodian citizen' },
   { key: 'idNumber', label: 'National ID or passport number', required: true },
+  { key: 'khmerName', label: 'Name in Khmer', hint: 'ឈ្មោះជាភាសាខ្មែរ', lang: 'km' },
 ]
 const contactFields = [
   { key: 'phone', label: 'Primary phone', required: true, type: 'tel', autocomplete: 'tel' },
@@ -270,7 +270,6 @@ const attempted = reactive(steps.map(() => false)) // errors show once the perso
 const visited = reactive(steps.map((_, index) => index === 0))
 const finished = ref(false)
 const formEl = ref(null)
-const stepHeading = ref(null)
 const current = computed(() => steps[step.value])
 const errorCount = (index) => Object.keys(stepErrors.value[index]).length
 const isDone = (index) => visited[index] && index !== step.value && errorCount(index) === 0
@@ -285,7 +284,7 @@ const show = async (index) => {
   step.value = index
   visited[index] = true
   await nextTick()
-  stepHeading.value?.focus()
+  formEl.value?.querySelector('input:not([type="hidden"]), select, textarea')?.focus()
 }
 const focusFirstError = async () => { await nextTick(); formEl.value?.querySelector('[aria-invalid="true"]')?.focus() }
 const next = async () => {
@@ -477,23 +476,14 @@ const printPreview = async () => {
       </nav>
 
       <form ref="formEl" class="pp-card pp-form" novalidate @submit.prevent="next">
-        <header class="pp-form__head">
-          <span class="pp-form__icon"><AppIcon :name="current.icon" :size="20" /></span>
-          <div>
-            <p class="pp-eyebrow">Step {{ step + 1 }} of {{ steps.length }}</p>
-            <h2 ref="stepHeading" tabindex="-1">{{ current.title }}</h2>
-            <p>{{ current.description }}</p>
-          </div>
-        </header>
-
         <p v-if="attempted[step] && errorCount(step)" class="pp-alert" role="alert"><AppIcon name="alert-circle" :size="18" />Please fix {{ errorCount(step) === 1 ? 'the field' : `the ${errorCount(step)} fields` }} marked below.</p>
         <p v-if="flash" class="pp-alert pp-alert--success" role="status"><AppIcon name="check-circle" :size="18" />{{ flash }}</p>
 
         <!-- 1. Personal information -->
         <template v-if="current.section === 'personal'">
-          <fieldset class="pp-section">
-            <legend>Basic information</legend>
-            <div class="pp-grid">
+          <section class="pp-section pp-section--card pp-section--basic" aria-labelledby="pp-basic-heading">
+            <div class="pp-section__head"><span class="pp-section__icon"><AppIcon name="user" :size="18" /></span><span class="pp-section__heading"><strong id="pp-basic-heading">Basic information</strong><small>Official identity and demographic records</small></span></div>
+            <div class="pp-grid pp-grid--identity">
               <ProfileField label="Staff ID" field-id="pp-staff-id" hint="Assigned automatically">
                 <div class="pp-input-wrap"><input id="pp-staff-id" :value="staffId" readonly class="is-locked" /><AppIcon name="lock" :size="16" /></div>
               </ProfileField>
@@ -524,20 +514,20 @@ const printPreview = async () => {
                 </div>
               </template>
             </div>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Contact information</legend>
+          <section class="pp-section pp-section--card" aria-labelledby="pp-contact-heading">
+            <div class="pp-section__head"><span class="pp-section__icon"><AppIcon name="mail" :size="18" /></span><span class="pp-section__heading"><strong id="pp-contact-heading">Contact Coordinates</strong><small>Secured channels for business notices and payroll transmission</small></span></div>
             <div class="pp-grid">
               <ProfileField v-for="field in contactFields" :key="field.key" :label="field.label" :field-id="`pp-${field.key}`" :required="field.required" :error="err(field.key)" :wide="field.wide">
                 <input v-bind="bind(field.key, `pp-${field.key}`)" v-model.trim="form[field.key]" :type="field.type || 'text'" :autocomplete="field.autocomplete || 'off'" :inputmode="field.type === 'tel' ? 'tel' : undefined" />
               </ProfileField>
             </div>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Current address</legend>
-            <div class="pp-grid">
+          <section class="pp-section pp-section--card" aria-labelledby="pp-address-heading">
+            <div class="pp-section__head"><span class="pp-section__icon"><AppIcon name="pin" :size="18" /></span><span class="pp-section__heading"><strong id="pp-address-heading">Permanent &amp; Current Residential Address</strong><small>Residential location and mailing details</small></span></div>
+            <div class="pp-grid pp-grid--address">
               <ProfileField label="House number" field-id="pp-house-number" required :error="err('houseNumber')"><input v-bind="bind('houseNumber', 'pp-house-number')" v-model.trim="form.houseNumber" inputmode="numeric" /></ProfileField>
               <ProfileField label="Street number" field-id="pp-street-number" required :error="err('streetNumber')"><input v-bind="bind('streetNumber', 'pp-street-number')" v-model.trim="form.streetNumber" /></ProfileField>
               <ProfileField label="Village" field-id="pp-village"><input id="pp-village" v-model.trim="form.village" /></ProfileField>
@@ -546,50 +536,54 @@ const printPreview = async () => {
               <ProfileField label="Province" field-id="pp-province" required :error="err('province')"><input v-bind="bind('province', 'pp-province')" v-model.trim="form.province" /></ProfileField>
               <ProfileField label="Postal code" field-id="pp-postal-code"><input id="pp-postal-code" v-model.trim="form.postalCode" inputmode="numeric" /></ProfileField>
             </div>
-          </fieldset>
+          </section>
         </template>
 
         <!-- 4. Supporting documents -->
         <template v-else-if="current.section === 'documents'">
-          <p class="pp-section__help">PDF, JPG or PNG — e.g. ID card, passport, visa, work permit or certificates.</p>
-          <ul class="pp-docs">
-            <li v-for="slot in [...documentSlots, ...extraDocumentSlots]" :key="slot.key" class="pp-doc" :class="{ 'is-uploaded': form.documents[slot.key], 'has-error': err(`doc.${slot.key}`) || fileErrors[`doc.${slot.key}`] }">
-              <span class="pp-doc__icon"><AppIcon :name="form.documents[slot.key] ? 'check' : 'file-text'" :size="18" /></span>
-              <div class="pp-doc__body">
-                <div class="pp-grid">
-                  <ProfileField label="Document title" :field-id="`pp-doc-title-${slot.key}`" :required="slot.required || slot.key.startsWith('attachment-')" :error="err(`doc-title.${slot.key}`)">
-                    <input :id="`pp-doc-title-${slot.key}`" v-model.trim="slot.title" :placeholder="slot.label || 'Document title'" />
-                  </ProfileField>
-                  <ProfileField label="Description" :field-id="`pp-doc-description-${slot.key}`"><input :id="`pp-doc-description-${slot.key}`" v-model.trim="slot.description" :placeholder="slot.hint || 'Describe the document'" /></ProfileField>
-                  <ProfileField label="Remark" :field-id="`pp-doc-remark-${slot.key}`"><input :id="`pp-doc-remark-${slot.key}`" v-model.trim="slot.remark" /></ProfileField>
+          <section class="pp-section pp-section--card pp-documents" aria-labelledby="pp-documents-title">
+            <div class="pp-section__head"><span class="pp-section__icon"><AppIcon name="file-text" :size="18" /></span><span class="pp-section__heading"><strong id="pp-documents-title">Supporting documents</strong><small>PDF, JPG or PNG files, such as an ID card, passport, visa, work permit, or certificate.</small></span></div>
+            <ul class="pp-docs">
+              <li v-for="slot in [...documentSlots, ...extraDocumentSlots]" :key="slot.key" class="pp-doc" :class="{ 'is-uploaded': form.documents[slot.key], 'has-error': err(`doc.${slot.key}`) || fileErrors[`doc.${slot.key}`] }">
+                <div class="pp-doc__head">
+                  <span class="pp-doc__icon"><AppIcon :name="form.documents[slot.key] ? 'check' : 'file-text'" :size="18" /></span>
+                  <div class="pp-doc__heading"><strong>{{ slot.label || slot.title || 'Supporting document' }}</strong><span v-if="slot.required" class="pp-doc__requirement">Required</span></div>
+                  <div class="pp-doc__actions">
+                    <button v-if="form.documents[slot.key] || slot.key.startsWith('attachment-')" type="button" class="pp-icon-btn" :aria-label="`Remove ${slot.title || slot.label || 'document'}`" @click="removeDocument(slot)"><AppIcon name="trash" :size="16" /></button>
+                    <label class="pp-btn pp-btn--ghost pp-btn--sm pp-upload">
+                      <AppIcon name="upload" :size="15" />{{ uploading === slot.key ? 'Uploading…' : form.documents[slot.key] ? 'Replace file' : 'Upload file' }}
+                      <input :id="`pp-doc-${slot.key}`" type="file" accept=".pdf,.jpg,.jpeg,.png" class="sr-only" :aria-label="`Upload ${slot.title || slot.label || 'document'}`" :aria-invalid="err(`doc.${slot.key}`) ? 'true' : undefined" :aria-describedby="err(`doc.${slot.key}`) ? `pp-doc-${slot.key}-error` : undefined" @change="pickFile(slot, $event)" />
+                    </label>
+                  </div>
                 </div>
-                <small v-if="form.documents[slot.key]">Uploaded {{ form.documents[slot.key].uploaded_at ? fmtDate(form.documents[slot.key].uploaded_at) : 'date unavailable' }} · {{ form.documents[slot.key].name }}<template v-if="form.documents[slot.key].size"> · {{ fileSize(form.documents[slot.key].size) }}</template></small>
-                <small v-else>{{ slot.hint || 'Attach a PDF, JPG or PNG file.' }}</small>
-                <p v-if="fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`)" :id="`pp-doc-${slot.key}-error`" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`) }}</p>
-              </div>
-              <div class="pp-doc__actions">
-                <button v-if="form.documents[slot.key] || slot.key.startsWith('attachment-')" type="button" class="pp-icon-btn" :aria-label="`Remove ${slot.title || slot.label || 'document'}`" @click="removeDocument(slot)"><AppIcon name="trash" :size="16" /></button>
-                <label class="pp-btn pp-btn--ghost pp-btn--sm pp-upload">
-                  <AppIcon name="upload" :size="15" />{{ uploading === slot.key ? 'Uploading…' : form.documents[slot.key] ? 'Replace' : 'Upload' }}
-                  <input :id="`pp-doc-${slot.key}`" type="file" accept=".pdf,.jpg,.jpeg,.png" class="sr-only" :aria-label="`Upload ${slot.title || slot.label || 'document'}`" :aria-invalid="err(`doc.${slot.key}`) ? 'true' : undefined" :aria-describedby="err(`doc.${slot.key}`) ? `pp-doc-${slot.key}-error` : undefined" @change="pickFile(slot, $event)" />
-                </label>
-              </div>
-            </li>
-          </ul>
-          <button type="button" class="pp-add" @click="addDocument"><AppIcon name="plus" :size="16" />Add document</button>
-          <fieldset class="pp-section">
-            <legend>Your notes to the organization <span class="pp-optional">Optional</span></legend>
+                <div class="pp-doc__body">
+                  <div class="pp-grid pp-grid--documents">
+                    <ProfileField label="Document title" :field-id="`pp-doc-title-${slot.key}`" :required="slot.required || slot.key.startsWith('attachment-')" :error="err(`doc-title.${slot.key}`)">
+                      <input :id="`pp-doc-title-${slot.key}`" v-model.trim="slot.title" :placeholder="slot.label || 'Document title'" />
+                    </ProfileField>
+                    <ProfileField label="Description" :field-id="`pp-doc-description-${slot.key}`"><input :id="`pp-doc-description-${slot.key}`" v-model.trim="slot.description" :placeholder="slot.hint || 'Describe the document'" /></ProfileField>
+                    <ProfileField label="Remark" :field-id="`pp-doc-remark-${slot.key}`"><input :id="`pp-doc-remark-${slot.key}`" v-model.trim="slot.remark" /></ProfileField>
+                  </div>
+                  <small v-if="form.documents[slot.key]" class="pp-doc__meta">Uploaded {{ form.documents[slot.key].uploaded_at ? fmtDate(form.documents[slot.key].uploaded_at) : 'date unavailable' }} · {{ form.documents[slot.key].name }}<template v-if="form.documents[slot.key].size"> · {{ fileSize(form.documents[slot.key].size) }}</template></small>
+                  <p v-if="fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`)" :id="`pp-doc-${slot.key}-error`" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ fileErrors[`doc.${slot.key}`] || err(`doc.${slot.key}`) }}</p>
+                </div>
+              </li>
+            </ul>
+            <button type="button" class="pp-add" @click="addDocument"><AppIcon name="plus" :size="16" />Add document</button>
+          </section>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Your notes to the organization <span class="pp-optional">Optional</span></h3>
             <ProfileField label="Notes" field-id="pp-notes"><textarea id="pp-notes" v-model.trim="form.notes" rows="5" maxlength="5000" placeholder="Add any information you would like HR to know." /></ProfileField>
-          </fieldset>
+          </section>
         </template>
 
         <!-- 2. Professional qualifications -->
         <template v-else-if="current.section === 'qualifications'">
-          <fieldset class="pp-section">
-            <legend>Education history</legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Education history</h3>
             <div v-for="(row, i) in form.education" :key="i" class="pp-row">
               <div class="pp-row__head"><span>Education {{ i + 1 }}</span><button v-if="form.education.length > 1" type="button" class="pp-icon-btn" :aria-label="`Remove education ${i + 1}`" @click="removeRow('education', i)"><AppIcon name="trash" :size="16" /></button></div>
-              <div class="pp-grid">
+              <div class="pp-grid pp-grid--education">
                 <ProfileField label="Start date" :field-id="`pp-education-${i}-start`" required :error="err(`education.${i}.start_date`)"><input v-bind="bind(`education.${i}.start_date`, `pp-education-${i}-start`)" v-model="row.start_date" type="date" /></ProfileField>
                 <ProfileField label="End date" :field-id="`pp-education-${i}-end`" required :error="err(`education.${i}.end_date`)"><input v-bind="bind(`education.${i}.end_date`, `pp-education-${i}-end`)" v-model="row.end_date" type="date" /></ProfileField>
                 <ProfileField label="Educational institution" :field-id="`pp-education-${i}-institution`" required :error="err(`education.${i}.institution`)"><input v-bind="bind(`education.${i}.institution`, `pp-education-${i}-institution`)" v-model.trim="row.institution" /></ProfileField>
@@ -598,10 +592,10 @@ const printPreview = async () => {
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('education', emptyEducation(), (i) => `pp-education-${i}-start`)"><AppIcon name="plus" :size="16" />Add education background</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Training courses <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Training courses <span class="pp-optional">Optional</span></h3>
             <p v-if="!form.trainingCourses.length" class="pp-empty">No training courses added.</p>
             <div v-for="(row, i) in form.trainingCourses" :key="i" class="pp-row">
               <div class="pp-row__head"><span>Course {{ i + 1 }}</span><button type="button" class="pp-icon-btn" :aria-label="`Remove training course ${i + 1}`" @click="removeRow('trainingCourses', i)"><AppIcon name="trash" :size="16" /></button></div>
@@ -613,19 +607,19 @@ const printPreview = async () => {
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('trainingCourses', emptyTraining(), (i) => `pp-training-${i}-title`)"><AppIcon name="plus" :size="16" />Add training course</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Expertise <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Expertise <span class="pp-optional">Optional</span></h3>
             <div v-for="(item, i) in form.expertise" :key="i" class="pp-row pp-grid pp-grid--inline">
               <ProfileField :label="`Expertise ${i + 1}`" :field-id="`pp-expertise-${i}`" :error="err(`expertise.${i}`)"><input v-bind="bind(`expertise.${i}`, `pp-expertise-${i}`)" v-model.trim="form.expertise[i]" /></ProfileField>
               <button type="button" class="pp-icon-btn" :aria-label="`Remove expertise ${i + 1}`" @click="removeRow('expertise', i)"><AppIcon name="trash" :size="16" /></button>
             </div>
             <button type="button" class="pp-add" @click="addExpertise"><AppIcon name="plus" :size="16" />Add expertise</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Employment history <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Employment history <span class="pp-optional">Optional</span></h3>
             <p v-if="!form.experience.length" class="pp-empty">No previous roles added.</p>
             <div v-for="(row, i) in form.experience" :key="i" class="pp-row">
               <div class="pp-row__head"><span>Position {{ i + 1 }}</span><button type="button" class="pp-icon-btn" :aria-label="`Remove employment history ${i + 1}`" @click="removeRow('experience', i)"><AppIcon name="trash" :size="16" /></button></div>
@@ -639,18 +633,18 @@ const printPreview = async () => {
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('experience', emptyEmployment(), (i) => `pp-experience-${i}-position`)"><AppIcon name="plus" :size="16" />Add work experience</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Mother tongue language</legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Mother tongue language</h3>
             <ProfileField label="Language" field-id="pp-mother-tongue" required :error="err('motherTongue')">
               <select v-bind="bind('motherTongue', 'pp-mother-tongue')" v-model="form.motherTongue"><option value="">Select…</option><option>Khmer</option><option>English</option><option>Chinese</option><option>Vietnamese</option><option>Other</option></select>
             </ProfileField>
             <ProfileField v-if="form.motherTongue === 'Other'" label="Specify language" field-id="pp-other-mother-tongue" required :error="err('otherMotherTongue')"><input v-bind="bind('otherMotherTongue', 'pp-other-mother-tongue')" v-model.trim="form.otherMotherTongue" /></ProfileField>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Foreign/second language proficiency <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Foreign/second language proficiency <span class="pp-optional">Optional</span></h3>
             <div v-for="(row, i) in form.languages" :key="i" class="pp-row">
               <div class="pp-row__head"><span>Language {{ i + 1 }}</span><button type="button" class="pp-icon-btn" :aria-label="`Remove language ${i + 1}`" @click="removeRow('languages', i)"><AppIcon name="trash" :size="16" /></button></div>
               <div class="pp-grid">
@@ -661,10 +655,10 @@ const printPreview = async () => {
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('languages', emptyLanguage(), (i) => `pp-language-${i}`)"><AppIcon name="plus" :size="16" />Add language</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Geographic experience <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Geographic experience <span class="pp-optional">Optional</span></h3>
             <div v-for="(row, i) in form.geographicExperience" :key="i" class="pp-row">
               <div class="pp-grid">
                 <ProfileField label="Country" :field-id="`pp-geography-${i}-country`" required :error="err(`geographicExperience.${i}.country`)"><select v-bind="bind(`geographicExperience.${i}.country`, `pp-geography-${i}-country`)" v-model="row.country"><option value="">Select…</option><option v-for="country in countryOptions" :key="country">{{ country }}</option></select></ProfileField>
@@ -673,10 +667,10 @@ const printPreview = async () => {
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('geographicExperience', emptyGeography(), (i) => `pp-geography-${i}-country`)"><AppIcon name="plus" :size="16" />Add geography experience</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Membership, association or affiliation <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Membership, association or affiliation <span class="pp-optional">Optional</span></h3>
             <div v-for="(row, i) in form.memberships" :key="i" class="pp-row">
               <div class="pp-row__head"><span>Membership {{ i + 1 }}</span><button type="button" class="pp-icon-btn" :aria-label="`Remove membership ${i + 1}`" @click="removeRow('memberships', i)"><AppIcon name="trash" :size="16" /></button></div>
               <div class="pp-grid">
@@ -688,22 +682,22 @@ const printPreview = async () => {
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('memberships', emptyMembership(), (i) => `pp-membership-${i}-start`)"><AppIcon name="plus" :size="16" />Add membership, association or affiliation</button>
-          </fieldset>
+          </section>
         </template>
 
         <!-- 3. Family information -->
         <template v-else-if="current.section === 'family'">
-          <fieldset class="pp-section">
-            <legend>Family situation</legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Family situation</h3>
             <div class="pp-grid">
               <ProfileField label="Marital status" field-id="pp-marital" required :error="err('maritalStatus')"><select v-bind="bind('maritalStatus', 'pp-marital')" v-model="form.maritalStatus"><option value="">Select…</option><option>Married</option><option>Single</option></select></ProfileField>
               <ProfileField v-if="form.maritalStatus === 'Married'" label="Spouse or partner’s name" field-id="pp-spouse" required :error="err('spouse')"><input v-bind="bind('spouse', 'pp-spouse')" v-model.trim="form.spouse" /></ProfileField>
               <ProfileField label="Number of children under 18" field-id="pp-child-count"><input id="pp-child-count" :value="childCount" readonly class="is-locked" /></ProfileField>
             </div>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Children under 18 <span class="pp-count">{{ form.children.length }}</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Children under 18 <span class="pp-count">{{ form.children.length }}</span></h3>
             <p v-if="!form.children.length" class="pp-empty">No children added.</p>
             <div v-for="(row, i) in form.children" :key="i" class="pp-row pp-row--inline">
               <div class="pp-grid pp-grid--child">
@@ -714,10 +708,10 @@ const printPreview = async () => {
               <button type="button" class="pp-icon-btn pp-row__remove" :aria-label="`Remove child ${i + 1}`" @click="removeRow('children', i)"><AppIcon name="trash" :size="16" /></button>
             </div>
             <button type="button" class="pp-add" @click="addRow('children', { name: '', dob: '', sex: '' }, (i) => `pp-children-${i}-name`)"><AppIcon name="plus" :size="16" />Add child</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Emergency contacts</legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Emergency contacts</h3>
             <p class="pp-section__help">At least one person we can call if something happens to you at work.</p>
             <div v-for="(row, i) in form.contacts" :key="i" class="pp-row">
               <div class="pp-row__head"><span>Contact {{ i + 1 }}</span><button v-if="form.contacts.length > 1" type="button" class="pp-icon-btn" :aria-label="`Remove contact ${i + 1}`" @click="removeRow('contacts', i)"><AppIcon name="trash" :size="16" /></button></div>
@@ -726,14 +720,14 @@ const printPreview = async () => {
                 <ProfileField label="Relationship" :field-id="`pp-contacts-${i}-relationship`" required :error="err(`contacts.${i}.relationship`)"><input v-bind="bind(`contacts.${i}.relationship`, `pp-contacts-${i}-relationship`)" v-model.trim="row.relationship" placeholder="e.g. Mother, Spouse" /></ProfileField>
                 <ProfileField label="Phone" :field-id="`pp-contacts-${i}-phone`" required :error="err(`contacts.${i}.phone`)"><input v-bind="bind(`contacts.${i}.phone`, `pp-contacts-${i}-phone`)" v-model.trim="row.phone" type="tel" inputmode="tel" /></ProfileField>
                 <ProfileField label="Email" :field-id="`pp-contacts-${i}-email`" :error="err(`contacts.${i}.email`)"><input v-bind="bind(`contacts.${i}.email`, `pp-contacts-${i}-email`)" v-model.trim="row.email" type="email" /></ProfileField>
-                <ProfileField label="Address" :field-id="`pp-contacts-${i}-address`" wide><input :id="`pp-contacts-${i}-address`" v-model.trim="row.address" /></ProfileField>
+                <ProfileField label="Address" :field-id="`pp-contacts-${i}-address`"><input :id="`pp-contacts-${i}-address`" v-model.trim="row.address" /></ProfileField>
               </div>
             </div>
             <button type="button" class="pp-add" @click="addRow('contacts', emptyContact(), (i) => `pp-contacts-${i}-name`)"><AppIcon name="plus" :size="16" />Add emergency contact</button>
-          </fieldset>
+          </section>
 
-          <fieldset class="pp-section">
-            <legend>Beneficiaries <span class="pp-optional">Optional</span></legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Beneficiaries <span class="pp-optional">Optional</span></h3>
             <p class="pp-section__help">People who would receive your entitlements. Shares must add up to 100%.</p>
             <p v-if="!form.beneficiaries.length" class="pp-empty">No beneficiaries added.</p>
             <div v-for="(row, i) in form.beneficiaries" :key="i" class="pp-row pp-row--inline">
@@ -751,20 +745,20 @@ const printPreview = async () => {
             <p v-if="form.beneficiaries.length" class="pp-total" :class="{ 'is-off': shareTotal !== 100, 'has-error': err('shares') }"><span>Total shares</span><strong>{{ shareTotal }}%</strong></p>
             <p v-if="err('shares')" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ err('shares') }}</p>
             <button type="button" class="pp-add" @click="addRow('beneficiaries', { name: '', dob: '', id_number: '', relationship: '', phone: '', address: '', share: form.beneficiaries.length ? '' : 100 }, (i) => `pp-beneficiaries-${i}-name`)"><AppIcon name="plus" :size="16" />Add beneficiary</button>
-          </fieldset>
+          </section>
         </template>
 
         <!-- 5. Declarations -->
         <template v-else>
-          <section class="pp-section" aria-labelledby="pp-review-title">
+          <section class="pp-section pp-section--card" aria-labelledby="pp-review-title">
             <h3 id="pp-review-title" class="pp-section__title">Your details</h3>
             <dl class="pp-review">
               <div v-for="[label, value] in reviewItems" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
             </dl>
             <button type="button" class="pp-link" @click="show(0)">Edit personal information</button>
           </section>
-          <fieldset class="pp-section">
-            <legend>Declaration</legend>
+          <section class="pp-section pp-section--card">
+            <h3 class="pp-section__title">Declaration</h3>
             <p class="pp-declaration">{{ declarationText }}</p>
             <label class="pp-check" :class="{ 'has-error': err('decl.accurate') }">
               <input id="pp-decl-confirm" v-model="form.declarations.accurate" type="checkbox" :aria-invalid="err('decl.accurate') ? 'true' : undefined" />
@@ -774,8 +768,8 @@ const printPreview = async () => {
               <ProfileField label="Signature" field-id="pp-signature" required :error="err('signature')" hint="Type your full name"><input v-bind="bind('signature', 'pp-signature')" v-model.trim="form.signature" autocomplete="name" /></ProfileField>
               <ProfileField label="Date" field-id="pp-sign-date"><input id="pp-sign-date" :value="new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })" readonly class="is-locked" /></ProfileField>
             </div>
-          </fieldset>
-          <section v-if="previewOpen" class="pp-section pp-preview" aria-labelledby="pp-preview-title">
+          </section>
+          <section v-if="previewOpen" class="pp-section pp-section--card pp-preview" aria-labelledby="pp-preview-title">
             <div class="pp-row__head"><h3 id="pp-preview-title" class="pp-section__title">Profile preview</h3><button type="button" class="pp-icon-btn" aria-label="Close preview" @click="previewOpen = false"><AppIcon name="x" :size="16" /></button></div>
             <dl class="pp-review"><div v-for="[label, value] in reviewItems" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></div></dl>
             <p>{{ declarationText }}</p>
@@ -788,7 +782,7 @@ const printPreview = async () => {
         </template>
 
         <footer class="pp-form__foot">
-          <RouterLink to="/admin" class="pp-btn pp-btn--ghost pp-exit">Exit</RouterLink>
+          <RouterLink to="/admin" class="pp-btn pp-btn--ghost pp-exit"><AppIcon name="arrow-left" :size="17" />Exit</RouterLink>
           <button v-if="step > 0" type="button" class="pp-btn pp-btn--ghost" @click="show(step - 1)"><AppIcon name="arrow-left" :size="16" />Previous</button>
           <span class="pp-spacer"></span>
           <button type="button" class="pp-btn pp-btn--ghost" :disabled="saving" @click="saveDraft"><AppIcon name="save" :size="16" />{{ saving ? 'Saving…' : 'Save' }}</button>
@@ -855,10 +849,10 @@ const printPreview = async () => {
 .pp-steps__item.is-problem small { color: var(--pp-danger); }
 
 /* Form card */
-.pp-form { padding: 28px 32px; }
+.pp-form { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .pp-form__head { display: flex; gap: 14px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--pp-line); }
 .pp-form__icon { display: grid; width: 44px; height: 44px; flex: none; place-items: center; border-radius: 12px; background: var(--pp-brand-soft); color: var(--pp-brand); }
-.pp-eyebrow { margin: 0 0 2px; color: var(--pp-brand); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.pp-eyebrow { margin: 0 0 2px; color: var(--pp-brand); font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: none; }
 .pp-form__head h2 { margin: 0 0 2px; font-size: 1.3rem; font-weight: 700; outline: 0; }
 .pp-form__head p:last-child { margin: 0; color: var(--pp-muted); }
 
@@ -867,6 +861,16 @@ const printPreview = async () => {
 
 .pp-section { min-width: 0; margin: 0 0 28px; padding: 0; border: 0; }
 .pp-section legend, .pp-section__title { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 0; color: var(--pp-ink); font-size: 1rem; font-weight: 700; }
+.pp-section--card { margin: 0 0 18px; padding: 18px 20px; border: 1px solid #e5eaf2; border-radius: 9px; background: #fff; box-shadow: 0 2px 8px rgba(25, 50, 90, .035); }
+.pp-section--card > .pp-section__title { width: 100%; margin: 0 0 18px; padding: 0 0 12px; border-bottom: 1px solid #edf1f7; font-size: 1.1rem; line-height: 1.3; }
+.pp-section__head { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 0 0 14px; border-bottom: 1px solid #edf1f7; }
+.pp-section__icon { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border-radius: 5px; background: #eaf0ff; color: #244b9a; }
+.pp-section__heading { display: grid; gap: 2px; min-width: 0; }
+.pp-section__heading strong { color: #172b4d; font-size: 1.1rem; line-height: 1.25; font-weight: 650; }
+.pp-section__heading small { color: #70819d; font-size: .9rem; line-height: 1.35; font-weight: 400; }
+.pp-section__status { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 4px 9px; border-radius: 99px; background: #eaf8f2; color: #14805e; font-size: .68rem; font-weight: 600; white-space: nowrap; }
+.pp-section__status i { width: 5px; height: 5px; border-radius: 50%; background: #18a875; }
+.pp-section__record { margin-left: auto; color: #71809a; font-size: .68rem; font-weight: 500; white-space: nowrap; }
 .pp-section__help { margin: -8px 0 14px; color: var(--pp-muted); font-size: .88rem; }
 .pp-optional { padding: 2px 8px; border-radius: 99px; background: #eef2f6; color: var(--pp-muted); font-size: .72rem; font-weight: 600; }
 .pp-count { min-width: 22px; padding: 1px 7px; border-radius: 99px; background: var(--pp-brand-soft); color: var(--pp-brand); font-size: .78rem; text-align: center; }
@@ -874,6 +878,10 @@ const printPreview = async () => {
 
 /* Fields */
 .pp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
+.pp-grid--identity { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
+.pp-grid--address { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
+.pp-grid--education { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 18px; }
+.pp-grid--documents { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
 .pp-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pp-grid--child { grid-template-columns: 2fr 1.4fr 1fr; }
 .pp-grid--beneficiary { grid-template-columns: 2fr 1.5fr 1fr; }
@@ -886,6 +894,12 @@ const printPreview = async () => {
 .pp-field__error svg { flex: none; }
 .pp input:not([type="checkbox"]):not([type="file"]), .pp select, .pp textarea { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 13px; border: 1px solid #cfdbe7; border-radius: 10px; background: #fff; color: var(--pp-ink); font: inherit; font-size: .95rem; transition: border-color .15s, box-shadow .15s; }
 .pp input:not([type="checkbox"]):not([type="file"]), .pp select { height: 44px; padding-top: 0; padding-bottom: 0; }
+.pp-section--card .pp-field { gap: 6px; }
+.pp-section--card .pp-field__label label { font-size: .95rem; }
+.pp-section--card .pp-field__hint { font-size: .82rem; }
+.pp-section--card input:not([type="checkbox"]):not([type="file"]), .pp-section--card select { min-height: 44px; height: 44px; padding-right: 12px; padding-left: 12px; border-color: #e8edf5; border-radius: 5px; background: #f6f8fd; font-size: 1rem; }
+.pp-section--card .pp-input-wrap input { padding-right: 34px !important; }
+.pp-section--card .pp-input-wrap svg { right: 10px; width: 13px; height: 13px; }
 .pp textarea { resize: vertical; }
 .pp input::placeholder { color: #9aabbd; }
 .pp input:hover:not([readonly]), .pp select:hover { border-color: #aebfd1; }
@@ -904,8 +918,8 @@ const printPreview = async () => {
 .pp-request-panel__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
 /* Repeating rows */
-.pp-row { margin-bottom: 12px; padding: 16px; border: 1px solid var(--pp-line); border-radius: 12px; background: var(--pp-soft); }
-.pp-row__head { display: flex; align-items: center; justify-content: space-between; min-height: 30px; margin: -4px 0 10px; color: var(--pp-muted); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pp-row { margin-bottom: 12px; padding: 16px 18px; border: 1px solid #e5eaf2; border-radius: 9px; background: #fbfcfe; }
+.pp-row__head { display: flex; align-items: center; justify-content: space-between; min-height: 0; margin: 0 0 14px; padding: 0 0 10px; border-bottom: 1px solid #edf1f7; color: var(--pp-ink); font-size: .96rem; font-weight: 650; letter-spacing: 0; text-transform: none; }
 .pp-row--inline { display: flex; align-items: flex-start; gap: 10px; }
 .pp-row--inline > .pp-grid { flex: 1; }
 .pp-row__remove { margin-top: 28px; }
@@ -917,16 +931,21 @@ const printPreview = async () => {
 .pp-total.has-error { background: var(--pp-danger-soft); color: var(--pp-danger); }
 
 /* Documents */
-.pp-docs { display: grid; gap: 10px; margin: 0 0 28px; padding: 0; list-style: none; }
-.pp-doc { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--pp-line); border-radius: 12px; background: #fff; }
+.pp-documents { padding-bottom: 20px; }
+.pp-docs { display: grid; gap: 12px; margin: 0 0 14px; padding: 0; list-style: none; }
+.pp-doc { display: grid; gap: 14px; padding: 16px 18px; border: 1px solid #e5eaf2; border-radius: 9px; background: #fbfcfe; }
 .pp-doc.is-uploaded { border-color: #bfe3d6; background: #f6fbf9; }
 .pp-doc.has-error { border-color: #f2c4bf; background: #fffbfa; }
-.pp-doc__icon { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 10px; background: var(--pp-soft); color: var(--pp-muted); }
+.pp-doc__head { display: flex; min-width: 0; align-items: center; gap: 12px; }
+.pp-doc__icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 8px; background: #edf2fa; color: #647895; }
 .pp-doc.is-uploaded .pp-doc__icon { background: var(--pp-brand-soft); color: var(--pp-brand); }
-.pp-doc__body { display: grid; min-width: 0; flex: 1; gap: 2px; }
-.pp-doc__body strong { display: flex; align-items: center; gap: 8px; color: var(--pp-ink); font-size: .93rem; }
-.pp-doc__body small { overflow: hidden; color: var(--pp-muted); font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
-.pp-doc__actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.pp-doc__heading { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pp-doc__heading strong { color: var(--pp-ink); font-size: 1rem; font-weight: 650; }
+.pp-doc__requirement { padding: 3px 8px; border-radius: 99px; background: #fff3dc; color: #8a5a00; font-size: .76rem; font-weight: 600; }
+.pp-doc__body { display: grid; min-width: 0; gap: 10px; }
+.pp-doc__body small { color: var(--pp-muted); font-size: .86rem; line-height: 1.4; }
+.pp-doc__meta { overflow-wrap: anywhere; }
+.pp-doc__actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .pp-upload { position: relative; cursor: pointer; }
 .pp-upload:focus-within { outline: 3px solid rgba(11, 127, 98, .22); outline-offset: 2px; }
 
@@ -947,9 +966,9 @@ const printPreview = async () => {
 .pp-sign { margin-top: 18px; }
 
 /* Buttons */
-.pp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border: 1px solid transparent; border-radius: 10px; font: inherit; font-size: .93rem; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.pp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 20px; border: 1px solid transparent; border-radius: 9px; font: inherit; font-size: .95rem; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
 .pp-btn--sm { min-height: 36px; padding: 0 14px; font-size: .86rem; }
-.pp-btn--primary { background: var(--pp-brand); color: #fff; box-shadow: 0 6px 16px rgba(11, 127, 98, .2); }
+.pp-btn--primary { background: var(--pp-brand); color: #fff; box-shadow: 0 3px 10px rgba(11, 127, 98, .16); }
 .pp-btn--primary:hover { background: var(--pp-brand-dark); }
 .pp-btn--ghost { border-color: #cfdbe7; background: #fff; color: var(--pp-ink); }
 .pp-btn--ghost:hover { border-color: #aebfd1; background: var(--pp-soft); }
@@ -958,7 +977,7 @@ const printPreview = async () => {
 .pp-link { padding: 0; border: 0; background: none; color: var(--pp-brand); font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; }
 .pp-link:hover { color: var(--pp-brand-dark); text-decoration: underline; transform: none !important; }
 .pp-link--muted { color: var(--pp-muted); }
-.pp-form__foot { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 8px -32px -28px; padding: 16px 32px; border-top: 1px solid var(--pp-line); border-radius: 0 0 14px 14px; background: rgba(255, 255, 255, .96); backdrop-filter: blur(6px); }
+.pp-form__foot { position: sticky; bottom: 12px; z-index: 2; display: flex; align-items: center; gap: 12px; margin: 18px 0 0; padding: 12px; border: 1px solid #e3eaf3; border-radius: 12px; background: rgba(255, 255, 255, .97); box-shadow: 0 5px 18px rgba(23, 54, 95, .08); backdrop-filter: blur(8px); }
 .pp-exit { text-decoration: none; }
 .pp-spacer { flex: 1; }
 
@@ -985,6 +1004,10 @@ const printPreview = async () => {
   .pp-steps__dot { width: 30px; height: 30px; }
   .pp-steps__text strong { font-size: .76rem; }
   .pp-steps__text small { display: none; }
+  .pp-grid--identity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pp-grid--address { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pp-grid--education { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pp-grid--documents { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
   .pp { padding-top: 16px; }
@@ -997,18 +1020,28 @@ const printPreview = async () => {
   .pp-steps__text { display: none; }
   .pp-steps__item.is-current .pp-steps__text { display: grid; }
   .pp-steps__text strong { font-size: .66rem; }
-  .pp-form { padding: 20px 16px; }
+  .pp-form { padding: 0; }
   .pp-form__head { margin-bottom: 18px; padding-bottom: 16px; }
   .pp-form__icon { display: none; }
   .pp-grid, .pp-grid--3, .pp-grid--child, .pp-grid--beneficiary, .pp-review { grid-template-columns: 1fr; }
+  .pp-section--card { padding: 15px; }
+  .pp-section__head { align-items: flex-start; }
+  .pp-section__heading small { max-width: 270px; line-height: 1.4; }
+  .pp-section__status, .pp-section__record { display: none; }
   .pp-row { padding: 14px; }
   .pp-row--inline { flex-direction: column; gap: 0; }
   .pp-row--inline > .pp-grid { width: 100%; }
   .pp-row__remove { align-self: flex-end; margin-top: 8px; }
   .pp-review > div:nth-last-child(-n + 1) { border-bottom: 0; }
-  .pp-doc { flex-wrap: wrap; }
-  .pp-doc__actions { width: 100%; justify-content: flex-end; }
-  .pp-form__foot { margin: 8px -16px -20px; padding: 12px 16px; }
+  .pp-grid--documents { grid-template-columns: 1fr; }
+  .pp-doc { gap: 12px; padding: 14px; }
+  .pp-doc__head { flex-wrap: wrap; }
+  .pp-doc__icon { width: 34px; height: 34px; }
+  .pp-doc__heading { flex: 1; }
+  .pp-doc__heading strong { font-size: .95rem; }
+  .pp-doc__actions { width: 100%; justify-content: flex-end; margin-left: 0; }
+  .pp-form__foot { bottom: 8px; gap: 8px; margin: 14px 0 0; padding: 9px; }
+  .pp-form__foot .pp-btn { min-height: 42px; padding: 0 13px; }
   .pp-form__foot .pp-btn--primary { flex: 1; }
   .pp-requests { padding: 18px 16px; }
   .pp-requests li { flex-wrap: wrap; }
