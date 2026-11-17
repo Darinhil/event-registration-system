@@ -38,6 +38,7 @@ const workspaceItems = [
     { id: 'fuel-log-sheet', label: 'Fuel Log-sheet', icon: 'fuel' },
   ] },
   { id: 'procurement-management', label: 'Procurement Management', icon: 'cart' },
+  { id: 'asset-management', label: 'Asset Management', icon: 'list' },
   { id: 'finance-management', label: 'Finance Management', icon: 'receipt' },
   { id: 'my-requests', label: 'My Requests', icon: 'inbox' },
 ]
