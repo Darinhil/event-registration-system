@@ -18,7 +18,7 @@ class PersonnelProfileController extends Controller
 {
     private const DOCUMENT_SLOTS = ['id', 'cv', 'certificate', 'bank'];
     private const REQUIRED_DOCUMENTS = ['id', 'cv'];
-    private const SECTIONS = ['education', 'experience', 'children', 'contacts', 'beneficiaries'];
+    private const SECTIONS = ['education', 'experience', 'children', 'contacts', 'beneficiaries', 'disability'];
 
     public function show(Request $request): JsonResponse
     {
@@ -127,6 +127,9 @@ class PersonnelProfileController extends Controller
             'profile.beneficiaries.*.phone' => ['nullable', 'string', 'max:30'],
             'profile.beneficiaries.*.address' => ['nullable', 'string', 'max:500'],
             'profile.beneficiaries.*.share' => [$required, 'nullable', 'numeric', 'min:0', 'max:100'],
+            'profile.disability' => ['nullable', 'array'],
+            'profile.disability.type' => ['nullable', 'string', 'in:V,H,M,R,S,X,O'],
+            'profile.disability.notes' => ['nullable', 'string', 'max:1000'],
             'profile.declarations' => ['nullable', 'array'],
             'profile.declarations.accurate' => [$submit ? 'accepted' : 'nullable', 'boolean'],
             'profile.declarations.updates' => [$submit ? 'accepted' : 'nullable', 'boolean'],

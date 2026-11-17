@@ -20,6 +20,9 @@ import PurchaseRequest from '../../components/personnel/PurchaseRequest.vue'
 import MyRequests from '../../components/personnel/MyRequests.vue'
 import TimeManagement from '../../components/personnel/TimeManagement.vue'
 import OtherRequests from '../../components/personnel/OtherRequests.vue'
+import DSAClaim from '../../components/personnel/DSAClaim.vue'
+import TransportationClaim from '../../components/personnel/TransportationClaim.vue'
+import Disability from '../../components/personnel/Disability.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -33,12 +36,15 @@ const sections = {
   'leave-application': LeaveApplication,
   'overtime-request': OvertimeRequest,
   'monthly-timesheet': MonthlyTimesheet,
-  'other-requests': OtherRequests,
+  'travel-management': OtherRequests,
   'travel-application': TravelApplication,
+  'dsa-claim': DSAClaim,
+  'transportation-claim': TransportationClaim,
   'fuel-log-sheet': FuelLogSheet,
   'purchase-request': PurchaseRequest,
   'finance-management': FinanceManagement,
   'my-requests': MyRequests,
+  disability: Disability,
 }
 // No section is the dashboard; an unknown one still falls back to the profile form.
 const page = computed(() => {

@@ -168,6 +168,28 @@ class StaffRequestController extends Controller
                 'details.value' => ['required', 'string', 'max:255'],
                 'details.reason' => ['required', 'string', 'max:500'],
             ],
+            'dsa_claim' => [
+                'details' => ['required', 'array'],
+                'details.purpose' => ['required', 'string', 'max:1000'],
+                'details.destination' => ['required', 'string', 'max:200'],
+                'details.start_date' => ['required', 'date_format:Y-m-d'],
+                'details.end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:details.start_date'],
+                'details.days' => ['required', 'numeric', 'gt:0'],
+                'details.rate' => ['required', 'numeric', 'min:0'],
+            ],
+            'transportation_claim' => [
+                'details' => ['required', 'array'],
+                'details.purpose' => ['required', 'string', 'max:1000'],
+                'details.destination' => ['required', 'string', 'max:200'],
+                'details.start_date' => ['required', 'date_format:Y-m-d'],
+                'details.end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:details.start_date'],
+                'details.transport' => ['required', Rule::in(self::TRANSPORT)],
+                'details.distance' => ['required', 'numeric', 'gt:0'],
+                'details.fuel_cost' => ['nullable', 'numeric', 'min:0'],
+                'details.tolls' => ['nullable', 'numeric', 'min:0'],
+                'details.parking' => ['nullable', 'numeric', 'min:0'],
+                'details.other' => ['nullable', 'numeric', 'min:0'],
+            ],
         ][$type];
     }
 
@@ -193,6 +215,8 @@ class StaffRequestController extends Controller
             'fuel' => $details['vehicle'].' · '.Carbon::create($details['year'], $details['month'], 1)->format('M Y').' · $'.$sum($details['records'], fn ($row) => (float) $row['cost']),
             'purchase' => $details['purpose'].' · $'.$sum($details['items'], fn ($row) => (float) $row['quantity'] * (float) $row['unit_cost']),
             'profile_change' => $details['field'].' → '.$details['value'],
+            'dsa_claim' => $details['destination'].' · '.$details['days'].' days · $'.number_format((float) ($details['days'] ?? 0) * (float) ($details['rate'] ?? 0), 2),
+            'transportation_claim' => $details['destination'].' · '.number_format((float) $details['distance'], 1).' km · $'.$sum(['fuel_cost' => $details['fuel_cost'] ?? 0, 'tolls' => $details['tolls'] ?? 0, 'parking' => $details['parking'] ?? 0, 'other' => $details['other'] ?? 0], fn ($value) => (float) $value),
         };
     }
 

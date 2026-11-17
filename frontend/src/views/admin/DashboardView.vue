@@ -147,7 +147,9 @@ const loadStaffHome = () => {
   getMyTraining().then(({ data }) => { training.value = data }).catch(() => {})
   getPersonnelProfile().then(({ data }) => { profile.value = data.data }).catch(() => {})
   getMyContracts().then(({ data }) => { contract.value = data.data.find((item) => item.status === 'active') || null }).catch(() => {})
-  getMyRequests().then(({ data }) => { recentRequests.value = data.data.slice(0, 3) }).catch(() => {})
+  getMyRequests().then(({ data }) => {
+    recentRequests.value = (data.data || []).slice(0, 3)
+  }).catch(() => {})
   getTimesheet(today.getFullYear(), today.getMonth() + 1).then(({ data }) => { leaveBalances.value = data.data.balances.filter((item) => item.limited) }).catch(() => {})
 }
 onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.value = false; loadStaffHome() } })
@@ -164,7 +166,7 @@ onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.valu
         <article><small>Compliance</small><strong>{{ complianceSummary ? `${complianceSummary.percent}%` : '—' }}</strong><div class="staff-home__track"><i :style="{ width: `${complianceSummary?.percent || 0}%` }"></i></div><RouterLink to="/admin/personnel-profile?section=compliances">View compliance <AppIcon name="chevron-right" :size="13" /></RouterLink></article>
       </section>
       <section class="staff-home__panel staff-home__quick"><h2>Quick actions</h2><div class="staff-home__quick-grid">
-        <RouterLink to="/admin/personnel-profile?section=leave-application"><span><AppIcon name="calendar-check" :size="18" /></span>Apply for leave</RouterLink><RouterLink to="/admin/personnel-profile?section=overtime-request"><span><AppIcon name="timer" :size="18" /></span>Request overtime</RouterLink><RouterLink to="/admin/personnel-profile?section=travel-application"><span><AppIcon name="plane" :size="18" /></span>Travel application</RouterLink><RouterLink to="/admin/personnel-profile?section=purchase-request"><span><AppIcon name="cart" :size="18" /></span>Purchase request</RouterLink><RouterLink to="/admin/personnel-profile?section=fuel-log-sheet"><span><AppIcon name="fuel" :size="18" /></span>Fuel log-sheet</RouterLink><RouterLink to="/admin/personnel-profile?section=finance-management"><span><AppIcon name="receipt" :size="18" /></span>Voucher</RouterLink>
+        <RouterLink to="/admin/personnel-profile?section=leave-application"><span><AppIcon name="calendar-check" :size="18" /></span>Apply for leave</RouterLink><RouterLink to="/admin/personnel-profile?section=overtime-request"><span><AppIcon name="timer" :size="18" /></span>Request overtime</RouterLink><RouterLink to="/admin/personnel-profile?section=finance-management"><span><AppIcon name="receipt" :size="18" /></span>Voucher</RouterLink>
       </div></section>
       <div class="staff-home__columns">
         <section class="staff-home__panel"><header><h2>My requests</h2><RouterLink to="/admin/personnel-profile?section=my-requests">View all <AppIcon name="chevron-right" :size="13" /></RouterLink></header><ul v-if="recentRequests.length" class="staff-home__list"><li v-for="request in recentRequests" :key="request.id"><RouterLink to="/admin/personnel-profile?section=my-requests"><strong>{{ request.type_label }}</strong><small>{{ request.status }}</small></RouterLink></li></ul><p v-else class="staff-home__empty">No requests yet.</p></section>
@@ -212,8 +214,9 @@ onMounted(() => { if (auth.canManageEvents) loadDashboard(); else { loading.valu
           </RouterLink>
         </section>
 
+        <header class="reference-dashboard__section-header"><h2>Event Status</h2></header>
+
         <article class="reference-card reference-status">
-          <header><h2>Event Status</h2><RouterLink to="/admin/events">View all<AppIcon name="chevron-right" :size="16" /></RouterLink></header>
           <div v-if="events.length" class="reference-status__body">
             <div class="reference-donut" :style="statusDonutStyle" role="img" :aria-label="statusRows.map((row) => `${row.label}: ${row.value}`).join(', ')">
               <div><strong>{{ number(events.length) }}</strong><small>{{ events.length === 1 ? 'Event' : 'Events' }}</small></div>

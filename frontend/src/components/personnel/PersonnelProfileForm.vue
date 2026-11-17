@@ -29,7 +29,7 @@ const form = reactive({
   houseNumber: '', streetNumber: '', village: '', commune: '', district: '', province: '', postalCode: '',
   education: [emptyEducation()], trainingCourses: [], expertise: [], experience: [],
   motherTongue: '', otherMotherTongue: '', languages: [], geographicExperience: [], memberships: [],
-  maritalStatus: '', spouse: '', children: [], contacts: [emptyContact()], beneficiaries: [],
+  maritalStatus: '', spouse: '', children: [], contacts: [emptyContact()], beneficiaries: [], disability: { type: '', notes: '' },
   documents: {},
   notes: '', declarations: { accurate: false, updates: false, consent: false }, signature: '',
 })
@@ -255,6 +255,8 @@ const errorsFor = (index) => {
       need(`beneficiaries.${i}.share`, row.share, 'Enter a share.')
     })
     if (form.beneficiaries.length && shareTotal.value !== 100) e.shares = `Shares must add up to 100% (currently ${shareTotal.value}%).`
+    if (form.disability.type && !['V', 'H', 'M', 'R', 'S', 'X', 'O'].includes(form.disability.type)) e['disability.type'] = 'Choose a valid disability type.'
+    if (form.disability.notes && form.disability.notes.length > 1000) e['disability.notes'] = 'Notes cannot exceed 1000 characters.'
   }
   if (section === 'declarations') {
     if (!form.declarations.accurate) e['decl.accurate'] = 'Confirm the declaration before submitting.'
@@ -417,6 +419,7 @@ const reviewItems = computed(() => [
   ['Memberships', String(form.memberships.filter((row) => row.institution).length)],
   ['Emergency contacts', String(form.contacts.filter((row) => filled(row.name)).length)],
   ['Documents uploaded', `${uploadedCount.value} of ${documentSlots.length + extraDocumentSlots.value.length}`],
+  ['Disability', form.disability.type ? (() => { const types = { V: 'Difficulty seeing', H: 'Difficulty hearing', M: 'Difficulty moving', R: 'Difficulty remembering', S: 'Difficulty with self-care', X: 'Difficulty communicating', O: 'No disability' }; return types[form.disability.type] || form.disability.type })() : '—'],
 ])
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 const previewOpen = ref(false)
@@ -745,6 +748,25 @@ const printPreview = async () => {
             <p v-if="form.beneficiaries.length" class="pp-total" :class="{ 'is-off': shareTotal !== 100, 'has-error': err('shares') }"><span>Total shares</span><strong>{{ shareTotal }}%</strong></p>
             <p v-if="err('shares')" class="pp-field__error"><AppIcon name="alert-circle" :size="14" />{{ err('shares') }}</p>
             <button type="button" class="pp-add" @click="addRow('beneficiaries', { name: '', dob: '', id_number: '', relationship: '', phone: '', address: '', share: form.beneficiaries.length ? '' : 100 }, (i) => `pp-beneficiaries-${i}-name`)"><AppIcon name="plus" :size="16" />Add beneficiary</button>
+          </section>
+
+          <section class="pp-section pp-section--card" aria-labelledby="pp-disability-heading">
+            <div class="pp-section__head"><span class="pp-section__icon"><AppIcon name="accessibility" :size="18" /></span><span class="pp-section__heading"><strong id="pp-disability-heading">Disability</strong><small>Disability status and support needs (optional)</small></span></div>
+            <div class="pp-grid">
+              <ProfileField label="Disability type" field-id="pp-disability-type" :error="err('disability.type')" :wide="true">
+                <select v-bind="bind('disability.type', 'pp-disability-type')" v-model="form.disability.type">
+                  <option value="">Select…</option>
+                  <option value="V">ពិការភាពមើលឃើញ / Difficulty seeing</option>
+                  <option value="H">ពិការភាពស្តាប់ / Difficulty hearing</option>
+                  <option value="M">ពិការភាពធ្វើចលនា / Difficulty moving</option>
+                  <option value="R">ពិការភាពចងចាំ / Difficulty remembering</option>
+                  <option value="S">ពិការភាពថែទាំខ្លួនឯង / Difficulty with self-care</option>
+                  <option value="X">ពិការភាពទំនាក់ទំនង / Difficulty communicating</option>
+                  <option value="O">គ្មានពិការភាព / No disability</option>
+                </select>
+              </ProfileField>
+              <ProfileField label="Notes" field-id="pp-disability-notes" :wide="true"><textarea v-bind="bind('disability.notes', 'pp-disability-notes')" v-model.trim="form.disability.notes" rows="3" placeholder="Any additional information about support needs or accommodations" maxlength="1000"></textarea></ProfileField>
+            </div>
           </section>
         </template>
 

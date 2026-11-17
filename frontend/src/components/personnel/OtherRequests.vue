@@ -6,9 +6,10 @@ import AppIcon from '../AppIcon.vue'
 import { getMyRequests } from '../../services/staffRequestService'
 
 const forms = [
-  { id: 'travel', title: 'Travel Application', short: 'Travel Applications', description: 'Request work travel.', action: 'Apply for travel', icon: 'plane', section: 'travel-application', tone: 'green' },
-  { id: 'fuel', title: 'Fuel Log-sheet', short: 'Fuel Log-sheets', description: 'Record fuel and mileage.', action: 'Open fuel log', icon: 'fuel', section: 'fuel-log-sheet', tone: 'blue' },
-  { id: 'purchase', title: 'Purchase Request', short: 'Purchase Requests', description: 'Request items and estimates.', action: 'Request a purchase', icon: 'cart', section: 'purchase-request', tone: 'orange' },
+  { id: 'travel', title: 'Travel Application', short: 'Travel Applications', icon: 'plane', section: 'travel-application', tone: 'green' },
+  { id: 'dsa_claim', title: 'DSA Claim', short: 'DSA Claims', icon: 'dollar-sign', section: 'dsa-claim', tone: 'pink' },
+  { id: 'transportation_claim', title: 'Transportation Claim', short: 'Transportation Claims', icon: 'truck', section: 'transportation-claim', tone: 'orange' },
+  { id: 'fuel', title: 'Fuel Log-sheet', short: 'Fuel Log-sheets', icon: 'fuel', section: 'fuel-log-sheet', tone: 'blue', emptyText: 'No requests' },
 ]
 const selectedForm = ref('travel')
 const router = useRouter()
@@ -37,11 +38,11 @@ onMounted(async () => {
 
 <template>
   <main class="or" aria-labelledby="or-title">
-    <header class="or-head"><div><h1 id="or-title">Other Requests</h1></div></header>
+    <header class="or-head"><div><h1 id="or-title">Travel Management</h1></div></header>
 
     <section class="or-metrics" aria-label="Other request summary">
       <article v-for="form in forms" :key="form.id" class="or-metric" :class="`is-${form.tone}`">
-        <span class="or-icon"><AppIcon :name="form.icon" :size="18" /></span><small>{{ form.short }}</small><strong>{{ loading ? '—' : countFor(form.id) }}<span> total</span></strong><p>{{ countFor(form.id) ? 'Requests on file' : 'No requests submitted yet' }}</p>
+        <span class="or-icon"><AppIcon :name="form.icon" :size="18" /></span><small>{{ form.short }}</small><strong>{{ loading ? '—' : countFor(form.id) }}<span> total</span></strong><p>{{ countFor(form.id) ? 'Requests on file' : (form.emptyText || 'No requests submitted yet') }}</p>
       </article>
     </section>
 
@@ -49,7 +50,7 @@ onMounted(async () => {
       <div class="or-panel-head"><div><h2 id="or-access-title">Direct Access Workstation</h2><p>Choose a form to open.</p></div></div>
       <div class="or-cards">
         <RouterLink v-for="form in forms" :key="form.id" :to="{ path: '/admin/personnel-profile', query: { section: form.section } }" class="or-card" :class="`is-${form.tone}`">
-          <span class="or-card-icon"><AppIcon :name="form.icon" :size="17" /></span><strong>{{ form.title }}</strong><span>{{ form.description }}</span><b>{{ form.action }}</b>
+          <span class="or-card-icon"><AppIcon :name="form.icon" :size="17" /></span><strong>{{ form.title }}</strong>
         </RouterLink>
       </div>
     </section>
@@ -59,7 +60,7 @@ onMounted(async () => {
       <div class="or-tabs" role="tablist" aria-label="Other request forms">
         <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="selectedForm === form.id" :class="{ 'is-active': selectedForm === form.id }" @click="openForm(form)">{{ form.title }}</button>
       </div>
-      <div class="or-selected-form"><strong>{{ selected.title }}</strong><RouterLink class="or-submit" :to="{ path: '/admin/personnel-profile', query: { section: selected.section } }">Open form</RouterLink></div>
+      <div class="or-selected-form"><strong>{{ selected.title }}</strong></div>
     </section>
 
     <section class="or-panel or-ledger" aria-labelledby="or-ledger-title">
@@ -75,21 +76,58 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.or { display:grid; width:100%; max-width:none; gap:12px; margin:0; color:#15314a; }
-.or-head h1 { margin:0; color:#0d3155; font-size:30px; line-height:1.2; }.or-head p,.or-panel-head p { margin:4px 0 0; color:#72849b; font-size:13px; }
-.or-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.or {
+   display:grid;
+   width:100%;
+   max-width:none;
+   gap:12px;
+   margin:0;
+   color:#15314a;
+}
+.or-head h1 {
+   margin:0;
+   color:#0d3155;
+   font-size:30px;
+   line-height:1.2;
+}
+.or-head p,.or-panel-head p { margin:4px 0 0; color:#72849b; font-size:13px; }
+.or-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 .or-metric,.or-panel { min-width:0; border:1px solid #d9e3ef; border-radius:9px; background:#fff; box-shadow:0 3px 10px #1d41620c; }
 .or-metric { --tone:#16a77f; --tint:#e6f7f2; display:grid; align-content:start; gap:7px; min-height:138px; padding:16px 18px; border-top:3px solid var(--tone); background:linear-gradient(110deg,#fff 0%,var(--tint) 100%); }
-.or-metric.is-blue { --tone:#4b87ff; --tint:#e9f0ff; }.or-metric.is-orange { --tone:#f4a51c; --tint:#fff1d9; }
-.or-icon,.or-card-icon { display:grid; width:36px; height:36px; place-items:center; border-radius:10px; color:var(--tone); background:var(--tint); }.or-metric small { color:#68809a; font-size:13px; }.or-metric strong { color:#122b47; font-size:28px; line-height:1; }.or-metric strong span { font-size:12px; font-weight:500; }.or-metric p { margin:0; color:#8798aa; font-size:11px; }
-.or-panel { padding:18px 20px; }.or-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }.or-panel-head h2 { margin:0; color:#14365b; font-size:21px; }.or-quick-label,.or-empty { color:#8293a5; font-size:12px; }.or-full-link { padding:7px 10px; border:1px solid #d6e4f1; border-radius:5px; color:#316ca7; text-decoration:none; font-size:12px; }
-.or-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }.or-card { --tone:#16a77f; --tint:#e6f7f2; display:grid; justify-items:start; gap:8px; min-width:0; padding:14px; border:1px solid #dce5ef; border-radius:8px; color:#244360; text-decoration:none; }.or-card.is-blue { --tone:#4b87ff; --tint:#e9f0ff; }.or-card.is-orange { --tone:#f4a51c; --tint:#fff1d9; }.or-card:hover,.or-card:focus-visible { border-color:var(--tone); box-shadow:0 0 0 2px var(--tint); }.or-card strong { font-size:15px; }.or-card > span:not(.or-card-icon) { min-height:42px; color:#778ba1; font-size:12px; }.or-card small { color:#8494a6; font-size:11px; }.or-card b { width:100%; padding:10px 12px; border-radius:5px; color:#fff; background:#078476; text-align:center; font-size:13px; }
+.or-metric.is-blue { --tone:#4b87ff; --tint:#e9f0ff; }.or-metric.is-pink { --tone:#ec4899; --tint:#fce7f3; }.or-metric.is-orange { --tone:#f4a51c; --tint:#fff1d9; }
+.or-icon,.or-card-icon { display:grid; width:36px; height:36px; place-items:center; border-radius:10px; color:var(--tone); background:var(--tint); }
+.or-metric small { color:#68809a; font-size:13px; font-weight:600; }
+.or-metric strong { color:#122b47; font-size:28px; line-height:1; font-weight:800; }
+.or-metric strong span { font-size:12px; font-weight:600; }
+.or-metric p { margin:0; color:#8798aa; font-size:11px; line-height:1.5; }
+.or-panel { padding:18px 20px; }
+.or-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.or-panel-head h2 { margin:0; color:#14365b; font-size:21px; font-weight:800; letter-spacing:-0.02em; }
+.or-quick-label,.or-empty { color:#8293a5; font-size:12px; }
+.or-full-link { padding:7px 10px; border:1px solid #d6e4f1; border-radius:5px; color:#316ca7; text-decoration:none; font-size:12px; font-weight:600; }
+.or-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.or-card { --tone:#16a77f; --tint:#e6f7f2; display:grid; justify-items:start; gap:6px; min-width:0; padding:12px; border:1px solid #dce5ef; border-radius:8px; color:#244360; text-decoration:none; }
+.or-card.is-blue { --tone:#4b87ff; --tint:#e9f0ff; }
+.or-card.is-pink { --tone:#ec4899; --tint:#fce7f3; }
+.or-card.is-orange { --tone:#f4a51c; --tint:#fff1d9; }
+.or-card:hover,.or-card:focus-visible { border-color:var(--tone); box-shadow:0 0 0 2px var(--tint); }
+.or-card strong { font-size:14px; line-height:1.3; font-weight:700; }
+.or-card > span:not(.or-card-icon) { min-height:auto; color:#778ba1; font-size:11px; line-height:1.3; }
+.or-card small { color:#8494a6; font-size:10px; }
+.or-card b { width:100%; padding:8px 10px; border-radius:5px; color:#fff; background:#078476; text-align:center; font-size:11px; }
 .or-workstation { padding-top:22px; }.or-workstation .or-panel-head { margin-bottom:54px; }.or-workstation .or-panel-head h2 { font-size:22px; }.or-workstation .or-panel-head p { margin-top:6px; font-size:15px; }
-.or-tabs { display:flex; gap:28px; border-bottom:1px solid #e0e7ef; }.or-tabs button { padding:12px 5px; border:0; border-bottom:2px solid transparent; color:#657b92; background:transparent; font-size:14px; cursor:pointer; }.or-tabs button.is-active { border-color:#078476; color:#08776d; font-weight:700; }.or-selected-form { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 2px; }.or-selected-form strong { color:#25415e; font-size:14px; }.or-selected-form p { margin:4px 0 0; color:#76899d; font-size:12px; }.or-submit { padding:10px 14px; border-radius:5px; color:#fff; background:#078476; text-decoration:none; font-size:12px; white-space:nowrap; }.or-note { margin:0; padding:10px 12px; border:1px solid #f1d28b; border-radius:5px; color:#80621c; background:#fff9eb; font-size:11px; }
-.or-filters { display:flex; flex-wrap:wrap; gap:5px; }.or-filters button { padding:6px 9px; border:1px solid #dce5ee; border-radius:4px; color:#687f95; background:#fff; font-size:10px; cursor:pointer; }.or-filters button.is-active { color:#08786e; border-color:#a8d9cf; background:#edf9f5; }
-.or-table-wrap { overflow-x:auto; }table { width:100%; border-collapse:collapse; font-size:12px; }th { padding:9px; color:#536d86; background:#f4f7fb; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; }td { padding:10px 9px; border-bottom:1px solid #edf1f5; color:#344f69; }.or-empty { padding:18px; color:#687f95; text-align:center; font-size:12px; }.or-status { padding:4px 8px; border-radius:99px; color:#8b6820; background:#fff5d8; font-size:10px; font-weight:600; }.or-status.is-approved { color:#08785c; background:#e2f5ed; }.or-status.is-rejected { color:#ae3c43; background:#fdebed; }.or-status.is-cancelled { color:#6d7d8e; background:#eef1f4; }
+.or-tabs { display:flex; gap:28px; border-bottom:1px solid #e0e7ef; }.or-tabs button { padding:12px 5px; border:0; border-bottom:2px solid transparent; color:#657b92; background:transparent; font-size:14px; cursor:pointer; font-weight:600; }
+.or-tabs button.is-active { border-color:#078476; color:#08776d; font-weight:700; }
+.or-selected-form { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 2px; }
+.or-selected-form strong { color:#25415e; font-size:14px; font-weight:700; }
+.or-selected-form p { margin:4px 0 0; color:#76899d; font-size:12px; }
+.or-submit { padding:10px 14px; border-radius:5px; color:#fff; background:#078476; text-decoration:none; font-size:12px; white-space:nowrap; font-weight:700; }
+.or-note { margin:0; padding:10px 12px; border:1px solid #f1d28b; border-radius:5px; color:#80621c; background:#fff9eb; font-size:11px; }
+.or-filters { display:flex; flex-wrap:wrap; gap:5px; }.or-filters button { padding:6px 9px; border:1px solid #dce5ee; border-radius:4px; color:#687f95; background:#fff; font-size:10px; cursor:pointer; font-weight:600; }
+.or-filters button.is-active { color:#08786e; border-color:#a8d9cf; background:#edf9f5; }
+.or-table-wrap { overflow-x:auto; }table { width:100%; border-collapse:collapse; font-size:12px; }th { padding:9px; color:#536d86; background:#f4f7fb; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; }td { padding:10px 9px; border-bottom:1px solid #edf1f5; color:#344f69; }.or-empty { padding:18px; color:#687f95; text-align:center; font-size:12px; }.or-status { padding:4px 8px; border-radius:99px; color:#8b6820; background:#fff5d8; font-size:10px; font-weight:700; }.or-status.is-approved { color:#08785c; background:#e2f5ed; }.or-status.is-rejected { color:#ae3c43; background:#fdebed; }.or-status.is-cancelled { color:#6d7d8e; background:#eef1f4; }
 .or button:focus-visible,.or a:focus-visible { outline:3px solid #8ab4f8; outline-offset:2px; }
-/* Match the larger, easy-to-read type used on Time Management. */
+/* Improved typography hierarchy for better readability */
 .or { gap:16px; }
 .or-head h1 { font-size:32px; }
 .or-head p,.or-panel-head p { font-size:15px; }
@@ -101,12 +139,12 @@ onMounted(async () => {
 .or-panel { padding:18px 20px; }
 .or-panel-head h2,.or-workstation .or-panel-head h2 { font-size:22px; }
 .or-quick-label { font-size:13px; }
-.or-cards { gap:14px; }
-.or-card { padding:16px; gap:9px; }
-.or-card strong { font-size:16px; }
-.or-card > span:not(.or-card-icon) { min-height:44px; font-size:14px; }
-.or-card small { font-size:12px; }
-.or-card b { padding:11px 13px; font-size:14px; }
+.or-cards { gap:10px; }
+.or-card { padding:12px; gap:6px; }
+.or-card strong { font-size:15px; line-height:1.25; }
+.or-card > span:not(.or-card-icon) { min-height:auto; font-size:11px; line-height:1.3; }
+.or-card small { font-size:10px; }
+.or-card b { padding:8px 10px; font-size:11px; }
 .or-workstation .or-panel-head p { font-size:15px; }
 .or-tabs button { font-size:15px; }
 .or-selected-form strong { font-size:16px; }

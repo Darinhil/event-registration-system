@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StaffRequest extends Model
 {
-    public const TYPES = ['leave' => 'Leave', 'travel' => 'Travel', 'fuel' => 'Fuel log-sheet', 'purchase' => 'Purchase', 'profile_change' => 'Profile change'];
+    public const TYPES = ['leave' => 'Leave', 'travel' => 'Travel', 'fuel' => 'Fuel log-sheet', 'purchase' => 'Purchase', 'profile_change' => 'Profile change', 'dsa_claim' => 'DSA Claim', 'transportation_claim' => 'Transportation Claim'];
 
     protected $fillable = ['user_id', 'type', 'approver_id', 'status', 'details', 'attachment_path', 'attachment_name', 'reviewed_by', 'reviewed_at', 'review_note'];
 
