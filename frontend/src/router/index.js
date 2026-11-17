@@ -95,7 +95,8 @@ router.beforeEach((to) => {
     return homeAfterSignIn(auth, typeof to.query.redirect === 'string' ? to.query.redirect : '')
   }
   // Staff accounts only use the admin area: public and attendee pages send them to the dashboard.
-  if (auth.isAuthenticated && auth.canAccessAdmin && !to.path.startsWith('/admin')) return '/admin'
+  // Signing out leaves for /login?logout=1 before the session is cleared, so let that through.
+  if (auth.isAuthenticated && auth.canAccessAdmin && !to.path.startsWith('/admin') && to.query.logout !== '1') return '/admin'
 })
 
 // "Create event" and "Edit event" share EventSetupView, so Vue would reuse the open page when moving between them
