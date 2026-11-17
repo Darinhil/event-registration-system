@@ -73,7 +73,7 @@ const download = async () => {
 }
 
 // The details a person typed, as label/value rows for the review dialog.
-const LABELS = { leave_type: 'Leave type', start_date: 'Start date', end_date: 'End date', working_days: 'Working days', reason: 'Reason', purpose: 'Purpose', destination: 'Destination', accommodation: 'Accommodation', transport: 'Transportation', vehicle: 'Vehicle', department: 'Department', required_date: 'Needed by', justification: 'Justification', field: 'Field', value: 'New value' }
+const LABELS = { leave_type: 'Leave type', start_date: 'Start date', end_date: 'End date', working_days: 'Working days', reason: 'Reason', purpose: 'Purpose', destination: 'Destination', accommodation: 'Accommodation', transport: 'Transportation', vehicle: 'Vehicle', department: 'Department', budget_line: 'Budget line', required_date: 'Needed by', tax: 'Tax', justification: 'Justification', field: 'Field', value: 'New value' }
 const detailRows = computed(() => Object.entries(selected.value?.details || {})
   .filter(([key, value]) => LABELS[key] && value !== null && value !== '')
   .map(([key, value]) => [LABELS[key], /_date$/.test(key) ? day(value) : key === 'leave_type' ? label(String(value)).replaceAll('_', ' ') : value]))

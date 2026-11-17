@@ -6,17 +6,21 @@ import RequestFormParts from './RequestFormParts.vue'
 import RequestSubmitted from './RequestSubmitted.vue'
 import { useStaffRequestForm } from '../../utils/staffRequestForm'
 
+const emit = defineEmits(['submitted'])
 const blankItem = () => ({ description: '', quantity: 1, unit_cost: '' })
-const blank = () => ({ purpose: '', department: '', required_date: '', items: [blankItem()], justification: '' })
+const blank = () => ({ purpose: '', department: '', budget_line: '', required_date: '', items: [blankItem()], tax: '', justification: '' })
 const form = reactive(blank())
 const request = useStaffRequestForm('purchase')
 const { approvers, approverId, attachment, saving, saved, formError, errors, formEl } = request
 const lineTotal = (item) => (Number(item.quantity) || 0) * (Number(item.unit_cost) || 0)
-const total = computed(() => form.items.reduce((sum, item) => sum + lineTotal(item), 0))
+const subtotal = computed(() => form.items.reduce((sum, item) => sum + lineTotal(item), 0))
+const tax = computed(() => Number(form.tax) || 0)
+const total = computed(() => subtotal.value + tax.value)
 
 const validate = () => {
   const found = {}
   if (!form.purpose.trim()) found.purpose = 'Describe what this purchase is for.'
+  if (form.tax !== '' && Number(form.tax) < 0) found.tax = 'Enter a valid tax amount.'
   form.items.forEach((item, index) => {
     if (!item.description.trim()) found[`items.${index}.description`] = 'Describe the item.'
     if (!(Number(item.quantity) > 0)) found[`items.${index}.quantity`] = 'Enter a quantity.'
@@ -27,7 +31,7 @@ const validate = () => {
   Object.assign(errors, found)
   return !Object.keys(found).length
 }
-const submit = () => { if (validate()) request.submit({ ...form, items: form.items.map((item) => ({ ...item })) }); else request.focusFirstError() }
+const submit = async () => { if (validate()) { const result = await request.submit({ ...form, items: form.items.map((item) => ({ ...item })) }); if (result) emit('submitted') } else request.focusFirstError() }
 const startAnother = () => { Object.assign(form, blank()); request.reset() }
 </script>
 
@@ -52,6 +56,17 @@ const startAnother = () => { Object.assign(form, blank()); request.reset() }
           <DateInput id="pr-date" v-model="form.required_date" class="rq-input" />
         </div>
       </div>
+      <div class="lv-grid">
+        <div class="lv-field">
+          <label for="pr-budget" class="lv-label">Budget line <span class="lv-optional">Optional</span></label>
+          <input id="pr-budget" v-model="form.budget_line" class="rq-input" type="text" />
+        </div>
+        <div class="lv-field">
+          <label for="pr-tax" class="lv-label">Tax (USD) <span class="lv-optional">Optional</span></label>
+          <input id="pr-tax" v-model.number="form.tax" class="rq-input" type="number" min="0" step="0.01" :aria-invalid="errors.tax ? 'true' : undefined" />
+          <p v-if="errors.tax" class="lv-error"><AppIcon name="alert-circle" :size="14" />{{ errors.tax }}</p>
+        </div>
+      </div>
       <div class="rq-table-wrap">
         <table class="rq-table">
           <thead><tr><th scope="col" class="rq-table__grow">Item</th><th scope="col">Quantity</th><th scope="col">Unit cost ($)</th><th scope="col" class="num">Total</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
@@ -67,7 +82,11 @@ const startAnother = () => { Object.assign(form, blank()); request.reset() }
         </table>
       </div>
       <button type="button" class="lv-btn lv-btn--ghost rq-add" @click="form.items.push(blankItem())"><AppIcon name="plus" :size="16" />Add item</button>
-      <p class="rq-total"><span>Total</span><strong>${{ total.toFixed(2) }}</strong></p>
+      <div class="rq-breakdown">
+        <p><span>Subtotal</span><strong>${{ subtotal.toFixed(2) }}</strong></p>
+        <p><span>Tax</span><strong>${{ tax.toFixed(2) }}</strong></p>
+        <p class="rq-total"><span>Net amount</span><strong>${{ total.toFixed(2) }}</strong></p>
+      </div>
       <div class="lv-field">
         <label for="pr-justification" class="lv-label">Justification <span class="lv-optional">Optional</span></label>
         <textarea id="pr-justification" v-model="form.justification" rows="2"></textarea>
@@ -80,3 +99,9 @@ const startAnother = () => { Object.assign(form, blank()); request.reset() }
     </form>
   </div>
 </template>
+
+<style scoped>
+.rq-breakdown { display: grid; gap: 6px; }
+.rq-breakdown p { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: 0 14px; color: var(--lv-muted); font-size: .9rem; }
+.rq-breakdown .rq-total { padding: 12px 14px; }
+</style>
