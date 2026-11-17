@@ -20,6 +20,7 @@ import PurchaseRequest from '../../components/personnel/PurchaseRequest.vue'
 import MyRequests from '../../components/personnel/MyRequests.vue'
 import TimeManagement from '../../components/personnel/TimeManagement.vue'
 import OtherRequests from '../../components/personnel/OtherRequests.vue'
+import ProcurementManagement from '../../components/personnel/ProcurementManagement.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -37,6 +38,7 @@ const sections = {
   'travel-application': TravelApplication,
   'fuel-log-sheet': FuelLogSheet,
   'purchase-request': PurchaseRequest,
+  'procurement-management': ProcurementManagement,
   'finance-management': FinanceManagement,
   'my-requests': MyRequests,
 }
@@ -51,7 +53,7 @@ const page = computed(() => {
 
 <template>
   <AdminLayout>
-    <div class="profile-workspace" :class="{ 'is-profile-form': page === PersonnelProfileForm, 'is-wide': page === TimeManagement || page === OtherRequests }">
+    <div class="profile-workspace" :class="{ 'is-profile-form': page === PersonnelProfileForm, 'is-wide': page === TimeManagement || page === OtherRequests || page === ProcurementManagement }">
       <component :is="page" />
     </div>
   </AdminLayout>

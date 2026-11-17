@@ -1,7 +1,7 @@
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import organizationLogo from '../assets/LLEE_Cambodia_Inverse_L.png'
-import { createFinanceBudget, createFinanceVoucher, getFinanceBudgets, getFinanceVoucher, getFinanceVouchers, transitionFinanceBudget, updateFinanceBudget, updateFinanceVoucher } from '../services/financeVoucherService'
+import { createFinanceBudget, createFinanceVoucher, getFinanceBudgets, getFinanceReport, getFinanceVoucher, getFinanceVouchers, transitionFinanceBudget, transitionFinanceVoucher, updateFinanceBudget, updateFinanceVoucher } from '../services/financeVoucherService'
 
 const today = new Date()
 const dateStamp = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
@@ -25,16 +25,21 @@ const voucher = reactive({
 const voucherTypes = ['Cash Advance', 'Liquidation', 'Reimbursement', 'Third Party Payment', 'Journal', 'Receipt']
 const paymentModes = ['Cash', 'Non-Cash', 'Bank Transfer', 'Bank Cheque']
 const approvalRoles = [
-  { key: 'preparer', label: 'PREPARER', badge: 'Prepare' },
-  { key: 'checker', label: 'CHECKER', badge: 'Check' },
-  { key: 'verifier', label: 'VERIFIER', badge: 'Verify' },
-  { key: 'approver', label: 'APPROVER', badge: 'Approve' },
+  { key: 'prepared', label: 'PREPARED', badge: 'Prepare', role: 'Voucher owner' },
+  { key: 'checked', label: 'CHECKED', badge: 'Check', role: 'Manager, Event Admin or Master Admin' },
+  { key: 'verified', label: 'VERIFIED', badge: 'Verify', role: 'Event Admin or Admin' },
+  { key: 'approved', label: 'APPROVED', badge: 'Approve', role: 'Master Admin' },
 ]
-const approvals = reactive(Object.fromEntries(approvalRoles.map(({ key }) => [key, { name: '', position: '', date: '', signature: '' }])))
-const signatureCanvases = new Map()
-const activeSignatureKey = ref(null)
 const savedVouchers = ref([])
+const reportData = ref([])
+const reportLoading = ref(false)
+const reportError = ref('')
+const reportGeneratedAt = ref('')
+const reportYear = ref('all')
+const reportDepartment = ref('all')
+const reportProject = ref('all')
 const currentVoucherId = ref(null)
+const voucherWorkflowEvents = ref([])
 const selectedVoucherId = ref('')
 const savingVoucher = ref(false)
 const voucherMessage = ref('')
@@ -65,44 +70,37 @@ const budgetLines = reactive([{ description: '', budgetCode: '', amount: '' }])
 const budgetTotal = computed(() => budgetLines.reduce((sum, line) => sum + numericValue(line.amount), 0))
 const budgetCanEdit = computed(() => !currentBudgetId.value || ['draft', 'returned'].includes(selectedBudget.value?.workflow_status))
 const selectedBudget = computed(() => budgets.value.find((budget) => String(budget.id) === String(currentBudgetId.value)))
-const reportRows = computed(() => {
-  const groups = new Map()
-  const addProject = (department, projectName, fiscalYear = today.getFullYear()) => {
-    const key = `${department}|${projectName}|${fiscalYear}`
-    if (!groups.has(key)) groups.set(key, { id: key, department, project_name: projectName, fiscal_year: fiscalYear, currency: 'USD', totalBudget: 0, hasApprovedBudget: false })
-    return groups.get(key)
-  }
-  departments.forEach((department) => projectOptions.forEach((projectName) => addProject(department, projectName)))
-  budgets.value.filter((budget) => budget.workflow_status === 'approved').forEach((budget) => {
-    const details = budget.payload || {}
-    const fiscalYear = details.fiscalYear || budget.fiscal_year || today.getFullYear()
-    const group = addProject(budget.department, budget.project_name, fiscalYear)
-    group.currency = details.currency || 'USD'
-    group.hasApprovedBudget = true
-    group.totalBudget += (details.lines || []).reduce((sum, line) => sum + numericValue(line.amount), 0)
-  })
-  savedVouchers.value.filter((saved) => saved.payload?.workflowStatus === 'approved' && saved.payload?.department && saved.payload?.projectName).forEach((saved) => {
-    addProject(saved.payload.department, saved.payload.projectName, saved.payload.fiscalYear || today.getFullYear())
-  })
-  return [...groups.values()].map((group) => {
-    const projectBudgets = budgets.value.filter((budget) => budget.department === group.department && budget.project_name === group.project_name && Number(budget.payload?.fiscalYear || budget.fiscal_year || today.getFullYear()) === Number(group.fiscal_year))
-    const latestBudget = projectBudgets[0]
-    const expenses = savedVouchers.value
-      .filter((saved) => saved.payload?.workflowStatus === 'approved' && saved.payload?.department === group.department && saved.payload?.projectName === group.project_name && Number(saved.payload?.fiscalYear || today.getFullYear()) === Number(group.fiscal_year))
-      .reduce((sum, saved) => sum + (saved.payload?.lines || []).reduce((lineSum, line) => lineSum + numericValue(line.amount), 0), 0)
-    return { ...group, expenses, balance: group.totalBudget - expenses, budgetStatus: group.hasApprovedBudget ? 'approved' : latestBudget?.workflow_status || 'no-budget' }
-  })
-})
-const reportDepartments = computed(() => departments.map((department) => ({
-  name: department,
-  rows: reportRows.value.filter((row) => row.department === department).sort((a, b) => a.project_name.localeCompare(b.project_name) || a.fiscal_year - b.fiscal_year),
-})))
-const reportSummary = computed(() => reportRows.value.reduce((summary, row) => ({
-  approvedBudget: summary.approvedBudget + row.totalBudget,
-  expenses: summary.expenses + row.expenses,
-  projects: summary.projects + 1,
-}), { approvedBudget: 0, expenses: 0, projects: 0 }))
+const reportYears = computed(() => [...new Set(reportData.value.map((row) => Number(row.fiscal_year)))].sort((a, b) => b - a))
+const reportProjects = computed(() => [...new Set(reportData.value.filter((row) => reportDepartment.value === 'all' || row.department === reportDepartment.value).filter((row) => reportYear.value === 'all' || Number(row.fiscal_year) === Number(reportYear.value)).map((row) => row.project_name))].sort((a, b) => a.localeCompare(b)))
+const reportRows = computed(() => reportData.value.filter((row) => (reportYear.value === 'all' || Number(row.fiscal_year) === Number(reportYear.value)) && (reportDepartment.value === 'all' || row.department === reportDepartment.value) && (reportProject.value === 'all' || row.project_name === reportProject.value)).map((row) => ({ ...row, budgetStatus: row.budget_count ? 'approved' : 'no-budget', hasApprovedBudget: row.budget_count > 0 })))
+const reportDepartments = computed(() => [...new Set(reportRows.value.map((row) => row.department))].sort().map((name) => ({ name, rows: reportRows.value.filter((row) => row.department === name).sort((a, b) => a.project_name.localeCompare(b.project_name) || a.fiscal_year - b.fiscal_year) })))
+const reportSummary = computed(() => ({
+  projects: new Set(reportRows.value.map((row) => `${row.department}|${row.project_name}`)).size,
+  approvedBudgetUsd: reportRows.value.reduce((sum, row) => sum + numericValue(row.approved_budget_usd), 0),
+  approvedBudgetKhr: reportRows.value.reduce((sum, row) => sum + numericValue(row.approved_budget_khr), 0),
+  expenses: reportRows.value.reduce((sum, row) => sum + numericValue(row.approved_expenses_usd), 0),
+  remainingUsd: reportRows.value.reduce((sum, row) => sum + numericValue(row.remaining_usd), 0),
+  overBudget: reportRows.value.filter((row) => row.remaining_usd !== null && row.remaining_usd < 0).length,
+}))
+const refreshFinanceReport = async () => {
+  reportLoading.value = true
+  reportError.value = ''
+  try {
+    const { data } = await getFinanceReport()
+    reportData.value = data.data || []
+    reportGeneratedAt.value = data.generated_at || ''
+  } catch (error) {
+    reportError.value = error.response?.data?.message || 'Could not load the financial report.'
+  } finally { reportLoading.value = false }
+}
 const selectedVoucherRecord = computed(() => savedVouchers.value.find((saved) => String(saved.id) === String(selectedVoucherId.value)))
+const voucherReviewQueue = computed(() => savedVouchers.value.filter((saved) => saved.can_act && ['prepared', 'checked', 'verified'].includes(saved.payload?.workflowStatus)))
+const voucherReviewAction = (status) => ({ prepared: 'Check', checked: 'Verify', verified: 'Approve' }[status] || 'Review')
+const openReviewVoucher = async (record) => {
+  selectedVoucherId.value = String(record.id)
+  await loadVoucher(record.id)
+  document.getElementById('finance-voucher-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 const lastModifiedLabel = computed(() => {
   const updatedAt = selectedVoucherRecord.value?.updated_at
   if (!updatedAt) return ''
@@ -149,62 +147,6 @@ const printVoucher = () => window.print()
 const removeLine = (lineId) => {
   const index = lines.findIndex(({ id }) => id === lineId)
   if (lines.length > 1 && index !== -1) lines.splice(index, 1)
-}
-const paintSignature = (canvas, signature) => {
-  const bounds = canvas.getBoundingClientRect()
-  if (!bounds.width || !bounds.height) return
-  canvas.width = Math.round(bounds.width * 2)
-  canvas.height = Math.round(bounds.height * 2)
-  const context = canvas.getContext('2d')
-  context.clearRect(0, 0, canvas.width, canvas.height)
-  if (!signature) return
-  const image = new Image()
-  image.onload = () => context.drawImage(image, 0, 0, canvas.width, canvas.height)
-  image.src = signature
-}
-const setSignatureCanvas = (canvas, key) => {
-  if (!canvas) {
-    signatureCanvases.delete(key)
-    return
-  }
-  signatureCanvases.set(key, canvas)
-  paintSignature(canvas, approvals[key].signature)
-}
-const signaturePoint = (event, canvas) => {
-  const bounds = canvas.getBoundingClientRect()
-  return { x: (event.clientX - bounds.left) * canvas.width / bounds.width, y: (event.clientY - bounds.top) * canvas.height / bounds.height }
-}
-const startSignature = (event, key) => {
-  const canvas = event.currentTarget
-  const context = canvas.getContext('2d')
-  const point = signaturePoint(event, canvas)
-  activeSignatureKey.value = key
-  canvas.setPointerCapture(event.pointerId)
-  context.beginPath()
-  context.moveTo(point.x, point.y)
-  context.lineWidth = 3
-  context.lineCap = 'round'
-  context.lineJoin = 'round'
-  context.strokeStyle = '#183c56'
-}
-const drawSignature = (event, key) => {
-  if (activeSignatureKey.value !== key) return
-  const canvas = event.currentTarget
-  const point = signaturePoint(event, canvas)
-  const context = canvas.getContext('2d')
-  context.lineTo(point.x, point.y)
-  context.stroke()
-}
-const finishSignature = (event, key) => {
-  if (activeSignatureKey.value !== key) return
-  const canvas = event.currentTarget
-  activeSignatureKey.value = null
-  approvals[key].signature = canvas.toDataURL('image/png')
-}
-const clearSignature = (key) => {
-  approvals[key].signature = ''
-  const canvas = signatureCanvases.get(key)
-  if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
 }
 const refreshSavedVouchers = async (quiet = false) => {
   try {
@@ -285,6 +227,7 @@ const advanceBudget = async (action) => {
     const index = budgets.value.findIndex((budget) => budget.id === data.data.id)
     if (index !== -1) budgets.value[index] = data.data
     budgetMessage.value = action === 'return' ? 'Budget returned for changes.' : `Budget ${budgetStageLabels[data.data.workflow_status].toLowerCase()}.`
+    if (action === 'approve') await refreshFinanceReport()
   } catch (error) {
     budgetMessage.value = error.response?.data?.message || 'That workflow action is not available.'
   }
@@ -295,7 +238,6 @@ const saveVoucher = async () => {
   const payload = {
     ...voucher,
     lines: lines.map((line) => ({ ...line })),
-    approvals: Object.fromEntries(approvalRoles.map(({ key }) => [key, { ...approvals[key] }])),
   }
   try {
     const response = currentVoucherId.value
@@ -328,14 +270,9 @@ const loadVoucher = async (id) => {
     if (!voucher.fiscalYear) voucher.fiscalYear = today.getFullYear()
     if (!voucher.workflowStatus) voucher.workflowStatus = 'draft'
     currentVoucherId.value = record.id
+    voucherWorkflowEvents.value = payload.financeWorkflow?.events || []
     lines.splice(0, lines.length, ...(payload.lines || []).map((line) => ({ ...line, id: nextLineId++ })))
     if (!lines.length) lines.push(createLine())
-    for (const { key } of approvalRoles) Object.assign(approvals[key], payload.approvals?.[key] || { name: '', position: '', date: '', signature: '' })
-    await nextTick()
-    for (const { key } of approvalRoles) {
-      const canvas = signatureCanvases.get(key)
-      if (canvas) paintSignature(canvas, approvals[key].signature)
-    }
     voucherMessage.value = `Loaded ${record.voucher_number}.`
   } catch (error) {
     voucherMessage.value = error.response?.data?.message || 'Could not load this voucher.'
@@ -344,6 +281,7 @@ const loadVoucher = async (id) => {
 const loadSelectedVoucher = () => loadVoucher(selectedVoucherId.value)
 const startNewVoucher = () => {
   currentVoucherId.value = null
+  voucherWorkflowEvents.value = []
   selectedVoucherId.value = ''
   Object.assign(voucher, {
     number: `GV-${dateStamp}-${String(Date.now()).slice(-3)}`,
@@ -352,23 +290,39 @@ const startNewVoucher = () => {
     department: 'HR and Operations', projectName: 'Project A', fiscalYear: today.getFullYear(), workflowStatus: 'draft',
   })
   lines.splice(0, lines.length, ...Array.from({ length: 5 }, createLine))
-  for (const { key } of approvalRoles) {
-    Object.assign(approvals[key], { name: '', position: '', date: '', signature: '' })
-    clearSignature(key)
-  }
   voucherMessage.value = ''
 }
 const voucherStages = ['draft', 'prepared', 'checked', 'verified', 'approved']
 const voucherStageLabels = { draft: 'Draft', prepared: 'Prepared', checked: 'Checked', verified: 'Verified', approved: 'Approved' }
+const currentVoucherRecord = computed(() => savedVouchers.value.find((item) => String(item.id) === String(currentVoucherId.value)))
+const currentVoucherAction = computed(() => ({ draft: 'prepare', prepared: 'check', checked: 'verify', verified: 'approve' }[voucher.workflowStatus] || null))
+const currentVoucherCanEdit = computed(() => !currentVoucherId.value || currentVoucherRecord.value?.can_edit === true)
+const currentVoucherCanAct = computed(() => voucher.workflowStatus === 'draft' ? currentVoucherCanEdit.value : currentVoucherRecord.value?.can_act === true)
+const voucherActionLabels = { prepare: 'Prepare voucher', check: 'Mark checked', verify: 'Mark verified', approve: 'Approve voucher' }
+const workflowWaitingFor = computed(() => ({ draft: 'you to prepare', prepared: 'a Manager, Event Admin or Master Admin to check', checked: 'an Event Admin or Master Admin to verify', verified: 'a Master Admin to approve', approved: 'completed' }[voucher.workflowStatus] || 'review'))
+const workflowEventFor = (status) => voucherWorkflowEvents.value.find((event) => event.status === status)
+const workflowDate = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Pending'
 const advanceVoucher = async () => {
-  const currentIndex = voucherStages.indexOf(voucher.workflowStatus)
-  if (currentIndex < 0 || currentIndex >= voucherStages.length - 1) return
-  const previous = voucher.workflowStatus
-  voucher.workflowStatus = voucherStages[currentIndex + 1]
-  const saved = await saveVoucher()
-  if (!saved) voucher.workflowStatus = previous
+  const action = currentVoucherAction.value
+  if (!action || !currentVoucherCanAct.value || savingVoucher.value) return
+  if (!currentVoucherId.value && !(await saveVoucher())) return
+  savingVoucher.value = true
+  voucherMessage.value = ''
+  try {
+    const { data } = await transitionFinanceVoucher(currentVoucherId.value, action)
+    voucher.workflowStatus = data.data.payload.workflowStatus
+    voucherWorkflowEvents.value = data.data.payload.financeWorkflow?.events || []
+    voucherMessage.value = action === 'approve' ? 'Voucher approved.' : `Voucher ${voucherStageLabels[voucher.workflowStatus].toLowerCase()}.`
+    await refreshSavedVouchers(true)
+    if (action === 'approve') await refreshFinanceReport()
+  } catch (error) {
+    voucherMessage.value = error.response?.data?.message || 'This workflow action is not available for your role.'
+    await refreshSavedVouchers(true)
+  } finally {
+    savingVoucher.value = false
+  }
 }
-onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
+onMounted(() => { refreshSavedVouchers(); refreshBudgets(); refreshFinanceReport() })
 </script>
 
 <template>
@@ -432,36 +386,60 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 
     <template v-else-if="activeFinanceView === 'reports'">
       <section class="finance-card finance-report-card">
-        <header class="finance-card-heading"><div><span class="finance-card-kicker">FINANCIAL REPORTS</span><h2>Budgets vs. expenses</h2><p>Track all projects. Approved budgets and vouchers update the totals as they move through review.</p></div></header>
-        <div class="finance-report-summary">
-          <article><span>Projects tracked</span><strong>{{ reportSummary.projects }}</strong></article>
-          <article><span>Approved budgets</span><strong>USD {{ formatCurrency(reportSummary.approvedBudget) }}</strong></article>
-          <article><span>Approved expenses</span><strong>USD {{ formatCurrency(reportSummary.expenses) }}</strong></article>
+        <header class="finance-card-heading"><div><span class="finance-card-kicker">FINANCIAL REPORTS</span><h2>Budgets vs. expenses</h2><p>Compare approved project budgets with approved voucher expenses. Unapproved items are excluded.</p></div><button type="button" class="finance-report-refresh" :disabled="reportLoading" @click="refreshFinanceReport">{{ reportLoading ? 'Refreshing…' : 'Refresh report' }}</button></header>
+        <div class="finance-report-filters" aria-label="Report filters">
+          <label>Fiscal year<select v-model="reportYear"><option value="all">All years</option><option v-for="year in reportYears" :key="year" :value="String(year)">{{ year }}</option></select></label>
+          <label>Department<select v-model="reportDepartment" @change="reportProject = 'all'"><option value="all">All departments</option><option v-for="department in departments" :key="department" :value="department">{{ department }}</option></select></label>
+          <label>Project<select v-model="reportProject"><option value="all">All projects</option><option v-for="project in reportProjects" :key="project" :value="project">{{ project }}</option></select></label>
+          <span v-if="reportGeneratedAt">Updated {{ new Date(reportGeneratedAt).toLocaleString() }}</span>
         </div>
+        <p v-if="reportError" class="finance-report-error" role="alert">{{ reportError }}</p>
+        <div class="finance-report-summary">
+          <article><span>Projects in view</span><strong>{{ reportSummary.projects }}</strong></article>
+          <article><span>Approved budget · USD</span><strong>{{ formatCurrency(reportSummary.approvedBudgetUsd) }}</strong></article>
+          <article><span>Approved budget · KHR</span><strong>{{ formatCurrency(reportSummary.approvedBudgetKhr) }}</strong></article>
+          <article><span>Approved expenses · USD</span><strong>{{ formatCurrency(reportSummary.expenses) }}</strong></article>
+          <article :class="{ 'is-over-budget': reportSummary.overBudget > 0 }"><span>Remaining · USD budgets</span><strong>{{ formatCurrency(reportSummary.remainingUsd) }}</strong><small v-if="reportSummary.overBudget">{{ reportSummary.overBudget }} project-years over budget</small></article>
+        </div>
+        <div v-if="reportLoading && !reportData.length" class="finance-report-empty">Loading financial report…</div>
+        <div v-else-if="!reportRows.length" class="finance-report-empty"><strong>No approved financial records match these filters.</strong><span>Approved budgets and vouchers will appear here once they pass their workflows.</span></div>
         <section v-for="group in reportDepartments" :key="group.name" class="finance-report-group" :aria-label="`${group.name} project budget report`">
           <header><h3>{{ group.name }}</h3><span>{{ group.rows.length }} projects</span></header>
-          <div class="finance-report-table-wrap"><table class="finance-report-table"><thead><tr><th>Project</th><th>Fiscal year</th><th>Approved budget</th><th>Expenses</th><th>Remaining</th><th>Status</th></tr></thead><tbody><tr v-for="row in group.rows" :key="row.id"><td>{{ row.project_name }}</td><td>{{ row.fiscal_year }}</td><td>{{ row.hasApprovedBudget ? `${row.currency} ${formatCurrency(row.totalBudget)}` : '—' }}</td><td>{{ row.currency }} {{ formatCurrency(row.expenses) }}</td><td :class="{ 'is-over-budget': row.hasApprovedBudget && row.balance < 0 }">{{ row.hasApprovedBudget ? `${row.currency} ${formatCurrency(row.balance)}` : '—' }}</td><td><span class="finance-status" :class="`status-${row.budgetStatus}`">{{ row.budgetStatus === 'no-budget' ? 'No budget yet' : budgetStageLabels[row.budgetStatus] || row.budgetStatus }}</span></td></tr></tbody></table></div>
+          <div class="finance-report-table-wrap"><table class="finance-report-table"><thead><tr><th>Project</th><th>Fiscal year</th><th>Approved budget</th><th>Approved expenses</th><th>USD remaining</th><th>Budget used</th><th>Status</th></tr></thead><tbody><tr v-for="row in group.rows" :key="row.id"><td><strong>{{ row.project_name }}</strong><small>{{ row.department }}</small></td><td>{{ row.fiscal_year }}</td><td class="report-money"><span v-if="row.approved_budget_usd">USD {{ formatCurrency(row.approved_budget_usd) }}</span><span v-if="row.approved_budget_khr">KHR {{ formatCurrency(row.approved_budget_khr) }}</span><span v-if="!row.approved_budget_usd && !row.approved_budget_khr">—</span></td><td>USD {{ formatCurrency(row.approved_expenses_usd) }}</td><td :class="{ 'is-over-budget': row.remaining_usd !== null && row.remaining_usd < 0 }">{{ row.remaining_usd === null ? '—' : `USD ${formatCurrency(row.remaining_usd)}` }}</td><td><div v-if="row.utilization_percent !== null" class="finance-report-utilization"><span>{{ row.utilization_percent }}%</span><i><b :class="{ 'is-over': row.utilization_percent > 100 }" :style="{ width: `${Math.min(row.utilization_percent, 100)}%` }"></b></i></div><span v-else>—</span></td><td><span class="finance-status" :class="`status-${row.budgetStatus}`">{{ row.budgetStatus === 'no-budget' ? 'Expenses only' : 'Approved budget' }}</span></td></tr></tbody></table></div>
         </section>
       </section>
     </template>
 
     <template v-else>
+    <section class="finance-review-queue" aria-labelledby="finance-review-title">
+      <header><div><span class="finance-card-kicker">ACTION REQUIRED</span><h2 id="finance-review-title">Voucher approvals</h2><p>Review vouchers waiting for your role in the approval process.</p></div><strong>{{ voucherReviewQueue.length }} waiting</strong></header>
+      <div v-if="voucherReviewQueue.length" class="finance-review-list">
+        <article v-for="item in voucherReviewQueue" :key="item.id" class="finance-review-item">
+          <div class="finance-review-icon"><AppIcon name="receipt" :size="18" /></div>
+          <div class="finance-review-copy"><strong>{{ item.voucher_number }}</strong><span>{{ item.owner_name || 'Staff member' }} · {{ item.payee_name || 'Payee not entered' }}</span></div>
+          <span class="finance-status" :class="`status-${item.payload?.workflowStatus}`">{{ voucherStageLabels[item.payload?.workflowStatus] }}</span>
+          <button type="button" class="finance-review-button" @click="openReviewVoucher(item)">{{ voucherReviewAction(item.payload?.workflowStatus) }} voucher <span>→</span></button>
+        </article>
+      </div>
+      <p v-else class="finance-review-empty">No vouchers are waiting for your approval.</p>
+    </section>
     <header class="finance-voucher-toolbar">
       <div class="finance-toolbar-actions">
         <select v-model="selectedVoucherId" aria-label="Load a saved voucher" @change="loadSelectedVoucher">
           <option value="">{{ savedVouchers.length ? 'Open saved voucher…' : 'No saved vouchers' }}</option>
-          <option v-for="saved in savedVouchers" :key="saved.id" :value="String(saved.id)">{{ saved.voucher_number }} ({{ voucherStageLabels[saved.payload?.workflowStatus || 'draft'] || 'Draft' }})</option>
+          <option v-for="saved in savedVouchers" :key="saved.id" :value="String(saved.id)">{{ saved.voucher_number }}{{ saved.owner_name ? ` · ${saved.owner_name}` : '' }} ({{ voucherStageLabels[saved.payload?.workflowStatus || 'draft'] || 'Draft' }})</option>
         </select>
         <span v-if="lastModifiedLabel" class="finance-last-modified">{{ lastModifiedLabel }}</span>
         <span class="finance-toolbar-spacer"></span>
         <button type="button" class="finance-new-button" @click="startNewVoucher"><AppIcon name="plus" :size="14" />New Voucher</button>
-        <button type="button" class="finance-save-button" :disabled="savingVoucher" @click="saveVoucher"><AppIcon name="save" :size="14" />{{ savingVoucher ? 'Saving…' : 'Save Voucher' }}</button>
+        <button v-if="currentVoucherCanEdit" type="button" class="finance-save-button" :disabled="savingVoucher" @click="saveVoucher"><AppIcon name="save" :size="14" />{{ savingVoucher ? 'Saving…' : 'Save Voucher' }}</button>
         <button type="button" class="finance-pdf-button" @click="printVoucher"><AppIcon name="printer" :size="14" />Print / PDF</button>
       </div>
     </header>
     <p v-if="voucherMessage" class="voucher-message" role="status" aria-live="polite">{{ voucherMessage }}</p>
 
-    <form class="finance-paper" @submit.prevent="saveVoucher">
+    <form id="finance-voucher-editor" class="finance-paper" @submit.prevent="currentVoucherCanEdit && saveVoucher()">
+      <fieldset class="finance-voucher-fields" :disabled="!currentVoucherCanEdit">
       <header class="voucher-header">
         <div class="voucher-brand">
           <img :src="organizationLogo" alt="Live &amp; Learn Cambodia Organization" />
@@ -556,24 +534,23 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
       </section>
 
       <label class="voucher-remarks"><strong>REMARKS</strong><textarea v-model.trim="voucher.remarks" rows="3"></textarea></label>
+      </fieldset>
 
       <section class="voucher-workflow-strip" aria-label="Voucher workflow">
         <div><strong>Approval workflow</strong><span>Prepare → Check → Verify → Approve</span></div>
-        <ol><li v-for="(stage, index) in voucherStages.slice(1)" :key="stage" :class="{ 'is-complete': voucherStages.indexOf(voucher.workflowStatus) >= index + 1 }"><i>{{ index + 1 }}</i>{{ voucherStageLabels[stage] }}</li></ol>
-        <button v-if="voucher.workflowStatus !== 'approved'" type="button" class="finance-action-primary" :disabled="savingVoucher" @click="advanceVoucher">{{ voucher.workflowStatus === 'draft' ? 'Prepare voucher' : `Mark ${voucherStageLabels[voucherStages[voucherStages.indexOf(voucher.workflowStatus) + 1]] || 'approved'}` }} <span>→</span></button>
-        <span v-else class="finance-approved-note">Voucher approved</span>
+        <ol><li v-for="(stage, index) in voucherStages.slice(1)" :key="stage" :class="{ 'is-complete': voucherStages.indexOf(voucher.workflowStatus) >= index + 1 }"><i>{{ index + 1 }}</i>{{ voucherStageLabels[stage] }}<small v-if="workflowEventFor(stage)">{{ workflowEventFor(stage).actor_name }}</small></li></ol>
+        <button v-if="currentVoucherAction && currentVoucherCanAct" type="button" class="finance-action-primary" :disabled="savingVoucher" @click="advanceVoucher">{{ voucherActionLabels[currentVoucherAction] }} <span>→</span></button>
+        <span v-else class="finance-approved-note">{{ voucher.workflowStatus === 'approved' ? 'Voucher approved' : `Waiting for ${workflowWaitingFor}` }}</span>
       </section>
 
       <div class="voucher-approvals-wrap">
-        <header class="approval-section-heading"><strong>AUTHORIZATION &amp; SIGN-OFF WORKFLOW</strong><span>Electronic verification sequence from submission to financial posting</span></header>
+        <header class="approval-section-heading"><strong>WORKFLOW ACTIVITY</strong><span>Each action is recorded from the signed-in staff account.</span></header>
         <div class="voucher-approval-cards">
-          <section v-for="role in approvalRoles" :key="role.key" class="voucher-approval-card">
+          <section v-for="role in approvalRoles" :key="role.key" class="voucher-approval-card" :class="{ 'is-recorded': workflowEventFor(role.key) }">
             <header><strong>{{ role.label }}</strong><span>{{ role.badge }}</span></header>
-            <div class="approval-signature"><canvas :ref="(element) => setSignatureCanvas(element, role.key)" :aria-label="`${role.label} signature pad`" @pointerdown="startSignature($event, role.key)" @pointermove="drawSignature($event, role.key)" @pointerup="finishSignature($event, role.key)" @pointercancel="finishSignature($event, role.key)"></canvas><span v-if="!approvals[role.key].signature">Draw signature here</span></div>
-            <button v-if="approvals[role.key].signature" class="signature-clear" type="button" @click="clearSignature(role.key)">Clear signature</button>
-            <label><span>Name</span><input v-model.trim="approvals[role.key].name" :aria-label="`${role.label} name`" /></label>
-            <label><span>Position</span><input v-model.trim="approvals[role.key].position" :aria-label="`${role.label} position`" /></label>
-            <label><span>Date</span><input v-model.trim="approvals[role.key].date" type="text" placeholder="DD / MM / YYYY" :aria-label="`${role.label} date`" /></label>
+            <div class="approval-signature"><span>{{ workflowEventFor(role.key)?.actor_name || 'Waiting for this step' }}</span></div>
+            <label><span>Authorized role</span><strong>{{ role.role }}</strong></label>
+            <label><span>Recorded</span><strong>{{ workflowDate(workflowEventFor(role.key)?.acted_at) }}</strong></label>
           </section>
         </div>
       </div>
@@ -590,6 +567,21 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 .finance-page-toolbar p{margin:0;color:#718092;font-size:13px}
 .finance-print-button,.voucher-line-actions button{min-height:38px;padding:0 15px;border:1px solid #176e64;border-radius:7px;background:#167568;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .finance-paper{max-width:900px;margin:0 auto;padding:18px;background:#fff;border:1px solid #d7dde2;box-shadow:0 8px 30px #1e334012;font-family:Arial,Helvetica,sans-serif;font-size:12px}
+.finance-review-queue{margin:0 0 14px;padding:16px 18px;border:1px solid #dce7ef;border-radius:13px;background:#fff;box-shadow:0 5px 16px #193b5708}
+.finance-review-queue>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:1px solid #edf1f5}
+.finance-review-queue h2{margin:3px 0;color:#183451;font-size:18px}
+.finance-review-queue>header p{margin:4px 0 0;color:#718198;font-size:13px}
+.finance-review-queue>header>strong{flex:none;padding:7px 11px;border-radius:30px;background:#fff4df;color:#8d620f;font-size:12px}
+.finance-review-empty{margin:0;padding:14px 0 2px;color:#718198;font-size:13px}
+.finance-review-list{display:grid}
+.finance-review-item{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #edf1f5}
+.finance-review-item:last-child{padding-bottom:0;border-bottom:0}
+.finance-review-icon{display:grid;width:36px;height:36px;flex:none;place-items:center;border-radius:10px;background:#eef4ff;color:#315da7}
+.finance-review-copy{display:grid;gap:4px;flex:1;min-width:0}
+.finance-review-copy strong{color:#213a57;font-size:13px}
+.finance-review-copy span{overflow:hidden;color:#718198;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.finance-review-button{display:inline-flex;align-items:center;gap:7px;flex:none;padding:8px 11px;border:1px solid #cbd9e7;border-radius:8px;background:#fff;color:#1c4569;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.finance-review-button:hover{border-color:#7fb7a8;background:#f2faf7;color:#08715d}
 .voucher-header{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:start;gap:10px;padding:0 2px 10px}
 .voucher-brand{display:flex;align-items:center;padding-top:4px}
 .voucher-brand img{display:block;width:min(100%,220px);max-height:60px;object-fit:contain;object-position:left center}
@@ -708,10 +700,21 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 .finance-feedback{margin:12px 0 0;color:#147568;font-size:13px}
 .finance-approved-note{align-self:center;color:#14734f;font-size:14px;font-weight:700}
 .finance-report-card{padding:24px}
-.finance-report-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 22px}
+.finance-report-refresh{flex:none;padding:9px 12px;border:1px solid #cbd9e5;border-radius:8px;background:#fff;color:#294963;font:600 12px Arial, sans-serif;cursor:pointer}
+.finance-report-refresh:disabled{opacity:.6;cursor:wait}
+.finance-report-filters{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr)) auto;align-items:end;gap:12px;margin:0 0 16px;padding:14px;border:1px solid #e6edf3;border-radius:10px;background:#f8fafc}
+.finance-report-filters label{display:grid;gap:6px;color:#51667e;font-size:12px;font-weight:700}
+.finance-report-filters select{width:100%;min-height:38px;padding:0 10px;border:1px solid #d9e3ec;border-radius:7px;background:#fff;color:#243c53;font:400 13px Arial,sans-serif}
+.finance-report-filters>span{padding:0 0 3px;color:#7b8da0;font-size:11px;text-align:right;white-space:nowrap}
+.finance-report-error{padding:11px 13px;border-radius:8px;background:#fff0ef;color:#a23d36;font-size:13px}
+.finance-report-empty{display:grid;gap:5px;padding:30px 15px;border:1px dashed #d9e3ec;border-radius:10px;color:#708094;text-align:center;font-size:13px}
+.finance-report-empty strong{color:#344c63;font-size:14px}
+.finance-report-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 22px}
 .finance-report-summary article{display:grid;gap:7px;padding:15px;border:1px solid #e5ecf2;border-radius:10px;background:#f8fafc}
 .finance-report-summary span{color:#718197;font-size:12px;font-weight:600}
 .finance-report-summary strong{color:#243c53;font-size:18px;font-variant-numeric:tabular-nums}
+.finance-report-summary article.is-over-budget strong,.finance-report-summary article.is-over-budget small{color:#b44242}
+.finance-report-summary small{color:#718197;font-size:11px}
 .finance-report-group{margin-top:18px}
 .finance-report-group>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px}
 .finance-report-group>header h3{margin:0;color:#29425a;font-size:16px}
@@ -721,6 +724,8 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 .finance-report-table th,.finance-report-table td{padding:13px 12px;border-bottom:1px solid #e9eef3;text-align:left;white-space:nowrap}
 .finance-report-table th{background:#f7f9fb;color:#617287;font-size:12px;font-weight:700}
 .finance-report-table td{color:#344b63}.finance-report-table td:nth-child(n+4){font-variant-numeric:tabular-nums;text-align:right}
+.finance-report-table td:first-child{display:grid;gap:4px}.finance-report-table td:first-child small{color:#8291a2;font-size:11px}
+.report-money{display:grid;gap:4px}.finance-report-utilization{display:grid;gap:5px;min-width:74px}.finance-report-utilization>span{font-size:12px}.finance-report-utilization i{height:5px;overflow:hidden;border-radius:5px;background:#e8eef4}.finance-report-utilization b{display:block;height:100%;border-radius:inherit;background:#159577}.finance-report-utilization b.is-over{background:#c24c45}
 .finance-report-table .is-over-budget{color:#b44242;font-weight:700}
 .voucher-project-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 12px;padding:14px;border:1px solid #e2eaf1;border-radius:10px;background:#f8fafc}
 .voucher-project-fields label{display:grid;gap:6px;color:#465b70;font-size:12px;font-weight:700}
@@ -729,6 +734,8 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 .voucher-workflow-strip ol{display:flex;justify-content:space-between;gap:6px;margin:0;padding:0;list-style:none}
 .voucher-workflow-strip li{display:grid;justify-items:center;gap:5px;flex:1;color:#8290a1;font-size:10px;font-weight:650}
 .voucher-workflow-strip li i{display:grid;width:25px;height:25px;place-items:center;border:1px solid #dce5ed;border-radius:50%;background:#fff;font-style:normal}
+.finance-voucher-fields{min-width:0;margin:0;padding:0;border:0}
+.voucher-workflow-strip li small{max-width:130px;overflow:hidden;color:#73849a;font-size:10px;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
 .voucher-workflow-strip li.is-complete{color:#147568}.voucher-workflow-strip li.is-complete i{border-color:#147568;background:#eaf7f2;color:#147568}
 .finance-page-toolbar{align-items:center;margin-bottom:22px}
 .finance-page-toolbar h1{margin:6px 0 5px;color:#172a3a;font-size:clamp(27px,3vw,34px);font-weight:750;letter-spacing:-.035em}
@@ -917,6 +924,8 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
 .voucher-approval-card>header{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#34465a;font-size:12px}
 .voucher-approval-card>header span{padding:3px 5px;border-radius:4px;background:#eef2f6;color:#738398;font-size:12px}
 .approval-signature{display:grid;min-height:42px;place-items:center;border:1px dashed #d8e2eb;border-radius:5px;background:#fff;color:#a1adbb;font-size:12px;font-style:italic}
+.voucher-approval-card.is-recorded .approval-signature{border-style:solid;border-color:#cce8dc;background:#f1faf6;color:#14734f;font-style:normal;font-weight:700}
+.voucher-approval-card>label strong{color:#344b63;font-size:12px;font-weight:650}
 .voucher-approval-card>label{display:grid;gap:3px;color:#8190a1;font-size:12px}
 .voucher-approval-card input{box-sizing:border-box;width:100%;min-width:0;height:29px;padding:5px 6px;border:1px solid #dbe4ed;border-radius:5px;background:#fff;color:#33485c;font:inherit;font-size:12px}
 .voucher-approval-card input:focus-visible{outline:2px solid #56c89b;outline-offset:0;border-color:#56c89b}
@@ -1033,7 +1042,9 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
   .finance-budget-total{gap:10px;padding:12px;font-size:13px}
   .finance-budget-total strong{font-size:14px;white-space:nowrap}
   .finance-report-card{padding:16px}
-  .finance-report-summary{grid-template-columns:1fr;gap:8px}
+  .finance-report-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:11px}
+  .finance-report-filters>span{grid-column:1/-1;text-align:left}
+  .finance-report-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .finance-report-summary article{padding:12px}
   .finance-report-table{font-size:12px}
   .finance-report-table th,.finance-report-table td{padding:10px}
@@ -1110,7 +1121,7 @@ onMounted(() => { refreshSavedVouchers(); refreshBudgets() })
   .voucher-lines thead th,.voucher-lines tfoot th{padding:1px}
   .voucher-lines input,.voucher-lines textarea,.voucher-approval-card input{min-height:0;height:auto;padding:1px;font-size:6pt}
   .voucher-remarks textarea{min-height:42px;resize:none}
-  .voucher-approval-cards{grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
+  .voucher-approval-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
   .voucher-approval-card{padding:3px;break-inside:avoid}
 }
 </style>

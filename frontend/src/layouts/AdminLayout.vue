@@ -36,8 +36,8 @@ const workspaceItems = [
   { id: 'other-requests', label: 'Other Requests', icon: 'send', children: [
     { id: 'travel-application', label: 'Travel Application', icon: 'plane' },
     { id: 'fuel-log-sheet', label: 'Fuel Log-sheet', icon: 'fuel' },
-    { id: 'purchase-request', label: 'Purchase Request', icon: 'cart' },
   ] },
+  { id: 'procurement-management', label: 'Procurement Management', icon: 'cart' },
   { id: 'finance-management', label: 'Finance Management', icon: 'receipt' },
   { id: 'my-requests', label: 'My Requests', icon: 'inbox' },
 ]

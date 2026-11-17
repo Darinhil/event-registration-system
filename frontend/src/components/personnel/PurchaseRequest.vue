@@ -6,6 +6,7 @@ import RequestFormParts from './RequestFormParts.vue'
 import RequestSubmitted from './RequestSubmitted.vue'
 import { useStaffRequestForm } from '../../utils/staffRequestForm'
 
+const emit = defineEmits(['submitted'])
 const blankItem = () => ({ description: '', quantity: 1, unit_cost: '' })
 const blank = () => ({ purpose: '', department: '', required_date: '', items: [blankItem()], justification: '' })
 const form = reactive(blank())
@@ -27,7 +28,7 @@ const validate = () => {
   Object.assign(errors, found)
   return !Object.keys(found).length
 }
-const submit = () => { if (validate()) request.submit({ ...form, items: form.items.map((item) => ({ ...item })) }); else request.focusFirstError() }
+const submit = async () => { if (validate()) { const result = await request.submit({ ...form, items: form.items.map((item) => ({ ...item })) }); if (result) emit('submitted') } else request.focusFirstError() }
 const startAnother = () => { Object.assign(form, blank()); request.reset() }
 </script>
 
