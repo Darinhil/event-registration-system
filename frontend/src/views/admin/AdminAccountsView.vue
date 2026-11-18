@@ -272,16 +272,6 @@ onMounted(load)
 <template>
   <AdminLayout>
     <section class="aa-page" aria-labelledby="aa-title">
-      <header class="aa-head">
-        <div>
-          <p class="aa-eyebrow">Administration</p>
-          <h1 id="aa-title">Admin Accounts</h1>        </div>
-        <dl v-if="!loading && !loadError" class="aa-stats">
-          <div><dt>Accounts</dt><dd>{{ accounts.length }}</dd></div>
-          <div><dt>Master Admins</dt><dd>{{ masterCount }}</dd></div>
-        </dl>
-      </header>
-
       <div class="aa-live" role="status" aria-live="polite">
         <Transition name="aa-fade">
           <div v-if="toast" class="aa-toast" :class="`aa-toast--${toast.type}`">
@@ -292,160 +282,155 @@ onMounted(load)
         </Transition>
       </div>
 
-      <div class="aa-grid">
-        <!-- New account -->
-        <article class="aa-card aa-card--form" aria-labelledby="aa-new-title">
-          <header class="aa-card-head">
-            <span class="aa-card-icon" aria-hidden="true"><AppIcon name="user-plus" :size="18" /></span>
-            <div>
-              <h2 id="aa-new-title">New account</h2>
-              <p>Fields marked <span class="aa-req" aria-hidden="true">*</span><span class="sr-only">with an asterisk</span> are required.</p>
+      <div class="aa-document">
+        <header class="aa-document-header">
+          <div class="aa-brand-wrap">
+            <div class="aa-brand-mark" aria-hidden="true">
+              <span class="aa-leaf aa-leaf-one"></span>
+              <span class="aa-leaf aa-leaf-two"></span>
+              <span class="aa-leaf aa-leaf-three"></span>
             </div>
-          </header>
-
-          <form class="aa-form" novalidate @submit.prevent="submit">
-            <p v-if="formError" class="aa-form-error" role="alert"><AppIcon name="alert-circle" :size="16" />{{ formError }}</p>
-
-            <div class="aa-field" :class="{ 'has-error': errors.name }">
-              <label for="aa-name">Full name <span class="aa-req" aria-hidden="true">*</span></label>
-              <input id="aa-name" :ref="(el) => (fieldRefs.name = el)" v-model="form.name" type="text" maxlength="100" autocomplete="off" placeholder="e.g. Sokha Chan" required :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'aa-name-err' : undefined" @blur="onBlur('name')" @input="onInput('name')" />
-              <p v-if="errors.name" id="aa-name-err" class="aa-err">{{ errors.name }}</p>
+            <div class="aa-brand-copy">
+              <div class="aa-brand-kh">លីវ &amp; លើណ Cambodia</div>
+              <div class="aa-brand-en">LIVE &amp; LEARN CAMBODIA ORG.</div>
             </div>
+          </div>
 
-            <div class="aa-field" :class="{ 'has-error': errors.email }">
-              <label for="aa-email">Work email <span class="aa-req" aria-hidden="true">*</span></label>
-              <input id="aa-email" :ref="(el) => (fieldRefs.email = el)" v-model="form.email" type="email" inputmode="email" autocomplete="off" spellcheck="false" placeholder="name@company.com" required :aria-invalid="!!errors.email" :aria-describedby="errors.email ? 'aa-email-err aa-email-hint' : 'aa-email-hint'" @blur="onBlur('email')" @input="onInput('email')" />
-              <p v-if="errors.email" id="aa-email-err" class="aa-err">{{ errors.email }}</p>
-              <p id="aa-email-hint" class="aa-hint">They’ll use this email to sign in.</p>
+          <aside class="aa-voucher-box">
+            <div class="aa-voucher-head">FINANCE VOUCHER</div>
+            <div class="aa-voucher-row">
+              <label>Voucher No:</label>
+              <input type="text" value="GV-20261117-001" aria-label="Voucher number" />
             </div>
-
-            <div class="aa-field" :class="{ 'has-error': errors.password }">
-              <label for="aa-password">Temporary password <span class="aa-req" aria-hidden="true">*</span></label>
-              <div class="aa-password">
-                <input id="aa-password" :ref="(el) => (fieldRefs.password = el)" v-model="form.password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required :aria-invalid="!!errors.password" :aria-describedby="errors.password ? 'aa-password-err aa-password-rule' : 'aa-password-rule'" @blur="onBlur('password')" @input="onInput('password')" />
-                <button type="button" class="aa-icon-btn aa-password-toggle" :aria-pressed="showPassword" :aria-label="showPassword ? 'Hide password' : 'Show password'" :title="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword"><AppIcon :name="showPassword ? 'eye-off' : 'eye'" :size="18" /></button>
-              </div>
-              <p v-if="errors.password" id="aa-password-err" class="aa-err">{{ errors.password }}</p>
-              <p id="aa-password-rule" class="aa-rule" :class="{ 'is-met': passwordOk }">
-                <AppIcon :name="passwordOk ? 'check-circle' : 'circle-dot'" :size="14" />At least 8 characters<span class="sr-only">{{ passwordOk ? ' — met' : '' }}</span>
-              </p>
+            <div class="aa-voucher-row">
+              <label>Voucher Date:</label>
+              <input type="text" value="17/11/2026" aria-label="Voucher date" />
             </div>
+            <div class="aa-voucher-row">
+              <label>Adv. No:</label>
+              <input type="text" value="" aria-label="Advance number" placeholder="" />
+            </div>
+          </aside>
+        </header>
 
-            <div class="aa-field">
-              <label for="aa-role">Role <span class="aa-req" aria-hidden="true">*</span></label>
-              <div class="aa-select">
-                <select id="aa-role" :ref="(el) => (fieldRefs.role = el)" v-model="form.role" aria-describedby="aa-role-desc" @change="onInput('role')">
-                  <optgroup label="Full access">
-                    <option value="admin">Master Admin</option>
-                  </optgroup>
-                  <optgroup label="Own events only">
-                    <option v-for="role in ROLES.filter((r) => !r.full)" :key="role.value" :value="role.value">{{ role.label }}</option>
-                  </optgroup>
+        <form class="aa-form-sheet" novalidate @submit.prevent="submit">
+          <div class="aa-meta-row">
+            <div class="aa-meta-field">
+              <label>Structure</label>
+              <div class="aa-select aa-select--filled">
+                <select aria-label="Structure">
+                  <option>HR and Operations</option>
                 </select>
                 <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
               </div>
-              <div id="aa-role-desc" class="aa-role-card" :class="{ 'is-full': selectedRole?.full }">
-                <AppIcon :name="selectedRole?.full ? 'shield-check' : 'calendar'" :size="18" />
-                <div>
-                  <strong>{{ selectedRole?.full ? 'Full access' : 'Own events only' }}</strong>
-                  <p>{{ selectedRole?.description }}</p>
-                </div>
+            </div>
+            <div class="aa-meta-field">
+              <label>Project</label>
+              <div class="aa-select aa-select--filled">
+                <select aria-label="Project">
+                  <option>Project A</option>
+                </select>
+                <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
               </div>
             </div>
+            <div class="aa-meta-field">
+              <label>Fiscal year</label>
+              <div class="aa-select aa-select--filled">
+                <select aria-label="Fiscal year">
+                  <option>2026</option>
+                </select>
+                <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
+              </div>
+            </div>
+          </div>
 
+          <div class="aa-two-col">
+            <section class="aa-panel">
+              <h3>Request / Beneficiary Information</h3>
+
+              <div class="aa-field aa-field--stack" :class="{ 'has-error': errors.name }">
+                <label for="aa-name">Payee / Officer Name <span class="aa-req" aria-hidden="true">*</span></label>
+                <input id="aa-name" :ref="(el) => (fieldRefs.name = el)" v-model="form.name" type="text" maxlength="100" autocomplete="off" placeholder="Full name of staff or vendor" required :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'aa-name-err' : undefined" @blur="onBlur('name')" @input="onInput('name')" />
+                <p v-if="errors.name" id="aa-name-err" class="aa-err">{{ errors.name }}</p>
+              </div>
+
+              <div class="aa-field aa-field--stack" :class="{ 'has-error': errors.email }">
+                <label for="aa-email">Work email <span class="aa-req" aria-hidden="true">*</span></label>
+                <input id="aa-email" :ref="(el) => (fieldRefs.email = el)" v-model="form.email" type="email" inputmode="email" autocomplete="off" spellcheck="false" placeholder="name@company.com" required :aria-invalid="!!errors.email" :aria-describedby="errors.email ? 'aa-email-err aa-email-hint' : 'aa-email-hint'" @blur="onBlur('email')" @input="onInput('email')" />
+                <p v-if="errors.email" id="aa-email-err" class="aa-err">{{ errors.email }}</p>
+                <p id="aa-email-hint" class="aa-hint">They’ll use this email to sign in.</p>
+              </div>
+
+              <div class="aa-field aa-field--stack">
+                <label for="aa-role">Role</label>
+                <div class="aa-select aa-select--filled">
+                  <select id="aa-role" :ref="(el) => (fieldRefs.role = el)" v-model="form.role" aria-describedby="aa-role-desc" @change="onInput('role')">
+                    <option v-for="role in ROLES" :key="role.value" :value="role.value">{{ role.label }}</option>
+                  </select>
+                  <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
+                </div>
+                <p id="aa-role-desc" class="aa-role-note">{{ selectedRole?.description }}</p>
+              </div>
+
+              <div class="aa-field aa-field--stack" :class="{ 'has-error': errors.password }">
+                <label for="aa-password">Temporary password <span class="aa-req" aria-hidden="true">*</span></label>
+                <div class="aa-password">
+                  <input id="aa-password" :ref="(el) => (fieldRefs.password = el)" v-model="form.password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" required :aria-invalid="!!errors.password" :aria-describedby="errors.password ? 'aa-password-err aa-password-rule' : 'aa-password-rule'" @blur="onBlur('password')" @input="onInput('password')" />
+                  <button type="button" class="aa-icon-btn aa-password-toggle" :aria-pressed="showPassword" :aria-label="showPassword ? 'Hide password' : 'Show password'" :title="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword"><AppIcon :name="showPassword ? 'eye-off' : 'eye'" :size="18" /></button>
+                </div>
+                <p v-if="errors.password" id="aa-password-err" class="aa-err">{{ errors.password }}</p>
+                <p id="aa-password-rule" class="aa-rule" :class="{ 'is-met': passwordOk }">
+                  <AppIcon :name="passwordOk ? 'check-circle' : 'circle-dot'" :size="14" />At least 8 characters<span class="sr-only">{{ passwordOk ? ' — met' : '' }}</span>
+                </p>
+              </div>
+            </section>
+
+            <section class="aa-panel">
+              <h3>Type of Voucher</h3>
+              <div class="aa-option-list">
+                <label class="aa-option"><input v-model="form.role" type="radio" value="admin" /><span>Master Admin</span></label>
+                <label class="aa-option"><input v-model="form.role" type="radio" value="event_admin" /><span>Event Admin</span></label>
+                <label class="aa-option"><input v-model="form.role" type="radio" value="manager" /><span>Manager</span></label>
+                <label class="aa-option"><input v-model="form.role" type="radio" value="officer_3" /><span>Officer Level 3</span></label>
+                <label class="aa-option"><input v-model="form.role" type="radio" value="officer_2" /><span>Officer Level 2</span></label>
+                <label class="aa-option"><input v-model="form.role" type="radio" value="officer_1" /><span>Officer Level 1</span></label>
+              </div>
+            </section>
+
+            <section class="aa-panel">
+              <h3>Mode of Payment</h3>
+              <div class="aa-option-list aa-option-list--compact">
+                <label class="aa-option"><input type="radio" name="payment-mode" value="cash" checked /><span>Cash</span></label>
+                <label class="aa-option"><input type="radio" name="payment-mode" value="bank-transfer" /><span>Bank Transfer</span></label>
+                <label class="aa-option"><input type="radio" name="payment-mode" value="bank-cheque" /><span>Bank Cheque</span></label>
+              </div>
+
+              <div class="aa-field aa-field--stack aa-field--small">
+                <label for="aa-payment-ref">Cheque # / Tx Ref</label>
+                <input id="aa-payment-ref" type="text" value="e.g. CG-99210" placeholder="e.g. CG-99210" />
+              </div>
+            </section>
+          </div>
+
+          <div class="aa-panel aa-panel--bottom">
+            <h3>Expenditure &amp; Settlement Items</h3>
+            <div class="aa-panel-actions">
+              <button type="button" class="aa-btn aa-btn--ghost aa-btn--success"><AppIcon name="plus" :size="15" />Add line</button>
+              <button type="button" class="aa-btn aa-btn--ghost aa-btn--danger"><AppIcon name="trash" :size="15" />Remove last line</button>
+            </div>
+            <p class="aa-inline-hint">Provide line item description, grant codes, and allocated values.</p>
+          </div>
+
+          <div v-if="formError" class="aa-form-error aa-form-error--sheet" role="alert"><AppIcon name="alert-circle" :size="16" />{{ formError }}</div>
+
+          <div class="aa-submit-row">
             <button class="aa-btn aa-btn--primary aa-submit" type="submit" :disabled="creating" :aria-busy="creating">
               <span v-if="creating" class="aa-spinner" aria-hidden="true"></span>
               <AppIcon v-else name="user-plus" :size="17" />
               {{ creating ? 'Creating account…' : 'Create account' }}
             </button>
-          </form>
-        </article>
-
-        <!-- Team members -->
-        <article class="aa-card aa-card--list" aria-labelledby="aa-team-title">
-          <header class="aa-card-head">
-            <span class="aa-card-icon" aria-hidden="true"><AppIcon name="users" :size="18" /></span>
-            <div>
-              <h2 id="aa-team-title">Team members</h2>
-              <p>Everyone who can sign in to this admin area.</p>
-            </div>
-          </header>
-
-          <div v-if="showTools && !loading && !loadError" class="aa-tools">
-            <label class="aa-search">
-              <span class="sr-only">Search team members</span>
-              <AppIcon name="search" :size="16" />
-              <input v-model="query" type="search" placeholder="Search name or email" />
-            </label>
-            <label class="aa-select aa-select--sm">
-              <span class="sr-only">Filter by role</span>
-              <select v-model="roleFilter">
-                <option value="all">All roles</option>
-                <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
-              </select>
-              <AppIcon class="aa-select-chevron" name="chevron-down" :size="16" />
-            </label>
           </div>
-
-          <div v-if="loading" class="aa-skeletons" aria-busy="true" aria-label="Loading team members">
-            <div v-for="n in 3" :key="n" class="aa-skeleton-row">
-              <span class="aa-skeleton aa-skeleton--avatar"></span>
-              <span class="aa-skeleton-lines"><span class="aa-skeleton aa-skeleton--w60"></span><span class="aa-skeleton aa-skeleton--w40"></span></span>
-              <span class="aa-skeleton aa-skeleton--pill"></span>
-            </div>
-          </div>
-
-          <div v-else-if="loadError" class="aa-state" role="alert">
-            <span class="aa-state-icon is-error" aria-hidden="true"><AppIcon name="alert-circle" :size="22" /></span>
-            <strong>Team list unavailable</strong>
-            <p>{{ loadError }}</p>
-            <button type="button" class="aa-btn aa-btn--ghost" @click="load()"><AppIcon name="refresh" :size="16" />Try again</button>
-          </div>
-
-          <div v-else-if="accounts.length === 0" class="aa-state">
-            <span class="aa-state-icon" aria-hidden="true"><AppIcon name="users" :size="22" /></span>
-            <strong>No team members yet</strong>
-            <p>Use the form to create the first staff account.</p>
-          </div>
-
-          <div v-else-if="visibleAccounts.length === 0" class="aa-state">
-            <span class="aa-state-icon" aria-hidden="true"><AppIcon name="search" :size="22" /></span>
-            <strong>No one matches these filters</strong>
-            <p>Try a different name, email or role.</p>
-            <button type="button" class="aa-btn aa-btn--ghost" @click="clearFilters">Clear filters</button>
-          </div>
-
-          <ul v-else class="aa-members">
-            <li v-for="account in visibleAccounts" :key="account.id" class="aa-member" :class="{ 'is-new': highlightId === account.id }">
-              <span class="aa-avatar" :class="{ 'is-master': account.role === 'admin' }" aria-hidden="true">{{ initials(account.name) }}</span>
-              <div class="aa-member-main">
-                <p class="aa-member-name">
-                  <strong>{{ account.name }}</strong>
-                  <span v-if="account.id === meId" class="aa-you">You</span>
-                </p>
-                <p class="aa-member-email">{{ account.email }}</p>
-              </div>
-              <div class="aa-member-role">
-                <span class="aa-role" :class="account.role === 'admin' ? 'aa-role--master' : 'aa-role--own'">
-                  <AppIcon v-if="account.role === 'admin'" name="shield-check" :size="13" />{{ roleLabel(account.role) }}
-                </span>
-                <small v-if="addedOn(account.created_at)">Added {{ addedOn(account.created_at) }}</small>
-              </div>
-              <div class="aa-member-actions">
-                <span v-if="account.id === meId" class="aa-self-note">Signed in</span>
-                <template v-else>
-                  <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`View ${account.name}’s personnel profile`" @click="openDialog({ type: 'profile', account }, $event.currentTarget)"><AppIcon name="eye" :size="15" /><span>Profile</span></button>
-                  <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`Edit ${account.name}’s account`" @click="openDialog({ type: 'edit', account }, $event.currentTarget)"><AppIcon name="user" :size="15" /><span>Edit</span></button>
-                  <button type="button" class="aa-btn aa-btn--quiet" :aria-label="`Change role for ${account.name}`" @click="openDialog({ type: 'role', account }, $event.currentTarget)"><AppIcon name="pen" :size="15" /><span>Role</span></button>
-                  <button type="button" class="aa-btn aa-btn--quiet aa-btn--danger" :aria-label="`Delete ${account.name}’s account`" @click="openDialog({ type: 'delete', account }, $event.currentTarget)"><AppIcon name="trash" :size="15" /><span>Delete</span></button>
-                </template>
-              </div>
-            </li>
-          </ul>
-          <p v-if="!loading && !loadError && accounts.length && masterCount === 1" class="aa-footnote">
-            <AppIcon name="info" :size="14" />You can’t delete or change your own account here, so there is always at least one Master Admin.
-          </p>
-        </article>
+        </form>
       </div>
 
       <!-- Confirmation dialog -->
@@ -550,6 +535,237 @@ onMounted(load)
   color: var(--aa-text);
 }
 
+.aa-document {
+  background: #f3f5f6;
+  border: 1px solid #dfe5eb;
+  border-radius: 18px;
+  padding: 18px 18px 28px;
+  box-shadow: 0 8px 24px rgba(15, 32, 48, .04);
+}
+
+.aa-document-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 18px 0 22px;
+}
+.aa-brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 92px;
+}
+.aa-brand-mark {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0e7d71, #0b5e54);
+  box-shadow: inset 0 0 0 8px rgba(255,255,255,.12);
+}
+.aa-brand-mark::before {
+  content: "";
+  position: absolute;
+  inset: 14px 18px 14px 18px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.6);
+  transform: rotate(-12deg);
+}
+.aa-leaf {
+  position: absolute;
+  width: 17px;
+  height: 22px;
+  background: rgba(255,255,255, .85);
+  border-radius: 80% 0 80% 0;
+  transform-origin: bottom center;
+  box-shadow: inset 0 0 0 1px rgba(12,89,77,.08);
+}
+.aa-leaf-one { left: 18px; top: 10px; transform: rotate(-32deg); }
+.aa-leaf-two { left: 28px; top: 20px; transform: rotate(28deg); }
+.aa-leaf-three { left: 38px; top: 16px; transform: rotate(62deg); }
+.aa-brand-copy {
+  display: grid;
+  gap: 4px;
+  color: #0e1a2d;
+}
+.aa-brand-kh {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+}
+.aa-brand-en {
+  font-size: .68rem;
+  letter-spacing: .12em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #273952;
+}
+.aa-voucher-box {
+  width: min(320px, 100%);
+  border: 1px solid #d3d9df;
+  border-radius: 12px;
+  background: rgba(255,255,255,.55);
+  padding: 10px 14px 12px;
+}
+.aa-voucher-head {
+  text-align: center;
+  font-size: .82rem;
+  font-weight: 800;
+  color: #1a2d3d;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.aa-voucher-row {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  font-size: .9rem;
+  color: #223548;
+}
+.aa-voucher-row label { font-weight: 600; }
+.aa-voucher-row input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid #d4dce5;
+  border-radius: 8px;
+  background: rgba(255,255,255,.75);
+  padding: 0 8px;
+  color: #1c2d3d;
+  font: inherit;
+}
+
+.aa-form-sheet {
+  border: 1px solid #dfe7ee;
+  border-radius: 14px;
+  background: rgba(255,255,255,.62);
+  padding: 14px 18px 18px;
+}
+.aa-meta-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 8px 0 14px;
+  border: 1px solid #dfe7ee;
+  border-radius: 10px;
+  background: rgba(255,255,255,.4);
+}
+.aa-meta-field {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px;
+  min-height: 82px;
+}
+.aa-meta-field label, .aa-panel h3, .aa-field label {
+  font-weight: 700;
+  color: #1a2c3f;
+}
+.aa-select--filled .aa-select-chevron { right: 12px; }
+.aa-select--filled select {
+  background: rgba(255,255,255,.72);
+  color: #1d2d3d;
+  font-weight: 600;
+}
+
+.aa-two-col {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+  align-items: start;
+}
+.aa-panel {
+  border: 1px solid #dfe7ee;
+  border-radius: 12px;
+  background: rgba(255,255,255,.26);
+  padding: 12px 14px 14px;
+}
+.aa-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: .98rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #1f3143;
+}
+.aa-panel h3::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--aa-green);
+}
+.aa-panel--bottom {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.aa-panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aa-inline-hint {
+  width: 100%;
+  margin: 0;
+  color: var(--aa-muted);
+  font-size: .8rem;
+}
+.aa-option-list {
+  display: grid;
+  gap: 10px;
+}
+.aa-option-list--compact {
+  gap: 8px;
+}
+.aa-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  padding: 0 4px;
+  color: #223548;
+  font-size: .92rem;
+}
+.aa-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--aa-green);
+}
+.aa-field--stack {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.aa-field--small { margin-top: 16px; }
+.aa-field--stack .aa-password { width: 100%; }
+.aa-password input, .aa-field input, .aa-field select {
+  height: 38px;
+}
+.aa-role-note {
+  margin: 0;
+  min-height: 18px;
+  color: var(--aa-muted);
+  font-size: .8rem;
+}
+.aa-form-error--sheet {
+  margin-top: 14px;
+  justify-content: flex-start;
+}
+.aa-submit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 /* Header */
 .aa-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
 .aa-eyebrow { margin: 0 0 6px; color: var(--aa-green); font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
@@ -570,7 +786,7 @@ onMounted(load)
 .aa-fade-enter-from, .aa-fade-leave-to { opacity: 0; transform: translateY(-4px); }
 
 /* Layout */
-.aa-grid { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.aa-grid { display: grid; grid-template-columns: minmax(340px, 540px); gap: 24px; align-items: start; }
 .aa-card { min-width: 0; border: 1px solid var(--aa-line); border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(15, 28, 46, .04), 0 6px 20px rgba(15, 28, 46, .04); }
 .aa-card--form { position: sticky; top: 92px; }
 .aa-card-head { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--aa-line-soft); }

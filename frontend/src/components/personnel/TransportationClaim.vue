@@ -5,6 +5,7 @@ import DateInput from '../DateInput.vue'
 import RequestFormParts from './RequestFormParts.vue'
 import RequestSubmitted from './RequestSubmitted.vue'
 import { useStaffRequestForm } from '../../utils/staffRequestForm'
+import lleeLogo from '../../assets/LLEE_Cambodia_Inverse_L.png'
 
 const TRANSPORT = ['Car', 'Motorbike', 'Bus', 'Airplane', 'Other']
 const blank = () => ({ purpose: '', destination: '', start_date: '', end_date: '', transport: 'Car', distance: '', fuel_cost: '', tolls: '', parking: '', other: '' })
@@ -32,17 +33,21 @@ const startAnother = () => { Object.assign(form, blank()); request.reset() }
 </script>
 
 <template>
-  <div class="lv">
-    <header class="lv-head"><h1>Transportation Claim</h1></header>
-    <RequestSubmitted v-if="saved" :request="saved" @again="startAnother" />
-    <form v-else ref="formEl" class="lv-card lv-form rq-form" novalidate @submit.prevent="submit">
+  <div class="lv tc-page">
+    <h1 class="tc-page-title">Transportation Claims</h1>
+    <div class="tc-sheet">
+      <header class="tc-header">
+        <img class="tc-logo" :src="lleeLogo" alt="Live & Learn Cambodia logo" />
+      </header>
+      <RequestSubmitted v-if="saved" :request="saved" @again="startAnother" />
+      <form v-else ref="formEl" class="lv-form rq-form tc-form" novalidate @submit.prevent="submit">
       <p v-if="formError" class="lv-alert" role="alert"><AppIcon name="alert-circle" :size="18" />{{ formError }}</p>
       <div class="lv-field">
         <label for="tc-purpose" class="lv-label">Purpose <span class="lv-req" aria-hidden="true">*</span></label>
         <textarea id="tc-purpose" v-model="form.purpose" rows="2" :aria-invalid="errors.purpose ? 'true' : undefined"></textarea>
         <p v-if="errors.purpose" class="lv-error"><AppIcon name="alert-circle" :size="14" />{{ errors.purpose }}</p>
       </div>
-      <div class="lv-grid">
+      <div class="tc-grid">
         <div class="lv-field">
           <label for="tc-destination" class="lv-label">Destination <span class="lv-req" aria-hidden="true">*</span></label>
           <input id="tc-destination" v-model="form.destination" type="text" class="rq-input" :aria-invalid="errors.destination ? 'true' : undefined" />
@@ -87,6 +92,128 @@ const startAnother = () => { Object.assign(form, blank()); request.reset() }
         <span></span>
         <button type="submit" class="lv-btn lv-btn--primary lv-btn--lg" :disabled="saving"><AppIcon name="send" :size="17" />{{ saving ? 'Submitting...' : 'Submit claim' }}</button>
       </footer>
-    </form>
+      </form>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.tc-page {
+  width: 100%;
+}
+
+.tc-page-title {
+  margin: 0 0 14px;
+  color: #17365f;
+  font-family: inherit;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tc-sheet {
+  overflow: hidden;
+  border: 1px solid #dfe7ee;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 32, 48, 0.04);
+}
+
+.tc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-bottom: 1px solid #d9e0e8;
+  background: #ffffff;
+}
+
+.tc-logo {
+  display: block;
+  width: min(20vw, 260px);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.tc-form {
+  display: grid;
+  width: 100%;
+  max-width: none;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #f9fbfc;
+  box-shadow: none;
+}
+
+.tc-form > .lv-field,
+.tc-form > .tc-grid,
+.tc-form > fieldset,
+.tc-form > .lv-alert,
+.tc-form > :deep(.request-form-parts),
+.tc-form > .lv-form__foot {
+  padding: 14px 16px;
+  border-bottom: 1px solid #dfe7ee;
+}
+
+.tc-form > .lv-field {
+  background: #f9fbfc;
+}
+
+.tc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  background: #f9fbfc;
+}
+
+.tc-grid .lv-field {
+  min-width: 0;
+}
+
+.tc-form input:not([type="radio"]),
+.tc-form textarea,
+.tc-form select {
+  border-color: #ccd6df;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 1rem;
+}
+
+.tc-form fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: #f9fbfc;
+}
+
+.tc-form .rq-costs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tc-form .rq-total {
+  margin-bottom: 0;
+}
+
+.tc-form .lv-form__foot {
+  background: #f9fbfc;
+}
+
+@media (max-width: 760px) {
+  .tc-header {
+    align-items: flex-start;
+  }
+
+  .tc-logo {
+    width: min(34vw, 200px);
+  }
+
+  .tc-grid,
+  .tc-form .rq-costs {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
