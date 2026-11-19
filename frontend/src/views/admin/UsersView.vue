@@ -810,7 +810,7 @@ onBeforeUnmount(() => {
                       </td>
                       <td data-label="Gender"><span class="at-code-badge">{{ row.gender || '—' }}</span></td>
                       <td data-label="Age Group"><span class="at-code-badge">{{ row.age || '—' }}</span></td>
-                      <td data-label="Photo/Media"><span class="at-consent-badge" :class="row.photoConsent ? 'is-yes' : 'is-no'">Photo/Media: {{ row.photoConsent ? 'Yes' : 'No' }}</span></td>
+                      <td data-label="Photo/Media"><span v-if="row.checkedInAt" class="at-consent-badge" :class="row.photoConsent ? 'is-yes' : 'is-no'">Photo/Media: {{ row.photoConsent ? 'Yes' : 'No' }}</span><template v-else>—</template></td>
                       <td data-label="Registered Date" class="at-reference-time"><time v-if="row.registeredAt" :datetime="row.registeredAt.toISOString()">{{ row.registeredAt.toLocaleString(undefined, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time><template v-else>—</template></td>
                       <td class="at-cell-actions at-reference-row-actions">
                         <button type="button" class="at-icon-action" :aria-label="`View ${row.name}`" title="View" @click="openDetails(row)"><AppIcon name="eye" :size="15" /></button>
@@ -890,7 +890,7 @@ onBeforeUnmount(() => {
               <dl>
                 <div><dt>Gender</dt><dd>{{ detailRow.gender || '—' }}</dd></div>
                 <div><dt>Age</dt><dd>{{ detailRow.age || '—' }}</dd></div>
-                <div><dt>Photo/Media consent</dt><dd>{{ detailRow.photoConsent ? 'Yes' : 'No' }}</dd></div>
+                <div v-if="detailRow.checkedInAt"><dt>Photo/Media consent</dt><dd>{{ detailRow.photoConsent ? 'Yes' : 'No' }}</dd></div>
                 <div><dt>Ethnicity</dt><dd>{{ detailRow.ethnicity || '—' }}</dd></div>
                 <div><dt>Disability</dt><dd>{{ detailRow.disabilities.join(', ') || 'None reported' }}</dd></div>
               </dl>
