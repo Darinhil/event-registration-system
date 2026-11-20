@@ -31,6 +31,61 @@ const period = reactive(parsePeriod(route.query.period))
 const periodLabel = computed(() => `${MONTHS[period.month - 1]} ${period.year}`)
 const yearOptions = computed(() => [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1])
 
+/* ===================== Public Holiday Calendar 2026 ===================== */
+const HOLIDAYS_2026 = [
+  { name: 'International New Year', nameKh: 'បុណ្យចូលឆ្នាំសកល', date: '01-01-2026', month: 'JANUARY' },
+  { name: 'Visak Bochea Day', nameKh: 'ពិធីបុណ្យវិសាខបូជា', date: '05-01-2026', month: 'AUGUST' },
+  { name: 'Victory Over Genocide Day', nameKh: 'ទិវាជ័យជម្នះលើរបបប្រល័យពូជសាសន៍', date: '07-01-2026', month: 'FEBRUARY' },
+  { name: "International Women's Day", nameKh: 'ទិវានារីអន្តរជាតិ', date: '08-03-2026', month: 'MARCH' },
+  { name: 'Khmer New Year', nameKh: 'បុណ្យចូលឆ្នាំខ្មែរ', date: '14-04-2026', month: 'APRIL' },
+  { name: 'Khmer New Year', nameKh: 'បុណ្យចូលឆ្នាំខ្មែរ', date: '15-04-2026', month: 'MAY' },
+  { name: 'Khmer New Year', nameKh: 'បុណ្យចូលឆ្នាំខ្មែរ', date: '16-04-2026', month: 'JUNE' },
+  { name: 'International Labor Day', nameKh: 'ទិវាពលកម្មអន្តរជាតិ', date: '01-05-2026', month: 'JULY' },
+  { name: 'Royal Plowing Ceremony Day', nameKh: 'ព្រះរាជពិធីច្រត់ព្រះនង្គ័ល', date: '05-05-2026', month: 'OCTOBER' },
+  { "name": "King Norodom Sihamoni's Birthday", nameKh: 'ព្រះរាជពិធីបុណ្យចម្រើនព្រះជន្មព្រះមហាក្សត្រ នរោត្តម សីហមុនី', date: '14-05-2026', month: 'SEPTEMBER' },
+  { "name": "Queen Norodom Monineath Sihanouk's Birthday", nameKh: 'ព្រះរាជពិធីបុណ្យចម្រើនព្រះជន្ម សម្ដេចព្រះមហាក្សត្រី នរោត្តម មុនីនាថ សីហនុ', date: '18-06-2026', month: 'NOVEMBER' },
+  { name: 'Constitution Day', nameKh: 'ទិវាប្រកាសរដ្ឋធម្មនុញ្ញ', date: '24-09-2026', month: 'DECEMBER' },
+  { name: 'Pchum Ben', nameKh: 'ពិធីបុណ្យភ្ជុំបិណ្ឌ', date: '10-10-2026', month: '' },
+  { name: 'Pchum Ben', nameKh: 'ពិធីបុណ្យភ្ជុំបិណ្ឌ', date: '11-10-2026', month: '' },
+  { name: 'Pchum Ben', nameKh: 'ពិធីបុណ្យភ្ជុំបិណ្ឌ', date: '12-10-2026', month: '' },
+  { name: 'Commemoration Day of King\'s Father', nameKh: 'ទិវាគោរពព្រះវិញ្ញាណក្ខន្ធព្រះបរមរតនកោដ្ឋ', date: '15-10-2026', month: '' },
+  { name: "King Norodom Sihamoni's Coronation Day", nameKh: 'ព្រះរាជពិធីគ្រងព្រះបរមរាជសម្បត្តិ', date: '29-10-2026', month: '' },
+  { name: 'National Independence Day', nameKh: 'ទិវាបុណ្យឯករាជ្យជាតិ', date: '09-11-2026', month: '' },
+  { name: 'Water Festival', nameKh: 'ព្រះរាជពិធីបុណ្យអុំទូក បណ្តែតប្រទីប និងសំពះព្រះខែ', date: '23-11-2026', month: '' },
+  { name: 'Water Festival', nameKh: 'ព្រះរាជពិធីបុណ្យអុំទូក បណ្តែតប្រទីប និងសំពះព្រះខែ', date: '24-11-2026', month: '' },
+  { name: 'Water Festival', nameKh: 'ព្រះរាជពិធីបុណ្យអុំទូក បណ្តែតប្រទីប និងសំពះព្រះខែ', date: '25-11-2026', month: '' },
+  { name: 'Win Win Day', nameKh: 'ទិវានយោបាយឈ្នះឈ្នះ', date: '29-12-2026', month: '' },
+]
+
+const HOLIDAYS_2027 = [
+  { name: 'International New Year', nameKh: 'បុណ្យចូលឆ្នាំសកល', date: '01-01-2027' },
+  { name: 'Victory Over Genocide Day', nameKh: 'ទិវាជ័យជម្នះលើរបបប្រល័យពូជសាសន៍', date: '07-01-2027' },
+  { name: "International Women's Day", nameKh: 'ទិវានារីអន្តរជាតិ', date: '08-03-2027' },
+  { name: 'Khmer New Year', nameKh: 'បុណ្យចូលឆ្នាំខ្មែរ', date: '14-04-2027' },
+  { name: 'Khmer New Year', nameKh: 'បុណ្យចូលឆ្នាំខ្មែរ', date: '15-04-2027' },
+  { name: 'Khmer New Year', nameKh: 'បុណ្យចូលឆ្នាំខ្មែរ', date: '16-04-2027' },
+  { name: 'International Labor Day', nameKh: 'ទិវាពលកម្មអន្តរជាតិ', date: '01-05-2027' },
+  { name: "King Norodom Sihamoni's Birthday", nameKh: 'ព្រះរាជពិធីបុណ្យចម្រើនព្រះជន្មព្រះមហាក្សត្រ នរោត្តម សីហមុនី', date: '14-05-2027' },
+  { name: 'Visak Bochea Day', nameKh: 'ពិធីបុណ្យវិសាខបូជា', date: '20-05-2027' },
+  { name: 'Royal Plowing Ceremony Day', nameKh: 'ព្រះរាជពិធីច្រត់ព្រះនង្គ័ល', date: '24-05-2027' },
+  { name: "Queen Norodom Monineath Sihanouk's Birthday", nameKh: 'ព្រះរាជពិធីបុណ្យចម្រើនព្រះជន្ម សម្ដេចព្រះមហាក្សត្រី នរោត្តម មុនីនាថ សីហនុ', date: '18-06-2027' },
+  { name: 'Constitution Day', nameKh: 'ទិវាប្រកាសរដ្ឋធម្មនុញ្ញ', date: '24-09-2027' },
+  { name: 'Pchum Ben', nameKh: 'ពិធីបុណ្យភ្ជុំបិណ្ឌ', date: '29-09-2027' },
+  { name: 'Pchum Ben', nameKh: 'ពិធីបុណ្យភ្ជុំបិណ្ឌ', date: '30-09-2027' },
+  { name: 'Pchum Ben', nameKh: 'ពិធីបុណ្យភ្ជុំបិណ្ឌ', date: '01-10-2027' },
+  { name: 'Commemoration Day of King\'s Father', nameKh: 'ទិវាគោរពព្រះវិញ្ញាណក្ខន្ធព្រះបរមរតនកោដ្ឋ', date: '15-10-2027' },
+  { name: "King Norodom Sihamoni's Coronation Day", nameKh: 'ព្រះរាជពិធីគ្រងព្រះបរមរាជសម្បត្តិ', date: '29-10-2027' },
+  { name: 'National Independence Day', nameKh: 'ទិវាបុណ្យឯករាជ្យជាតិ', date: '09-11-2027' },
+  { name: 'Water Festival', nameKh: 'ព្រះរាជពិធីបុណ្យអុំទូក បណ្តែតប្រទីប និងសំពះព្រះខែ', date: '12-11-2027' },
+  { name: 'Water Festival', nameKh: 'ព្រះរាជពិធីបុណ្យអុំទូក បណ្តែតប្រទីប និងសំពះព្រះខែ', date: '13-11-2027' },
+  { name: 'Water Festival', nameKh: 'ព្រះរាជពិធីបុណ្យអុំទូក បណ្តែតប្រទីប និងសំពះព្រះខែ', date: '14-11-2027' },
+  { name: 'Peace Day', nameKh: 'ទិវាសន្តិភាពនៅកម្ពុជា', date: '29-12-2027' },
+]
+
+const HOLIDAYS_BY_YEAR = { 2026: HOLIDAYS_2026, 2027: HOLIDAYS_2027 }
+const holidaysForYear = computed(() => HOLIDAYS_BY_YEAR[period.year] || [])
+const holidayMonth = (date) => MONTHS[Number(date.split('-')[1]) - 1] || ''
+
 /* ===================== My timesheet ===================== */
 const tab = ref('mine')
 const data = ref(null)
@@ -474,6 +529,28 @@ onBeforeUnmount(() => { clearInterval(ticker); clearTimeout(autosaveTimer); if (
           </footer>
         </section>
       </template>
+      <section class="mt-card mt-holiday" aria-labelledby="mt-holiday-title">
+        <header class="mt-holiday__head">
+          <h2 id="mt-holiday-title" class="mt-card__title">Public Holiday Calendar {{ period.year }}</h2>
+          <span class="mt-badge">{{ holidaysForYear.length }} holidays</span>
+        </header>
+        <div class="mt-holiday__wrap">
+          <table class="mt-holiday-table">
+            <caption class="sr-only">Public holidays in {{ period.year }}</caption>
+            <thead>
+              <tr><th scope="col">Date</th><th scope="col">Holiday</th><th scope="col">Month</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(holiday, index) in holidaysForYear" :key="`${holiday.date}-${index}`">
+                <td>{{ holiday.date }}</td>
+                <td><span v-if="holiday.nameKh" lang="km" class="mt-holiday__name-km">{{ holiday.nameKh }}</span><template v-if="holiday.nameKh"> / </template>{{ holiday.name }}</td>
+                <td><span class="mt-holiday__month">{{ holidayMonth(holiday.date) }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="!holidaysForYear.length" class="mt-holiday__empty">The holiday list for {{ period.year }} is not available yet.</p>
+        </div>
+      </section>
     </template>
 
     <!-- ===================== Approvals ===================== -->
@@ -757,6 +834,26 @@ onBeforeUnmount(() => { clearInterval(ticker); clearTimeout(autosaveTimer); if (
 .mt-formula p { margin: 6px 0 0; }
 .mt-link { padding: 0; border: 0; background: none; color: var(--mt-brand-dark); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; text-align: left; }
 .mt-link:hover { text-decoration: underline; transform: none !important; }
+
+/* Public Holiday Calendar 2026 */
+.mt-holiday { padding: 20px 22px 24px; font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.mt-holiday__head h2 { font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday__filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mt-holiday__filters select, .mt-holiday__filters input[type="text"] { height: 36px; padding: 0 12px; border: 1px solid #cfdbe7; border-radius: 10px; background: #fff; color: var(--mt-ink); font: inherit; font-size: .9rem; font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday__filters select:focus, .mt-holiday__filters input[type="text"]:focus { border-color: var(--mt-brand); outline: 0; box-shadow: 0 0 0 3px rgba(11, 127, 98, .14); }
+.mt-holiday__wrap { overflow-x: auto; }
+.mt-holiday-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.mt-holiday-table thead { background: var(--mt-brand-soft); }
+.mt-holiday-table th { text-align: left; padding: 12px 16px; border: 1px solid var(--mt-line); border-bottom: 2px solid var(--mt-brand-dark); color: var(--mt-brand-dark); font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday-table td { padding: 12px 16px; border: 1px solid var(--mt-line); color: var(--mt-ink); font-size: .92rem; font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday__name-km { font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; font-weight: 500; }
+.mt-holiday-table tr:last-child td { border-bottom: 1px solid var(--mt-line); }
+.mt-holiday-table tr:hover { background: var(--mt-soft); }
+.mt-holiday-table tr:nth-child(even) { background: #fbfdff; }
+.mt-holiday__month { display: inline-block; padding: 2px 8px; border-radius: 99px; background: var(--mt-brand-soft); color: var(--mt-brand-dark); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday__month--none { background: #eef2f6; color: var(--mt-muted); font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
+.mt-holiday__empty { margin: 14px 0 0; color: var(--mt-muted); text-align: center; font-family: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Khmer OS Siemreap', sans-serif; }
 
 /* Review */
 .mt-review { padding: 20px 22px; }

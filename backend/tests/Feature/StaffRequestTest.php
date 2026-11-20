@@ -74,10 +74,12 @@ class StaffRequestTest extends TestCase
     {
         Sanctum::actingAs($this->officer);
 
-        $id = $this->postJson('/api/me/requests', $this->leave(['details' => ['leave_type' => 'sick', 'start_date' => '2030-01-04', 'end_date' => '2030-01-04', 'working_days' => 99, 'junk' => 'x']]))->assertCreated()->json('data.id');
+        $id = $this->postJson('/api/me/requests', $this->leave(['details' => ['leave_type' => 'sick', 'start_date' => '2030-01-04', 'end_date' => '2030-01-04', 'working_days' => 99, 'staff_name' => 'Staff Member', 'position' => 'Officer', 'junk' => 'x']]))->assertCreated()->json('data.id');
 
         $details = StaffRequest::find($id)->details;
         $this->assertSame(1, $details['working_days']);
+        $this->assertSame('Staff Member', $details['staff_name']);
+        $this->assertSame('Officer', $details['position']);
         $this->assertArrayNotHasKey('junk', $details);
     }
 

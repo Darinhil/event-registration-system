@@ -1,20 +1,15 @@
 ﻿<script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
-import DateInput from '../DateInput.vue'
-import RequestFormParts from './RequestFormParts.vue'
 import LeaveApplication from './LeaveApplication.vue'
 import OvertimeRequest from './OvertimeRequest.vue'
 import MonthlyTimesheet from './MonthlyTimesheet.vue'
 import { getMyOvertime } from '../../services/overtimeService'
 import { getMyRequests } from '../../services/staffRequestService'
 import { getTimesheet } from '../../services/timesheetService'
-import { useStaffRequestForm } from '../../utils/staffRequestForm'
-import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
-const auth = useAuthStore()
 const activeForm = ref('leave')
 const loading = ref(true)
 const loadError = ref('')
@@ -24,13 +19,6 @@ const requests = ref([])
 const statusFilter = ref('all')
 const now = new Date()
 const period = { year: now.getFullYear(), month: now.getMonth() + 1 }
-const leaveForm = reactive({ type: 'annual', start: '', end: '', reason: '' })
-const leaveRequest = useStaffRequestForm('leave')
-const submitLeave = () => {
-  if (leaveForm.start && leaveForm.end && leaveForm.end < leaveForm.start) return
-  leaveRequest.submit({ leave_type: leaveForm.type, start_date: leaveForm.start, end_date: leaveForm.end, reason: leaveForm.reason.trim() })
-}
-const startNewLeave = () => { Object.assign(leaveForm, { type: 'annual', start: '', end: '', reason: '' }); leaveRequest.reset() }
 
 const forms = [
   { id: 'leave', title: 'Leave Application', description: 'Request time off.', action: 'Apply for leave', icon: 'calendar-check', section: 'leave-application' },
@@ -85,7 +73,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
     <section class="tm-metrics" aria-label="Time management summary">
       <article class="tm-metric">
         <span class="tm-icon tm-icon--green"><AppIcon name="calendar-check" :size="18" /></span><small>Annual leave balance</small>
-        <strong>{{ loading ? 'â€”' : remainingAnnual ?? 'â€”' }}<span v-if="!loading && remainingAnnual !== undefined"> days remaining</span></strong>
+        <strong>{{ loading ? '—' : remainingAnnual ?? '—' }}<span v-if="!loading && remainingAnnual !== undefined"> days remaining</span></strong>
       </article>
       <article class="tm-metric">
         <span class="tm-icon tm-icon--blue"><AppIcon name="clock" :size="18" /></span><small>Overtime this month</small>
@@ -111,21 +99,7 @@ const openFullPage = () => router.push({ path: '/admin/personnel-profile', query
       <div class="tm-tabs" role="tablist" aria-label="Time management forms">
         <button v-for="form in forms" :key="form.id" type="button" role="tab" :aria-selected="activeForm === form.id" :class="{ 'is-active': activeForm === form.id }" @click="openForm(form.id)">{{ form.title }}</button>
       </div>
-      <div v-if="activeForm === 'leave'" class="tm-direct-form">
-        <div v-if="leaveRequest.saved.value" class="tm-success" role="status"><span class="tm-icon tm-icon--green"><AppIcon name="check-circle" :size="18" /></span><div><strong>Leave request submitted</strong><p>Sent to your approver.</p></div><button type="button" class="tm-secondary" @click="startNewLeave">New request</button></div>
-        <form v-else class="tm-leave-form" @submit.prevent="submitLeave">
-          <p v-if="leaveRequest.formError.value" class="tm-notice" role="alert">{{ leaveRequest.formError.value }}</p>
-          <div class="tm-field"><label>Employee name</label><input :value="auth.user?.name || ''" readonly /></div>
-          <div class="tm-form-grid">
-            <div class="tm-field"><label for="tm-leave-type">Leave type</label><select id="tm-leave-type" v-model="leaveForm.type"><option value="annual">Annual</option><option value="sick">Sick</option><option value="unpaid">Unpaid</option></select></div>
-            <div class="tm-field"><label for="tm-leave-start">Start date</label><DateInput id="tm-leave-start" v-model="leaveForm.start" required /></div>
-            <div class="tm-field"><label for="tm-leave-end">End date</label><DateInput id="tm-leave-end" v-model="leaveForm.end" :min="leaveForm.start || undefined" required /></div>
-          </div>
-          <div class="tm-field"><label for="tm-leave-reason">Reason / message to supervisor</label><textarea id="tm-leave-reason" v-model="leaveForm.reason" rows="2" maxlength="500" placeholder="Add a short reason or handover note"></textarea></div>
-          <div class="tm-assignee"><RequestFormParts v-model:approver-id="leaveRequest.approverId.value" v-model:attachment="leaveRequest.attachment.value" :approvers="leaveRequest.approvers.value" :errors="leaveRequest.errors" :with-attachment="false" /></div>
-          <footer class="tm-form-footer"><span>Required fields are marked.</span><div><button type="submit" class="tm-submit" :disabled="leaveRequest.saving.value">{{ leaveRequest.saving.value ? 'Submitting…' : 'Submit leave request' }}</button><button type="button" class="tm-secondary" @click="openFullPage">Full page view</button></div></footer>
-        </form>
-      </div>
+      <div v-if="activeForm === 'leave'" class="tm-direct-form"><LeaveApplication /></div>
       <KeepAlive v-else><component :is="activeForm === 'overtime' ? OvertimeRequest : MonthlyTimesheet" /></KeepAlive>
     </section>
 

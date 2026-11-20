@@ -125,6 +125,12 @@ class StaffRequestController extends Controller
                     if (is_string($start) && strtotime($start) && $this->workingDays($start, $value) === 0) $fail('These dates have no working days. Choose at least one.');
                 }],
                 'details.reason' => ['nullable', 'string', 'max:500'],
+                'details.staff_name' => ['nullable', 'string', 'max:150'],
+                'details.position' => ['nullable', 'string', 'max:150'],
+                'details.allowance' => ['nullable', 'numeric', 'min:0'],
+                'details.used' => ['nullable', 'numeric', 'min:0'],
+                'details.balance' => ['nullable', 'numeric'],
+                'details.staff_signature' => ['nullable', 'string', 'max:200'],
             ],
             'travel' => [
                 'details' => ['required', 'array'],
@@ -134,10 +140,14 @@ class StaffRequestController extends Controller
                 'details.start_date' => ['required', 'date_format:Y-m-d'],
                 'details.end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:details.start_date'],
                 'details.transport' => ['required', Rule::in(self::TRANSPORT)],
+                'details.distance' => ['nullable', 'numeric', 'min:0'],
                 'details.costs' => ['nullable', 'array'],
                 'details.costs.transport' => ['nullable', 'numeric', 'min:0'],
                 'details.costs.accommodation' => ['nullable', 'numeric', 'min:0'],
                 'details.costs.meals' => ['nullable', 'numeric', 'min:0'],
+                'details.costs.fuel' => ['nullable', 'numeric', 'min:0'],
+                'details.costs.tolls' => ['nullable', 'numeric', 'min:0'],
+                'details.costs.parking' => ['nullable', 'numeric', 'min:0'],
                 'details.costs.other' => ['nullable', 'numeric', 'min:0'],
             ],
             'fuel' => [
